@@ -72,6 +72,7 @@ test = [
 
 [project.scripts]
 reboost-optical = "reboost.optical.cli:optical_cli"
+reboost-hpge = "reboost.hpge.cli:hpge_cli"
 
 [tool.setuptools]
 include-package-data = true
