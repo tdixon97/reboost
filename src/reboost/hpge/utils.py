@@ -40,14 +40,14 @@ def read_write_incremental(
     max_idx = int(np.ceil(entries / buffer)) - 1
     buffer_rows = None
 
-    for idx, (lh5_obj, entry, n_rows) in enumerate(LH5Iterator(file, field, buffer_len=buffer)):
+    for idx, (lh5_obj, _, _) in enumerate(LH5Iterator(file, field, buffer_len=buffer)):
         ak_obj = lh5_obj.view_as("ak")
         counts = ak.run_lengths(ak_obj.evtid)
         rows = ak.num(ak_obj, axis=-1)
         end_rows = counts[-1]
 
         if idx == 0:
-            mode = "of" if (delete_input == True) else "append"
+            mode = "of" if (delete_input) else "append"
             obj = ak_obj[0 : rows - end_rows]
             buffer_rows = copy.deepcopy(ak_obj[rows - end_rows :])
         elif idx != max_idx:

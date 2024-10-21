@@ -17,4 +17,4 @@ def group_by_event(data):
 
 
 def smear_energy(energies, reso_func):
-    return np.random.normal(energies, reso_func(energies))
+    return np.random.Generator.normal(energies, reso_func(energies))

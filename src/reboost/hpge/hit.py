@@ -9,7 +9,7 @@ def build_hit(
     lh5_in_file: str, lh5_out_file: str, detectors: Iterable[str | int], buffer_len: int = int(5e6)
 ) -> None:
     for idx, d in enumerate(detectors):
-        delete_input = True if (idx == 0) else False
+        delete_input = bool(idx == 0)
         utils.read_write_incremental(
             lh5_out_file,
             f"hit/{d}",
