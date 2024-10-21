@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-from collections.abc import Iterable
 from pathlib import Path
 
 import colorlog
@@ -14,7 +13,6 @@ def hpge_cli() -> None:
         prog="reboost-hpge",
         description="%(prog)s command line interface",
     )
-
 
     parser.add_argument(
         "--verbose",
@@ -46,7 +44,6 @@ def hpge_cli() -> None:
     # parse arguments
     args = parser.parse_args()
 
-
     handler = colorlog.StreamHandler()
     handler.setFormatter(
         colorlog.ColoredFormatter("%(log_color)s%(name)s [%(levelname)s] %(message)s")
@@ -55,8 +52,8 @@ def hpge_cli() -> None:
     logger.addHandler(handler)
     if args.verbose:
         logger.setLevel(logging.DEBUG)
-    
-    if args.command=="hit":
+
+    if args.command == "hit":
         # is the import here a good idea?
         from reboost.hpge.hit import build_hit
 
@@ -64,5 +61,3 @@ def hpge_cli() -> None:
             detectors = json.load(detectors_f)
 
         build_hit(args.input, args.output, detectors, args.bufsize)
-
-
