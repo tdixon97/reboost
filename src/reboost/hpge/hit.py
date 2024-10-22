@@ -19,8 +19,13 @@ def build_hit(
         # TODO replace this with a config file similar to pygama.build_evt
 
         proc = processors.def_chain(
-            [processors.group_by_time, processors.sum_energy, processors.smear_energy],
-            [{"window": 10}, {}, {"reso": config[d]["reso"], "energy_name": "sum_energy"}],
+            [
+                processors.sort_data,
+                processors.group_by_time,
+                processors.sum_energy,
+                processors.smear_energy,
+            ],
+            [{}, {"window": 10}, {}, {"reso": config[d]["reso"], "energy_name": "sum_energy"}],
         )
 
         utils.read_write_incremental(

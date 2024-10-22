@@ -15,6 +15,13 @@ def def_chain(funcs, kwargs_list):
     return func
 
 
+def sort_data(obj):
+    indexs = np.lexsort((obj.time, obj.evtid))
+    obj = obj[indexs]
+
+    return obj
+
+
 def group_by_evtid(data):
     counts = ak.run_lengths(data.evtid)
     return ak.unflatten(data, counts)
