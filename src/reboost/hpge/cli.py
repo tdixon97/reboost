@@ -52,9 +52,12 @@ def hpge_cli() -> None:
     logger.addHandler(handler)
     if args.verbose:
         logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
 
     if args.command == "hit":
         # is the import here a good idea?
+        logger.info("...running raw->hit tier")
         from reboost.hpge.hit import build_hit
 
         with Path.open(Path(args.detectors)) as detectors_f:

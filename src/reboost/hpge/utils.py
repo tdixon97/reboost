@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 from typing import Callable
 
 import awkward as ak
@@ -8,6 +9,8 @@ import numpy as np
 from lgdo import lh5
 from lgdo.lh5 import LH5Iterator
 from lgdo.types import Table
+
+log = logging.getLogger(__name__)
 
 
 def read_write_incremental(
@@ -32,6 +35,9 @@ def read_write_incremental(
 
     """
 
+    msg = f"...begin processing with {file} to {file_out}"
+    log.info(msg)
+
     entries = LH5Iterator(file, field, buffer_len=buffer)._get_file_cumentries(0)
 
     # number of blocks is ceil of entries/buffer,
@@ -41,6 +47,9 @@ def read_write_incremental(
     buffer_rows = None
 
     for idx, (lh5_obj, _, _) in enumerate(LH5Iterator(file, field, buffer_len=buffer)):
+        msg = f"... processed {idx} files out of {max_idx}"
+        log.debug(msg)
+
         ak_obj = lh5_obj.view_as("ak")
         counts = ak.run_lengths(ak_obj.evtid)
         rows = ak.num(ak_obj, axis=-1)
@@ -65,4 +74,5 @@ def read_write_incremental(
         out_lh5 = Table(out)
 
         # write lh5 file
+        log.info("...finished processing and save file")
         lh5.write(out_lh5, name_out, file_out, wo_mode=mode)
