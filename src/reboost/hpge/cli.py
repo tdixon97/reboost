@@ -34,14 +34,13 @@ def hpge_cli() -> None:
     hit_parser = subparsers.add_parser("hit", help="build hit file from remage raw file")
 
     hit_parser.add_argument(
-        "--detectors",
-        help="file that contains a list of detector ids that are part of the input file",
+        "--config",
+        help="file that contains the configuration",
         required=True,
     )
     hit_parser.add_argument("input", help="input hit LH5 file", metavar="INPUT_HIT")
     hit_parser.add_argument("output", help="output evt LH5 file", metavar="OUTPUT_EVT")
 
-    # parse arguments
     args = parser.parse_args()
 
     handler = colorlog.StreamHandler()
@@ -60,7 +59,7 @@ def hpge_cli() -> None:
         logger.info("...running raw->hit tier")
         from reboost.hpge.hit import build_hit
 
-        with Path.open(Path(args.detectors)) as detectors_f:
-            detectors = json.load(detectors_f)
+        with Path.open(Path(args.config)) as config_f:
+            config = json.load(config_f)
 
-        build_hit(args.input, args.output, detectors, args.bufsize)
+        build_hit(args.input, args.output, config, args.bufsize)

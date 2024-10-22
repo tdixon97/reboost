@@ -43,6 +43,8 @@ def sum_energy(grouped):
 
 
 def smear_energy(data, reso=2, energy_name="sum_energy"):
+    flat_energy = data[energy_name].to_numpy()
+    rng = np.random.default_rng()
     return ak.with_field(
-        data, np.random.Generator.normal(data[energy_name], reso), "energy_smeared"
+        data, rng.normal(loc=flat_energy, scale=np.ones_like(flat_energy) * reso), "energy_smeared"
     )
