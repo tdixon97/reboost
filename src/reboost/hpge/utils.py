@@ -59,8 +59,10 @@ def proj(s1, s2, v):
 def dist(s1, s2, v):
     return distance_2d(proj(s1, s2, v), v)
 
+
 def get_detector_origin(name):
     raise NotImplementedError
+
 
 def read_write_incremental(
     file_out: str,
