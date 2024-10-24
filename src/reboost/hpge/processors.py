@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import awkward as ak
 import numpy as np
-
+import utils
 
 def def_chain(funcs, kwargs_list):
     def func(data):
@@ -16,10 +16,8 @@ def def_chain(funcs, kwargs_list):
 
 
 def sort_data(obj):
-    indexs = np.lexsort((obj.time, obj.evtid))
-    obj = obj[indexs]
-
-    return obj
+    indices = np.lexsort((obj.time, obj.evtid))
+    return obj[indices]
 
 
 def group_by_evtid(data):
@@ -55,3 +53,26 @@ def smear_energy(data, reso=2, energy_name="sum_energy"):
     return ak.with_field(
         data, rng.normal(loc=flat_energy, scale=np.ones_like(flat_energy) * reso), "energy_smeared"
     )
+
+def distance_to_surface(data,detector="det001"):
+
+    # get detector origin
+    x,y,z = utils.get_detector_origin(detector)
+    
+    # get the r-z points to produce the detector (G4GenericPolyCone)
+    r,z  = utils.get_detector_corners(detector)
+
+    # loop over pairs
+    dists=[]
+    for (rtmp,ztmp,rnext_tmp,znext_tmp) in zip(r[:-1],z[:-1],r[1:],z[1:]):
+        
+        s1 = ak.zip({"x":rtmp,"y":ztmp})
+        s2 = ak.zip({"x":rnext_tmp,"y":znext_tmp})
+        v_3d=ak.zip({"x":data.xloc-x,"y":data.yloc-y,"z":data.zloc-z})
+        v = ak.zip({"x":np.sqrt(np.power(v_3d.x,2)+np.power(v_3d.y,2)),"y":v_3d.z})
+
+        dist  = utils.dist(s1,s2,v)
+        dists.append(dist)
+
+
+    raise np.min(dists)
