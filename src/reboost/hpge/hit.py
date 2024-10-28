@@ -25,14 +25,13 @@ def build_hit(
     lh5_out_file
         output file
     config
-        dictonary containg the configuration / parameters
+        dictionary containing the configuration / parameters
         should contain one sub-dictonary per detector with a format like:
 
         .. code-block:: json
 
             "det001": {
-                "reso": 1,
-                ...
+                "reso": 1
             }
 
         This can contain any parameters needed in the processing chain.

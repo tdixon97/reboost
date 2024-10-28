@@ -52,8 +52,10 @@ def _prod(a, b):
 def proj(s1: ak.Array, s2: ak.Array, v: ak.Array) -> ak.Array:
     """
     Projection v on the line segment s1 to s2.
+
     All of s1,s2 and v are `ak.Array` of records with two fields `x` and `y`
     I.e. they represent lists of 2D cartesian vectors.
+
     Parameters
     ----------
     s1
@@ -76,8 +78,11 @@ def proj(s1: ak.Array, s2: ak.Array, v: ak.Array) -> ak.Array:
 def dist(s1: ak.Array, s2: ak.Array, v: ak.Array) -> float:
     """
     Shortest distance between a point v and the line segment defined by s1-s2.
-    All of s1,s2 and v are `ak.Array` of records with two fields `x` and `y`
+
+    All of s1,s2 and v are `ak.Array` of records with two fields `x` and `y`.
+
     I.e. they represent lists of 2D cartesian vectors.
+
     Parameters
     ----------
     s1
@@ -86,10 +91,12 @@ def dist(s1: ak.Array, s2: ak.Array, v: ak.Array) -> float:
         second points in the line segment
     v
         points to project onto s1-s2
+
     Returns
     -------
         the shortest distance from the point to the line
     """
+
     return _distance_2d(proj(s1, s2, v), v)
 
 
@@ -107,16 +114,22 @@ def read_write_incremental(
     delete_input=False,
 ) -> None:
     """
-    Read incrementally the files compute something and then write
+    Read incrementally the files compute something and then write output
+
     Parameters
     ----------
-        file_out (str): output file path
-        out_name (str): lh5 group name for output
-        func          : function converting into to output
-        field    (str): lh5 field name to read
-        file    (str): file name to read
-        buffer  (int): length of buffer
-
+        file_out 
+            output file path
+        name_out
+            lh5 group name for output
+        func
+            function converting into to output
+        field
+            lh5 field name to read
+        file
+            file name to read
+        buffer
+            length of buffer
     """
 
     msg = f"...begin processing with {file} to {file_out}"

@@ -7,6 +7,10 @@ from . import utils
 
 
 def def_chain(funcs, kwargs_list):
+    """
+    Builds the processing chain function from a list of functions
+    """
+
     def func(data):
         tmp = data
         for f, kw in zip(funcs, kwargs_list):
@@ -18,16 +22,27 @@ def def_chain(funcs, kwargs_list):
 
 
 def sort_data(obj):
+    """
+    Sort the data by evtid then time
+    """
     indices = np.lexsort((obj.time, obj.evtid))
     return obj[indices]
 
 
 def group_by_evtid(data):
+    """
+    Simple grouping by evtid
+    """
+
     counts = ak.run_lengths(data.evtid)
     return ak.unflatten(data, counts)
 
 
 def group_by_time(obj, window=10):
+    """
+    Grouping by evtid and by time
+    """
+
     runs = np.array(np.cumsum(ak.run_lengths(obj.evtid)))
     counts = ak.run_lengths(obj.evtid)
 
@@ -42,7 +57,11 @@ def group_by_time(obj, window=10):
 
 
 def sum_energy(grouped):
-    sum_energy = ak.sum(grouped.edep, axis=-1)
+    """
+    Sum the energy deposits per hit
+    """
+
+    sum_energy = ak.sum(grouped.ed6ep, axis=-1)
     t0 = ak.fill_none(ak.firsts(grouped.time, axis=-1), np.nan)
     index = ak.fill_none(ak.firsts(grouped.evtid, axis=-1), np.nan)
 
@@ -50,6 +69,10 @@ def sum_energy(grouped):
 
 
 def smear_energy(data, reso=2, energy_name="sum_energy"):
+    """
+    Smearing og energies
+    """
+
     flat_energy = data[energy_name].to_numpy()
     rng = np.random.default_rng()
     return ak.with_field(
@@ -58,6 +81,10 @@ def smear_energy(data, reso=2, energy_name="sum_energy"):
 
 
 def distance_to_surface(data, detector="det001"):
+    """
+    [WIP] computes the distance of a point to the detector surface
+    """
+
     # get detector origin
     x, y, z = utils.get_detector_origin(detector)
 
