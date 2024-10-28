@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import awkward as ak
 import numpy as np
-import utils
+from . import utils
 
 
 def def_chain(funcs, kwargs_list):
