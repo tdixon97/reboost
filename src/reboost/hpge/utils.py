@@ -118,7 +118,7 @@ def read_write_incremental(
 
     Parameters
     ----------
-        file_out 
+        file_out
             output file path
         name_out
             lh5 group name for output
