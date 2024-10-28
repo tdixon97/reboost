@@ -93,6 +93,7 @@ def dist(s1: ak.Array, s2: ak.Array, v: ak.Array) -> float:
     return _distance_2d(proj(s1, s2, v), v)
 
 
+
 def get_detector_origin(name):
     raise NotImplementedError
 

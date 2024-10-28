@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from reboost.hpge import processors, utils
+from . import processors, utils
 
 log = logging.getLogger(__name__)
 
