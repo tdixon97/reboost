@@ -6,7 +6,6 @@ import numpy as np
 from . import utils
 
 
-
 def def_chain(funcs, kwargs_list):
     def func(data):
         tmp = data

@@ -23,13 +23,13 @@ def build_hit(
     lh5_in_file
         input file containing the raw tier
     lh5_out_file
-        output file 
+        output file
     config
         dictonary containg the configuration / parameters
         should contain one sub-dictonary per detector with a format like:
 
         .. code-block:: json
-            
+
             "det001": {
                 "reso": 1,
                 ...
@@ -42,13 +42,13 @@ def build_hit(
         path to the gdml file of the geometry
     macro
         path to the Geant4 macro used to generate the raw tier
-    """    
+    """
 
     # get the geant4 gdml and macro
 
     if gdml is not None:
         pass
-    
+
     if macro is not None:
         pass
 
