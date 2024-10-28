@@ -13,54 +13,89 @@ from lgdo.types import Table
 log = logging.getLogger(__name__)
 
 
-def distance_3d(v1, v2):
+def _distance_3d(v1, v2):
     return np.sqrt(np.power(v2.x - v1.x, 2) + np.power(v2.y - v1.y, 2) + np.power(v2.z - v1.z, 2))
 
 
-def distance_2d(v1, v2):
+def _distance_2d(v1, v2):
     return np.sqrt(np.power(v2.x - v1.x, 2) + np.power(v2.y - v1.y, 2))
 
 
-def add_ak_3d(a, b):
+def _add_ak_3d(a, b):
     return ak.zip({"x": a.x + b.x, "y": a.y + b.y, "z": a.z + b.z})
 
 
-def add_ak_2d(a, b):
+def _add_ak_2d(a, b):
     return ak.zip({"x": a.x + b.x, "y": a.y + b.y})
 
 
-def sub_ak_2d(a, b):
+def _sub_ak_2d(a, b):
     return ak.zip({"x": a.x - b.x, "y": a.y - b.y})
 
 
-def sub_ak_3d(a, b):
+def _sub_ak_3d(a, b):
     return ak.zip({"x": a.x - b.x, "y": a.y - b.y, "z": a.z - b.z})
 
 
-def prod_ak_2d(a, b):
+def _prod_ak_2d(a, b):
     return a.x * b.x + a.y * b.y
 
 
-def prod_ak_3d(a, b):
+def _prod_ak_3d(a, b):
     return a.x * b.x + a.y * b.y + a.z * b.z
 
 
-def prod(a, b):
+def _prod(a, b):
     return ak.zip({"x": a.x * b, "y": a.y * b})
 
 
-def proj(s1, s2, v):
-    dist_one = prod_ak_2d(sub_ak_2d(v, s1), sub_ak_2d(v, s2)) / distance_2d(s1, s2)
+def proj(s1: ak.Array, s2: ak.Array, v: ak.Array) -> ak.Array:
+    """
+    Projection v on the line segment s1 to s2.
+    All of s1,s2 and v are `ak.Array` of records with two fields `x` and `y`
+    I.e. they represent lists of 2D cartesian vectors.
+    Parameters
+    ----------
+    s1
+        first points in the line segment
+    s2
+        second points in the line segment
+    v
+        points to project onto s1-s2
+    Returns
+    -------
+        the coordinates of the projection onto s1-s2
+    """
+
+    dist_one = _prod_ak_2d(_sub_ak_2d(v, s1), _sub_ak_2d(v, s2)) / _distance_2d(s1, s2)
     dist_one = np.where(dist_one > 1, dist_one, 1)
     dist_one = np.where(dist_one > 0, dist_one, 0)
-    return prod(add_ak_2d(s1, sub_ak_2d(s2, s1)), dist_one)
+    return _prod(_add_ak_2d(s1, _sub_ak_2d(s2, s1)), dist_one)
 
 
-def dist(s1, s2, v):
-    return distance_2d(proj(s1, s2, v), v)
+def dist(s1: ak.Array, s2: ak.Array, v: ak.Array) -> float:
+    """
+    Shortest distance between a point v and the line segment defined by s1-s2.
+    All of s1,s2 and v are `ak.Array` of records with two fields `x` and `y`
+    I.e. they represent lists of 2D cartesian vectors.
+    Parameters
+    ----------
+    s1
+        first points in the line segment
+    s2
+        second points in the line segment
+    v
+        points to project onto s1-s2
+    Returns
+    -------
+        the shortest distance from the point to the line
+    """
+    return _distance_2d(proj(s1, s2, v), v)
+
 
 def get_detector_origin(name):
     raise NotImplementedError
+
 
 def read_write_incremental(
     file_out: str,

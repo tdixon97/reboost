@@ -38,6 +38,16 @@ def hpge_cli() -> None:
         help="file that contains the configuration",
         required=True,
     )
+    hit_parser.add_argument(
+        "--gdml",
+        help="GDML file used for Geant4",
+        required=False,
+    )
+    hit_parser.add_argument(
+        "--macro",
+        help="Gean4 macro file used to generate raw tier",
+        required=False,
+    )
     hit_parser.add_argument("input", help="input hit LH5 file", metavar="INPUT_HIT")
     hit_parser.add_argument("output", help="output evt LH5 file", metavar="OUTPUT_EVT")
 
@@ -62,4 +72,4 @@ def hpge_cli() -> None:
         with Path.open(Path(args.config)) as config_f:
             config = json.load(config_f)
 
-        build_hit(args.input, args.output, config, args.bufsize)
+        build_hit(args.input, args.output, config, args.bufsize, gdml=args.gdml, macro=args.macro)
