@@ -104,6 +104,7 @@ def group_by_time(data: Table, window: float = 10) -> lgdo.Table:
     """
 
     obj = data.view_as("ak")
+    obj = sort_data(obj)
 
     # get difference
     time_diffs = np.diff(obj.time)
