@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 from pathlib import Path
 
 import colorlog
+import yaml
 
 
 def hpge_cli() -> None:
@@ -34,8 +34,13 @@ def hpge_cli() -> None:
     hit_parser = subparsers.add_parser("hit", help="build hit file from remage raw file")
 
     hit_parser.add_argument(
-        "--config",
-        help="file that contains the configuration",
+        "--proc_chain",
+        help="YAML file that contains the processing chain",
+        required=True,
+    )
+    hit_parser.add_argument(
+        "--pars",
+        help="YAML file that contains the pars",
         required=True,
     )
     hit_parser.add_argument(
@@ -69,7 +74,24 @@ def hpge_cli() -> None:
         logger.info("...running raw->hit tier")
         from reboost.hpge.hit import build_hit
 
-        with Path.open(Path(args.config)) as config_f:
-            config = json.load(config_f)
+        with Path.open(Path(args.pars)) as config_f:
+            pars = yaml.safe_load(config_f)
 
-        build_hit(args.input, args.output, config, args.bufsize, gdml=args.gdml, macro=args.macro)
+        with Path.open(Path(args.proc_chain)) as config_f:
+            proc_config = yaml.safe_load(config_f)
+
+        # check the processing chain
+        for req_field in ["channels", "outputs", "step_group", "operations"]:
+            if req_field not in proc_config:
+                msg = f"error proc chain config must contain the field {req_field}"
+                raise ValueError(msg)
+
+        build_hit(
+            args.input,
+            args.output,
+            proc_config,
+            pars,
+            args.bufsize,
+            gdml=args.gdml,
+            macro=args.macro,
+        )
