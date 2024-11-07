@@ -53,6 +53,12 @@ def hpge_cli() -> None:
         help="Gean4 macro file used to generate raw tier",
         required=False,
     )
+
+    hit_parser.add_argument("--infield", help="input LH5 field", required=False, default="hit")
+    hit_parser.add_argument(
+        "--outfield", help="output LH5 field name", required=False, default="hit"
+    )
+
     hit_parser.add_argument("input", help="input hit LH5 file", metavar="INPUT_HIT")
     hit_parser.add_argument("output", help="output evt LH5 file", metavar="OUTPUT_EVT")
 
@@ -87,11 +93,13 @@ def hpge_cli() -> None:
                 raise ValueError(msg)
 
         build_hit(
-            args.input,
             args.output,
-            proc_config,
-            pars,
-            args.bufsize,
+            args.input,
+            out_field=args.outfield,
+            in_field=args.infield,
+            proc_config=proc_config,
+            pars=pars,
+            buffer=args.bufsize,
             gdml=args.gdml,
             macro=args.macro,
         )

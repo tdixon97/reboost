@@ -142,8 +142,7 @@ def smear_energies(truth_energy: Array, reso: float = 2) -> Array:
 
     Returns
     -------
-    New array after sampling from a Gaussian with mean :math:`energy_i` and sigma `reso` for every element of
-    `truth_array`.
+    New array after sampling from a Gaussian with mean :math:`energy_i` and sigma `reso` for every element of `truth_array`.
 
     """
 
