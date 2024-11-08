@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import argparse
 import logging
-from pathlib import Path
 
 import colorlog
-import yaml
+
+from . import utils
 
 
 def hpge_cli() -> None:
@@ -35,12 +35,12 @@ def hpge_cli() -> None:
 
     hit_parser.add_argument(
         "--proc_chain",
-        help="YAML file that contains the processing chain",
+        help="JSON or YAML file that contains the processing chain",
         required=True,
     )
     hit_parser.add_argument(
         "--pars",
-        help="YAML file that contains the pars",
+        help="JSON or YAML file that contains the pars",
         required=True,
     )
     hit_parser.add_argument(
@@ -50,7 +50,7 @@ def hpge_cli() -> None:
     )
     hit_parser.add_argument(
         "--macro",
-        help="Gean4 macro file used to generate raw tier",
+        help="Geant4 macro file used to generate raw tier",
         required=False,
     )
 
@@ -80,11 +80,8 @@ def hpge_cli() -> None:
         logger.info("...running raw->hit tier")
         from reboost.hpge.hit import build_hit
 
-        with Path.open(Path(args.pars)) as config_f:
-            pars = yaml.safe_load(config_f)
-
-        with Path.open(Path(args.proc_chain)) as config_f:
-            proc_config = yaml.safe_load(config_f)
+        pars = utils.load_dict(args.pars, None)
+        proc_config = utils.load_dict(args.proc_config, None)
 
         # check the processing chain
         for req_field in ["channels", "outputs", "step_group", "operations"]:

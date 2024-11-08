@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import copy
 import importlib
+import json
 import logging
 import re
 from collections import namedtuple
+from pathlib import Path
 
 import awkward as ak
+import yaml
 
 log = logging.getLogger(__name__)
 
@@ -88,3 +91,29 @@ def _merge_arrays(
         buffer_rows = None
 
     return obj, buffer_rows, mode
+
+
+__file_extensions__ = {"json": [".json"], "yaml": [".yaml", ".yml"]}
+
+
+def load_dict(fname: str, ftype: str | None = None) -> dict:
+    """Load a text file as a Python dict."""
+    fname = Path(fname)
+
+    # determine file type from extension
+    if ftype is None:
+        for _ftype, exts in __file_extensions__.items():
+            if fname.suffix in exts:
+                ftype = _ftype
+
+    msg = f"loading {ftype} dict from: {fname}"
+    log.debug(msg)
+
+    with fname.open() as f:
+        if ftype == "json":
+            return json.load(f)
+        if ftype == "yaml":
+            return yaml.safe_load(f)
+
+        msg = f"unsupported file format {ftype}"
+        raise NotImplementedError(msg)
