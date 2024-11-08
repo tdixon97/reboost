@@ -41,7 +41,11 @@ def get_function_string(expr: str) -> tuple[str, dict]:
 
 
 def _merge_arrays(
-    ak_obj: ak.Array, buffer_rows: ak.Array, idx: int, max_idx: int, delete_input: bool = False
+    ak_obj: ak.Array,
+    buffer_rows: ak.Array | None,
+    idx: int,
+    max_idx: int,
+    delete_input: bool = False,
 ) -> tuple[ak.Array, ak.Array, str]:
     """Merge awkward arrays with a buffer and simultaneously remove the last rows.
 
@@ -81,5 +85,6 @@ def _merge_arrays(
     else:
         mode = "append"
         obj = ak.concatenate((buffer_rows, ak_obj))
+        buffer_rows = None
 
     return obj, buffer_rows, mode
