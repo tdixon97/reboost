@@ -6,7 +6,6 @@ import numpy as np
 from lgdo import Array, Table, VectorOfVectors
 
 
-
 def sort_data(obj: ak.Array) -> ak.Array:
     """Sort the data by evtid then time.
 
