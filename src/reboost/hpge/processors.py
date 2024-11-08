@@ -6,20 +6,6 @@ import numpy as np
 from lgdo import Array, Table, VectorOfVectors
 
 
-def def_chain(funcs, kwargs_list):
-    """
-    Builds the processing chain function from a list of functions
-    """
-
-    def func(data):
-        tmp = data
-        for f, kw in zip(funcs, kwargs_list):
-            tmp = f(tmp, **kw)
-
-        return tmp
-
-    return func
-
 
 def sort_data(obj: ak.Array) -> ak.Array:
     """Sort the data by evtid then time.

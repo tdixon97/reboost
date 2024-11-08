@@ -4,7 +4,7 @@ import awkward as ak
 import numpy as np
 from lgdo import Table
 
-from reboost.hpge import processors
+from reboost.hpge import hit, processors
 
 
 def test_evtid_group():
@@ -18,6 +18,21 @@ def test_evtid_group():
     out_ak = out.view_as("ak")
     assert ak.all(out_ak.evtid == [[1, 1, 1], [2, 2], [10, 10], [11], [12, 12, 12]])
     assert ak.all(out_ak.time == [[0, 0, 0], [0, 0], [0, 0], [0], [0, 0, 0]])
+
+    # test the eval in build hit also
+
+    out_eval = hit.step_group(
+        in_tab,
+        {
+            "description": "group steps by time and evtid.",
+            "expression": "reboost.hpge.processors.group_by_evtid(stp)",
+        },
+    )
+
+    out_eval_ak = out_eval.view_as("ak")
+
+    assert ak.all(out_ak.evtid == out_eval_ak.evtid)
+    assert ak.all(out_ak.time == out_eval_ak.time)
 
 
 def test_time_group():
