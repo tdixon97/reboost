@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import awkward as ak
+import legendhpges
 import lgdo
 import numpy as np
 from lgdo import Array, Table, VectorOfVectors
+from numpy.typing import ArrayLike
 
 
 def sort_data(obj: ak.Array) -> ak.Array:
@@ -136,3 +138,64 @@ def smear_energies(truth_energy: Array, reso: float = 2) -> Array:
     rng = np.random.default_rng()
 
     return Array(rng.normal(loc=flat_energy, scale=np.ones_like(flat_energy) * reso))
+
+
+def distance_to_surface(
+    positions_x: VectorOfVectors,
+    positions_y: VectorOfVectors,
+    positions_z: VectorOfVectors,
+    hpge: legendhpges.base.HPGe,
+    det_pos: ArrayLike,
+    surface_type: str | None = None,
+) -> Array:
+    """Computes the distance from each step to the detector surface.
+
+    Parameters
+    ----------
+    positions_x
+        Global x positions for each step.
+    positions_y
+        Global y positions for each step.
+    positions_z
+        Global z positions for each step.
+    hpge
+        HPGe object.
+    det_pos
+        position of the detector origin, must be a 3 component array corresponding to `(x,y,z)`.
+    surface_type
+        string of which surface to use, can be `nplus`, `pplus` `passive` or None (in which case the distance to any surface is calculated).
+
+    Returns
+    -------
+    VectorOfVectors with the same shape as `positions_x/y/z` of the distance to the surface.
+
+    Note
+    ----
+    `positions_x/positions_y/positions_z` must all have the same shape.
+
+    """
+
+    # compute local positions
+    local_positions_x = positions_x - det_pos[0]
+    local_positions_y = positions_y - det_pos[1]
+    local_positions_z = positions_z - det_pos[2]
+
+    # sizes for unflattening the ak.Array
+    sizes = ak.num(local_positions_x, axis=1)
+
+    local_position_x_flat = ak.flatten(local_positions_x).to_numpy()
+    local_position_y_flat = ak.flatten(local_positions_y).to_numpy()
+    local_position_z_flat = ak.flatten(local_positions_z).to_numpy()
+
+    # restructure the positions
+    local_positions = np.vstack(
+        [local_position_x_flat, local_position_y_flat, local_position_z_flat]
+    ).T
+
+    # get indices
+    surface_indices = np.where(hpge.surfaces == surface_type) if surface_type is not None else None
+
+    # distance calc itself
+    distances = hpge.distance_to_surface(local_positions, surface_indices=surface_indices)
+
+    return ak.unflatten(distances, sizes)
