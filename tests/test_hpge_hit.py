@@ -205,20 +205,20 @@ def test_build_hit(test_reboost_input_file):
 
     # read back in the data and check this works (no errors)
 
-    tab = lh5.read("hit/det001",str(test_reboost_input_file / "out.lh5")).view_as("ak")
-    tab_merge = lh5.read("hit/det001",str(test_reboost_input_file / "out_merge.lh5")).view_as("ak")
-    tab_0  = lh5.read("hit/det001",str(test_reboost_input_file / "out_0.lh5")).view_as("ak")
-    tab_1  = lh5.read("hit/det001",str(test_reboost_input_file / "out_1.lh5")).view_as("ak")
+    tab = lh5.read("hit/det001", str(test_reboost_input_file / "out.lh5")).view_as("ak")
+    tab_merge = lh5.read("hit/det001", str(test_reboost_input_file / "out_merge.lh5")).view_as("ak")
+    tab_0 = lh5.read("hit/det001", str(test_reboost_input_file / "out_0.lh5")).view_as("ak")
+    tab_1 = lh5.read("hit/det001", str(test_reboost_input_file / "out_1.lh5")).view_as("ak")
 
     # check size of the output
-    assert len(ak.flatten(tab.evtid,axis=-1))==int(1e6)
-    assert len(ak.flatten(tab_merge.evtid,axis=-1))==int(1e6+30040)
-    assert len(ak.flatten(tab_0.evtid,axis=-1))==int(1e6)
-    assert len(ak.flatten(tab_1.evtid,axis=-1))==int(30040)
+    assert len(ak.flatten(tab.evtid, axis=-1)) == int(1e6)
+    assert len(ak.flatten(tab_merge.evtid, axis=-1)) == int(1e6 + 30040)
+    assert len(ak.flatten(tab_0.evtid, axis=-1)) == int(1e6)
+    assert len(ak.flatten(tab_1.evtid, axis=-1)) == 30040
 
     # check on evtid
 
-    assert ak.all(ak.all(tab.evtid == ak.firsts(tab.evtid,axis=-1), axis=1))
-    assert ak.all(ak.all(tab_merge.evtid == ak.firsts(tab_merge.evtid,axis=-1), axis=1))
-    assert ak.all(ak.all(tab_0.evtid == ak.firsts(tab_0.evtid,axis=-1), axis=1))
-    assert ak.all(ak.all(tab_1.evtid == ak.firsts(tab_1.evtid,axis=-1), axis=1))
+    assert ak.all(ak.all(tab.evtid == ak.firsts(tab.evtid, axis=-1), axis=1))
+    assert ak.all(ak.all(tab_merge.evtid == ak.firsts(tab_merge.evtid, axis=-1), axis=1))
+    assert ak.all(ak.all(tab_0.evtid == ak.firsts(tab_0.evtid, axis=-1), axis=1))
+    assert ak.all(ak.all(tab_1.evtid == ak.firsts(tab_1.evtid, axis=-1), axis=1))
