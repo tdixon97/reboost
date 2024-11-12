@@ -9,13 +9,61 @@ from collections import namedtuple
 from pathlib import Path
 
 import awkward as ak
+import legendhpges
+import pyg4ometry
 import yaml
 
 log = logging.getLogger(__name__)
 
+reg = pyg4ometry.geant4.Registry()
 
-def get_detector_origin(name):
-    raise NotImplementedError
+
+def get_hpge(meta_path: str, pars: dict, detector: str) -> legendhpges.HPGe:
+    """Extract the :class:`legendhpges.HPGe` object from metadata.
+
+    Parameters
+    ----------
+    meta_path
+        path to the folder with the `diodes` metadata.
+    pars
+        dictionary of parameters.
+    detector
+        remage output name for the detector
+
+    Returns
+    -------
+    hpge
+        the `legendhpges` object for the detector.
+    """
+
+    meta_name = pars.get("meta_name", f"{detector}.json")
+    meta_dict = Path(meta_path) / Path(meta_name)
+    return legendhpges.make_hpge(meta_dict, registry=reg)
+
+
+def get_phy_vol(
+    reg: pyg4ometry.geant4.Registry | None, pars: dict, detector: str
+) -> pyg4ometry.geant4.PhysicalVolume:
+    """Extract the :class:`pyg4ometry.geant4.PhysicalVolume` object from GDML
+
+    Parameters
+    ----------
+    reg
+        Geant4 registry from GDML
+    pars
+        dictionary of parameters.
+    detector
+        remage output name for the detector.
+
+    Returns
+    -------
+    phy_vol
+        the `pyg4ometry.geant4.PhysicalVolume` object for the detector
+    """
+    if reg is not None:
+        phy_name = pars.get("phy_vol_name", f"{detector}")
+        return reg.physicalVolumeDict[phy_name]
+    return None
 
 
 def dict2tuple(dictionary: dict) -> namedtuple:

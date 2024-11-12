@@ -176,21 +176,21 @@ def distance_to_surface(
     """
 
     # compute local positions
-    local_positions_x = positions_x - det_pos[0]
-    local_positions_y = positions_y - det_pos[1]
-    local_positions_z = positions_z - det_pos[2]
+    pos = []
+    sizes = []
+    for idx, pos_tmp in enumerate([positions_x, positions_y, positions_z]):
+        local_pos_tmp = ak.Array(pos_tmp) - det_pos[idx]
+        local_pos_flat_tmp = ak.flatten(local_pos_tmp).to_numpy()
+        pos.append(local_pos_flat_tmp)
+        sizes.append(ak.num(local_pos_tmp, axis=1))
 
-    # sizes for unflattening the ak.Array
-    sizes = ak.num(local_positions_x, axis=1)
+    if not ak.all(sizes[0] == sizes[1]) or not ak.all(sizes[0] == sizes[2]):
+        msg = "all position vector of vector must have the same shape"
+        raise ValueError(msg)
 
-    local_position_x_flat = ak.flatten(local_positions_x).to_numpy()
-    local_position_y_flat = ak.flatten(local_positions_y).to_numpy()
-    local_position_z_flat = ak.flatten(local_positions_z).to_numpy()
-
+    size = sizes[0]
     # restructure the positions
-    local_positions = np.vstack(
-        [local_position_x_flat, local_position_y_flat, local_position_z_flat]
-    ).T
+    local_positions = np.vstack(pos).T
 
     # get indices
     surface_indices = np.where(hpge.surfaces == surface_type) if surface_type is not None else None
@@ -198,4 +198,4 @@ def distance_to_surface(
     # distance calc itself
     distances = hpge.distance_to_surface(local_positions, surface_indices=surface_indices)
 
-    return ak.unflatten(distances, sizes)
+    return ak.unflatten(distances, size)

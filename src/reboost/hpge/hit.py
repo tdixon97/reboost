@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import logging
 
+import legendhpges
 import numpy as np
+import pyg4ometry
 from lgdo import Array, ArrayOfEqualSizedArrays, LH5Iterator, Table, VectorOfVectors, lh5
 
 from . import utils
@@ -45,7 +47,11 @@ def step_group(data: Table, group_config: dict) -> Table:
 
 
 def eval_expression(
-    table: Table, info: dict, pars: dict
+    table: Table,
+    info: dict,
+    pars: dict | None = None,
+    hpge: legendhpges.HPGe | None = None,
+    phy_vol: pyg4ometry.geant4.PhysicalVolume | None = None,
 ) -> Array | ArrayOfEqualSizedArrays | VectorOfVectors:
     """Evaluate an expression returning an LGDO object.
 
@@ -54,8 +60,7 @@ def eval_expression(
     table
         hit table, with columns possibly used in the operations.
     info
-        `dict` containing the information on the expression. Must contain `mode` and `expressions` keys
-        For example:
+        `dict` containing the information on the expression. Must contain `mode` and `expressions` keys. For example:
 
         .. code-block:: json
 
@@ -64,21 +69,39 @@ def eval_expression(
               "expression":"ak.sum(hit.edep,axis=-1)"
             }
 
-        variables preceded by `hit` will be taken from the supplied table. Mode can be either `eval`,
+        Variables preceded by `hit` will be taken from the supplied table. Mode can be either `eval`,
         in which case a simple expression is based (only involving numpy, awkward or inbuilt python functions),
         or `function` in which case an arbitrary function is passed (for example defined in processors).
 
+        There are several objects passed to the evaluation as 'locals' which can be references by the expression.
+         - `pars`: dictionary of parameters (converted to namedtuple) (see `pars` argument),
+         - `hpge`: the legendhpges object for this detector (see `hpge` argument),
+         - `phy_vol`:  the physical volume of the detector (see `phy` argument).
+
     pars
         dict of parameters, can contain any fields passed to the expression prefixed by `pars.`.
-
+    hpge
+        `legendhpges` object with the information on the HPGe detector.
+    phy_vol
+        `pyg4ometry.geant4.PhysicalVolume` object from GDML,
 
     Returns
     -------
     a new column for the hit table either :class:`Array`, :class:`ArrayOfEqualSizedArrays` or :class:`VectorOfVectors`.
-    """
 
-    pars_tuple = utils.dict2tuple(pars)
-    local_dict = {"pars": pars_tuple}
+    Note
+    ----
+    In future the passing of local variables (pars,hpge,reg) to the evaluation should be make more generic.
+    """
+    local_dict = {}
+
+    if pars is not None:
+        pars_tuple = utils.dict2tuple(pars)
+        local_dict = {"pars": pars_tuple}
+    if phy_vol is not None:
+        local_dict |= {"phy_vol": phy_vol}
+    if hpge is not None:
+        local_dict |= {"hpge": hpge}
 
     if info["mode"] == "eval":
         # replace hit.
@@ -114,7 +137,7 @@ def build_hit(
     pars: dict,
     buffer: int = 1000000,
     gdml: str | None = None,
-    macro: str | None = None,
+    metadata_path: str | None = None,
 ) -> None:
     """
     Read incrementally the files compute something and then write output
@@ -180,9 +203,17 @@ def build_hit(
                 {
                     "det000": {
                         "reso": 1,
-                        "fccd": 0.1
+                        "fccd": 0.1,
+                        "phy_vol_name":"det_phy",
+                        "meta_name": "icpc.json"
                     }
                 }
+
+            this should also contain the channel mappings needed by reboost. These are:
+             - `phy_vol_name`: is the name of the physical volume,
+             - `meta_name`    : is the name of the JSON file with the metadata.
+
+            If these keys are not present both will be set to the remage output table name.
 
         buffer
             length of buffer
@@ -190,20 +221,25 @@ def build_hit(
             path to the input gdml file.
         macro
             path to the macro file.
+        metadata_path
+            path to the folder with the metadata (i.e. the `hardware.detectors.germanium.diodes` folder of `legend-metadata`)
 
     Note
     ----
-    The operations can depend on the outputs of previous steps, so operations order is important.
+     - The operations can depend on the outputs of previous steps, so operations order is important.
+     - It would be better to have a cleaner way to supply metadata and detector maps.
     """
-    if gdml is not None:
-        pass
-
-    if macro is not None:
-        pass
+    # get the gdml file
+    reg = pyg4ometry.gdml.Reader(gdml).getRegistry() if gdml is not None else None
 
     for ch_idx, d in enumerate(proc_config["channels"]):
         msg = f"...running hit tier for {d}"
         log.info(msg)
+
+        # get HPGe and phy_vol object to pass to build_hit
+        hpge = utils.get_hpge(metadata_path, pars=pars, detector=d)
+        phy_vol = utils.get_phy_vol(reg, pars=pars, detector=d)
+
         delete_input = bool(ch_idx == 0)
 
         msg = f"...begin processing with {file_in} to {file_out}"
@@ -242,7 +278,7 @@ def build_hit(
                 msg = f"adding column {name}"
                 log.debug(msg)
 
-                col = eval_expression(grouped, info, pars)
+                col = eval_expression(grouped, info, pars=pars, phy=phy_vol, hpge=hpge)
                 grouped.add_field(name, col)
 
             # remove unwanted columns

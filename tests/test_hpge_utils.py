@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+import pathlib
 
 import awkward as ak
+import pyg4ometry
 import pytest
 import yaml
+from legendhpges.base import HPGe
+from legendtestdata import LegendTestData
 
-from reboost.hpge.utils import _merge_arrays, load_dict
+from reboost.hpge.utils import _merge_arrays, get_hpge, get_phy_vol, load_dict
+
+configs = pathlib.Path(__file__).parent.resolve() / pathlib.Path("configs")
 
 
 def test_merge():
@@ -57,16 +62,16 @@ def file_fixture(tmp_path):
     # Create a simple YAML file
     data = {"det": 1}
     yaml_file = tmp_path / "data.yaml"
-    with Path.open(yaml_file, "w") as yf:
+    with pathlib.Path.open(yaml_file, "w") as yf:
         yaml.dump(data, yf)
 
     json_file = tmp_path / "data.json"
-    with Path.open(json_file, "w") as jf:
+    with pathlib.Path.open(json_file, "w") as jf:
         json.dump(data, jf)
 
     # Create a simple TXT file
     txt_file = tmp_path / "data.txt"
-    with Path.open(txt_file, "w") as tf:
+    with pathlib.Path.open(txt_file, "w") as tf:
         tf.write("Some text.\n")
 
     # Return paths for the test functions
@@ -82,3 +87,35 @@ def test_read(file_fixture):
 
     with pytest.raises(NotImplementedError):
         load_dict(file_fixture["txt_file"], None)
+
+
+@pytest.fixture(scope="session")
+def test_data_configs():
+    ldata = LegendTestData()
+    ldata.checkout("5f9b368")
+    return ldata.get_path("legend/metadata/hardware/detectors/germanium/diodes")
+
+
+def test_get_hpge(test_data_configs):
+    # specify name in pars
+    hpge = get_hpge(str(test_data_configs), {"meta_name": "C99000A.json"}, "det001")
+    assert isinstance(hpge, HPGe)
+
+    # now read without metaname
+    hpge_ic = get_hpge(str(test_data_configs), {}, "V99000A")
+    assert isinstance(hpge_ic, HPGe)
+
+
+def test_get_phy_vol():
+    gdml_path = configs / pathlib.Path("geom.gdml")
+
+    gdml = pyg4ometry.gdml.Reader(gdml_path).getRegistry()
+
+    # read with the det_phy_vol_name
+    phy = get_phy_vol(gdml, {"phy_vol_name": "det_phy_1"}, "det001")
+
+    assert isinstance(phy, pyg4ometry.geant4.PhysicalVolume)
+
+    # read without
+    phy = get_phy_vol(gdml, {}, "det_phy_0")
+    assert isinstance(phy, pyg4ometry.geant4.PhysicalVolume)
