@@ -34,6 +34,24 @@ def hpge_cli() -> None:
     hit_parser = subparsers.add_parser("hit", help="build hit file from remage raw file")
 
     hit_parser.add_argument(
+        "--num",
+        "-n",
+        help="Number of events to process, if not set process all",
+        default=None,
+        type=int,
+        required=False,
+    )
+
+    hit_parser.add_argument(
+        "--start",
+        "-s",
+        help="First event to process (default 0)",
+        default=0,
+        type=int,
+        required=False,
+    )
+
+    hit_parser.add_argument(
         "--proc_chain",
         help="JSON or YAML file that contains the processing chain",
         required=True,
@@ -46,20 +64,30 @@ def hpge_cli() -> None:
     hit_parser.add_argument(
         "--gdml",
         help="GDML file used for Geant4",
-        required=False,
-    )
-    hit_parser.add_argument(
-        "--macro",
-        help="Geant4 macro file used to generate raw tier",
+        default=None,
         required=False,
     )
 
+    hit_parser.add_argument(
+        "--meta_path",
+        help="Path to metadata (diodes folder)",
+        default=None,
+        required=False,
+    )
     hit_parser.add_argument("--infield", help="input LH5 field", required=False, default="hit")
     hit_parser.add_argument(
         "--outfield", help="output LH5 field name", required=False, default="hit"
     )
-
-    hit_parser.add_argument("input", help="input hit LH5 file", metavar="INPUT_HIT")
+    parser.add_argument(
+        "--merge_input",
+        "-m",
+        action="store_true",
+        default=True,
+        help="""Merge input lh5 files into a single output""",
+    )
+    hit_parser.add_argument(
+        "input", help="input hit LH5 files (can include wildcars) ", nargs="+", metavar="INPUT_HIT"
+    )
     hit_parser.add_argument("output", help="output evt LH5 file", metavar="OUTPUT_EVT")
 
     args = parser.parse_args()
@@ -70,6 +98,7 @@ def hpge_cli() -> None:
     )
     logger = logging.getLogger("reboost.hpge")
     logger.addHandler(handler)
+
     if args.verbose:
         logger.setLevel(logging.DEBUG)
     else:
@@ -89,6 +118,22 @@ def hpge_cli() -> None:
                 msg = f"error proc chain config must contain the field {req_field}"
                 raise ValueError(msg)
 
+        msg = f"""
+            Running build_hit with:
+            - output file    :{args.output}
+            - input_file(s)  :{args.input}
+            - output field   :{args.outfield}
+            - input field    :{args.infield}
+            - proc_config    :{args.proc_config}
+            - pars           :{args.pars}
+            - buffer         :{args.bufsize}
+            - gdml file      :{args.gdml}
+            - metadata_path  :{args.meta_path}
+            - merge input    :{args.merge_input}
+        """
+
+        logger.info(msg)
+
         build_hit(
             args.output,
             args.input,
@@ -98,5 +143,6 @@ def hpge_cli() -> None:
             pars=pars,
             buffer=args.bufsize,
             gdml=args.gdml,
-            macro=args.macro,
+            metadata_path=args.meta_path,
+            merge_input=args.merge_input,
         )

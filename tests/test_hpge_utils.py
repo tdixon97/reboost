@@ -4,13 +4,22 @@ import json
 import pathlib
 
 import awkward as ak
+import numpy as np
 import pyg4ometry
 import pytest
 import yaml
 from legendhpges.base import HPGe
 from legendtestdata import LegendTestData
+from lgdo import Array, Table, lh5
 
-from reboost.hpge.utils import _merge_arrays, get_hpge, get_phy_vol, load_dict
+from reboost.hpge.utils import (
+    _merge_arrays,
+    get_file_list,
+    get_hpge,
+    get_num_simulated,
+    get_phy_vol,
+    load_dict,
+)
 
 configs = pathlib.Path(__file__).parent.resolve() / pathlib.Path("configs")
 
@@ -89,6 +98,38 @@ def test_read(file_fixture):
         load_dict(file_fixture["txt_file"], None)
 
 
+@pytest.fixture
+def file_list(tmp_path):
+    # make a list of files
+    for i in range(5):
+        data = {"det": i}
+
+        # make a json file
+        json_file = tmp_path / f"data_{i}.json"
+        with pathlib.Path.open(json_file, "w") as jf:
+            json.dump(data, jf)
+
+        # and a text file
+        txt_file = tmp_path / f"data_{i}.txt"
+        with pathlib.Path.open(txt_file, "w") as tf:
+            tf.write("Some text.\n")
+    return pathlib.Path(tmp_path)
+
+
+def test_get_file_list(file_list):
+    first_file_list = get_file_list(str(pathlib.Path(file_list) / "data_0.json"))
+    assert len(first_file_list) == 1
+
+    json_file_list = get_file_list(str(pathlib.Path(file_list) / "data*.json"))
+    assert len(json_file_list) == 5
+    json_file_list_repeat = get_file_list(
+        [str(pathlib.Path(file_list) / "data*.json"), str(pathlib.Path(file_list) / "data*.json")]
+    )
+    assert len(json_file_list_repeat) == 5
+    all_file_list = get_file_list([str(pathlib.Path(file_list) / "data*")])
+    assert len(all_file_list) == 10
+
+
 @pytest.fixture(scope="session")
 def test_data_configs():
     ldata = LegendTestData()
@@ -119,3 +160,45 @@ def test_get_phy_vol():
     # read without
     phy = get_phy_vol(gdml, {}, "det_phy_0")
     assert isinstance(phy, pyg4ometry.geant4.PhysicalVolume)
+
+
+@pytest.fixture
+def test_lh5_files(tmp_path):
+    n1 = 14002
+    tab1 = Table(size=n1)
+    tab1.add_field("a", Array(np.ones(n1)))
+    lh5.write(tab1, "hit/vertices", tmp_path / "file1.lh5", wo_mode="of")
+
+    n2 = 25156
+    tab2 = Table(size=n2)
+    tab2.add_field("a", Array(np.ones(n2)))
+
+    lh5.write(tab2, "hit/vertices", tmp_path / "file2.lh5", wo_mode="of")
+
+    n3 = int(1e7)
+    tab3 = Table(size=n3)
+    tab3.add_field("a", Array(np.ones(n3)))
+
+    lh5.write(tab3, "hit/vertices", tmp_path / "file3.lh5", wo_mode="of")
+
+    return tmp_path
+
+
+def test_get_n_sim(test_lh5_files):
+    # single file
+    n1 = get_num_simulated([str(test_lh5_files / "file1.lh5")])
+    assert n1 == 14002
+
+    # two files
+    n12 = get_num_simulated([str(test_lh5_files / "file1.lh5"), str(test_lh5_files / "file2.lh5")])
+    assert n12 == 14002 + 25156
+
+    # length > buffer
+    n123 = get_num_simulated(
+        [
+            str(test_lh5_files / "file1.lh5"),
+            str(test_lh5_files / "file2.lh5"),
+            str(test_lh5_files / "file3.lh5"),
+        ]
+    )
+    assert n123 == 14002 + 25156 + int(1e7)

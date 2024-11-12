@@ -5,7 +5,8 @@ import logging
 import legendhpges
 import numpy as np
 import pyg4ometry
-from lgdo import Array, ArrayOfEqualSizedArrays, LH5Iterator, Table, VectorOfVectors, lh5
+from lgdo import Array, ArrayOfEqualSizedArrays, Table, VectorOfVectors, lh5
+from lgdo.lh5 import LH5Iterator
 
 from . import utils
 
@@ -130,7 +131,7 @@ def eval_expression(
 
 def build_hit(
     file_out: str,
-    file_in: str,
+    list_file_in: list,
     out_field: str,
     in_field: str,
     proc_config: dict,
@@ -138,6 +139,7 @@ def build_hit(
     buffer: int = 1000000,
     gdml: str | None = None,
     metadata_path: str | None = None,
+    merge_input_files: bool = True,
 ) -> None:
     """
     Read incrementally the files compute something and then write output
@@ -146,8 +148,8 @@ def build_hit(
     ----------
         file_out
             output file path
-        file_in
-            input_file_path
+        list_file_in
+            list of input files
         out_field
             lh5 group name for output
         in_field
@@ -223,73 +225,104 @@ def build_hit(
             path to the macro file.
         metadata_path
             path to the folder with the metadata (i.e. the `hardware.detectors.germanium.diodes` folder of `legend-metadata`)
+        merge_input_files
+            boolean flag to merge all input files into a single output.
 
     Note
     ----
      - The operations can depend on the outputs of previous steps, so operations order is important.
      - It would be better to have a cleaner way to supply metadata and detector maps.
     """
+    # expand wildcards
+    expanded_list_file_in = utils.get_file_list(list_file_in)
+
     # get the gdml file
     reg = pyg4ometry.gdml.Reader(gdml).getRegistry() if gdml is not None else None
 
-    for ch_idx, d in enumerate(proc_config["channels"]):
-        msg = f"...running hit tier for {d}"
-        log.info(msg)
+    # loop over input files
+    for file_idx, file_in in enumerate(expanded_list_file_in):
+        for ch_idx, d in enumerate(proc_config["channels"]):
+            msg = f"...running hit tier for {d}"
+            log.info(msg)
 
-        # get HPGe and phy_vol object to pass to build_hit
-        hpge = utils.get_hpge(metadata_path, pars=pars, detector=d)
-        phy_vol = utils.get_phy_vol(reg, pars=pars, detector=d)
+            # get HPGe and phy_vol object to pass to build_hit
 
-        delete_input = bool(ch_idx == 0)
+            hpge = (
+                utils.get_hpge(metadata_path, pars=pars, detector=d)
+                if (metadata_path is not None)
+                else None
+            )
+            phy_vol = utils.get_phy_vol(reg, pars=pars, detector=d)
 
-        msg = f"...begin processing with {file_in} to {file_out}"
-        log.info(msg)
+            is_first_chan = bool(ch_idx == 0)
+            is_first_file = bool(file_idx == 0)
 
-        entries = LH5Iterator(file_in, f"{in_field}/{d}", buffer_len=buffer)._get_file_cumentries(0)
-
-        # number of blocks is ceil of entries/buffer,
-        # shift by 1 since idx starts at 0
-        # this is maybe too high if buffer exactly divides idx
-        max_idx = int(np.ceil(entries / buffer)) - 1
-        buffer_rows = None
-
-        for idx, (lh5_obj, _, _) in enumerate(
-            LH5Iterator(file_in, f"{in_field}/{d}", buffer_len=buffer)
-        ):
-            msg = f"... processed {idx} files out of {max_idx}"
-            log.debug(msg)
-
-            # convert to awkward
-            ak_obj = lh5_obj.view_as("ak")
-
-            # handle the buffers
-            obj, buffer_rows, mode = utils._merge_arrays(
-                ak_obj, buffer_rows, idx=idx, max_idx=max_idx, delete_input=delete_input
+            # flag to overwrite input file
+            delete_input = (is_first_chan & merge_input_files is False) | (
+                is_first_chan & is_first_file
             )
 
-            # convert back to a table, should work
-            data = Table(obj)
+            msg = f"...begin processing with {file_in} to {file_out}"
+            log.info(msg)
 
-            # group steps into hits
-            grouped = step_group(data, proc_config["step_group"])
+            entries = LH5Iterator(
+                file_in, f"{in_field}/{d}", buffer_len=buffer
+            )._get_file_cumentries(0)
 
-            # processors
-            for name, info in proc_config["operations"].items():
-                msg = f"adding column {name}"
+            # number of blocks is ceil of entries/buffer,
+            # shift by 1 since idx starts at 0
+
+            max_idx = int(np.ceil(entries / buffer)) - 1
+            remainder = entries % buffer
+            buffer_rows = None
+
+            for idx, (lh5_obj, _, _) in enumerate(
+                LH5Iterator(file_in, f"{in_field}/{d}", buffer_len=buffer)
+            ):
+                msg = f"... processed {idx} chunks out of {max_idx}"
                 log.debug(msg)
 
-                col = eval_expression(grouped, info, pars=pars, phy=phy_vol, hpge=hpge)
-                grouped.add_field(name, col)
+                # convert to awkward
+                ak_obj = lh5_obj.view_as("ak")
 
-            # remove unwanted columns
-            log.debug("removing unwanted columns")
+                # fix for a bug in lh5 iterator
+                if idx == max_idx & remainder != 0:
+                    ak_obj = ak_obj[:remainder]
 
-            existing_cols = list(grouped.keys())
-            for col in existing_cols:
-                if col not in proc_config["outputs"]:
-                    grouped.remove_column(col, delete=True)
+                # handle the buffers
+                obj, buffer_rows, mode = utils._merge_arrays(
+                    ak_obj, buffer_rows, idx=idx, max_idx=max_idx, delete_input=delete_input
+                )
 
-            # write lh5 file
-            msg = f"...finished processing and save file with wo_mode {mode}"
-            log.debug(msg)
-            lh5.write(grouped, f"{out_field}/{d}", file_out, wo_mode=mode)
+                # convert back to a table, should work
+                data = Table(obj)
+
+                # group steps into hits
+                grouped = step_group(data, proc_config["step_group"])
+
+                # processors
+                for name, info in proc_config["operations"].items():
+                    msg = f"adding column {name}"
+                    log.debug(msg)
+
+                    col = eval_expression(grouped, info, pars=pars, phy_vol=phy_vol, hpge=hpge)
+                    grouped.add_field(name, col)
+
+                # remove unwanted columns
+                log.debug("removing unwanted columns")
+
+                existing_cols = list(grouped.keys())
+                for col in existing_cols:
+                    if col not in proc_config["outputs"]:
+                        grouped.remove_column(col, delete=True)
+
+                # write lh5 file
+                msg = f"...finished processing and save file with wo_mode {mode}"
+                log.debug(msg)
+
+                file_out_tmp = (
+                    f"{file_out.split('.')[0]}_{file_idx}.lh5"
+                    if (merge_input_files is False)
+                    else file_out
+                )
+                lh5.write(grouped, f"{out_field}/{d}", file_out_tmp, wo_mode=mode)

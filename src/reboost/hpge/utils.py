@@ -10,12 +10,65 @@ from pathlib import Path
 
 import awkward as ak
 import legendhpges
+import numpy as np
 import pyg4ometry
 import yaml
+from lgdo import lh5
 
 log = logging.getLogger(__name__)
 
 reg = pyg4ometry.geant4.Registry()
+
+
+def get_num_simulated(file_list: list, table: str = "hit") -> int:
+    """Loop over a list of files and extract the number of simulated events.
+
+    Based on the size of the `vertices` tables.
+
+    Parameters
+    ----------
+    file_list
+        list of input files (each must contain the vertices table)
+    table
+        name of the lh5 input table.
+    """
+    n = 0
+    for file in file_list:
+        it = lh5.LH5Iterator(file, f"{table}/vertices", buffer_len=int(5e6))
+        n += it._get_file_cumlen(0)
+
+    msg = f"files contain {n} events"
+    log.info(msg)
+    return n
+
+
+def get_file_list(path: str | list[str]) -> list[str]:
+    """Get list of files to read.
+
+    Parameters
+    ----------
+    path
+        either a string or a list of strings containing files paths to process. May contain wildcards which are expanded.
+
+    Returns
+    -------
+    sorted list of files, after expanding wildcards, removing duplicates and sorting.
+
+    """
+
+    if isinstance(path, str):
+        path = [path]
+
+    path_out_list = []
+
+    for ptmp in path:
+        ptmp_path = Path(ptmp)
+        dir_tmp = ptmp_path.parent
+        pattern_tmp = ptmp_path.name
+
+        path_out_list.extend(dir_tmp.glob(pattern_tmp))
+    path_out_list_str = [str(ptmp) for ptmp in path_out_list]
+    return list(np.sort(np.unique(path_out_list_str)))
 
 
 def get_hpge(meta_path: str, pars: dict, detector: str) -> legendhpges.HPGe:
