@@ -36,6 +36,7 @@ dependencies = [
     "numba",
     "legend-pydataobj>=1.9.0",
     "legend-pygeom-optics>=0.6.5",
+    "legend-pygeom-hpges",
     "hist",
     "particle",
     "pandas",
