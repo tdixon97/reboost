@@ -186,7 +186,7 @@ keywords arguments control the first simulation index to process and the number 
 parameters and other *local* variables
 --------------------------------------
 
-Often it is neccesary to include processors that depend on parameters (which) may vary by detector. To enable this the user can specify a dictonary of
+Often it is necessary to include processors that depend on parameters (which) may vary by detector. To enable this the user can specify a dictionary of
 parameters with the *pars* keyword, this should contain a sub-dictionary per detector for example:
 
 .. code-block:: json
@@ -200,10 +200,10 @@ parameters with the *pars* keyword, this should contain a sub-dictionary per det
                     }
                 }
 
-This dictionary is internally converted into a python ``NamedTuple`` to make cleaner syntax. The named tuple for each detector is then passed as a 
-``local`` dictonary to the evaulation of the operations with name "pars".
+This dictionary is internally converted into a python ``NamedTuple`` to make cleaner syntax. The named tuple for each detector is then passed as a
+``local`` dictionary to the evaluation of the operations with name "pars".
 
-In addition, for many post-processing applications it is neccesary for the processor functions to know the geometry. This is made possible
+In addition, for many post-processing applications it is necessary for the processor functions to know the geometry. This is made possible
 by passing the path to the GDML file and the path to the metadata ("diodes" folder) with the *gdml* and *meta_path* arguments to build_hit.
 
 

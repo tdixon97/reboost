@@ -226,11 +226,11 @@ def get_hpge(meta_path: str | None, pars: dict, detector: str) -> legendhpges.HP
     hpge
         the `legendhpges` object for the detector.
     """
-    if metadata_path is not None:
+    if meta_path is not None:
         meta_name = pars.get("meta_name", f"{detector}.json")
         meta_dict = Path(meta_path) / Path(meta_name)
         return legendhpges.make_hpge(meta_dict, registry=reg)
-    None
+    return None
 
 
 def get_phy_vol(

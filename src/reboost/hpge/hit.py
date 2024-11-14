@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import NamedTuple
 
 import awkward as ak
 import legendhpges
@@ -46,6 +47,11 @@ def step_group(data: Table, group_config: dict) -> Table:
     msg = f"running step grouping with {group_func} and globals {globs.keys()} and locals {locs.keys()}"
     log.debug(msg)
     return eval(group_func, globs, locs)
+
+
+def get_locals(local_dict: dict, pars: NamedTuple, detector: str, meta_path: str) -> dict:
+    """Compute any local variables needed for processing"""
+    raise NotImplementedError
 
 
 def eval_expression(
@@ -261,11 +267,8 @@ def build_hit(
             log.info(msg)
 
             # get HPGe and phy_vol object to pass to build_hit
-            hpge = (
-                utils.get_hpge(metadata_path, pars=pars, detector=d)
-                if (metadata_path is not None)
-                else None
-            )
+            hpge = utils.get_hpge(metadata_path, pars=pars, detector=d)
+
             phy_vol = utils.get_phy_vol(reg, pars=pars, detector=d)
 
             is_first_chan = bool(ch_idx == 0)
