@@ -30,6 +30,7 @@ classifiers = [
 ]
 requires-python = ">=3.9"
 dependencies = [
+    "awkward",
     "colorlog",
     "numpy",
     "scipy",
