@@ -31,6 +31,14 @@ FileInfo = namedtuple(
         "last_global_evtid",
     ],
 )
+FileInfo.__doc__ = "NamedTuple storing the information on the input files"
+FileInfo.file_list.__doc__ = "list of strings of the selected files."
+FileInfo.file_indices.__doc__ = "list of integers of the indices of the files."
+FileInfo.file_start_global_evtids.__doc__ = (
+    "list of integers of the first global evtid for each file."
+)
+FileInfo.first_global_evtid.__doc__ = "first global evtid to process."
+FileInfo.last_global_evtid.__doc__ = "Last global evtid to process."
 
 
 def get_selected_files(
@@ -201,8 +209,8 @@ def get_include_chunk(
     boolean flag of whether to include in the chunk.
 
     """
-    low = ak.min(global_evtid)
-    high = ak.max(global_evtid)
+    low = ak.min(global_evtid,axis=0)
+    high = ak.max(global_evtid,axis=0)
     return (high >= start_glob_evtid) & (low <= end_glob_evtid)
 
 
