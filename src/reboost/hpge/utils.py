@@ -7,6 +7,7 @@ import logging
 import re
 from collections import namedtuple
 from pathlib import Path
+from typing import NamedTuple
 
 import awkward as ak
 import legendhpges
@@ -21,29 +22,28 @@ log = logging.getLogger(__name__)
 reg = pyg4ometry.geant4.Registry()
 
 
-FileInfo = namedtuple(
-    "FileInfo",
-    [
-        "file_list",
-        "file_indices",
-        "file_start_global_evtids",
-        "first_global_evtid",
-        "last_global_evtid",
-    ],
-)
-FileInfo.__doc__ = "NamedTuple storing the information on the input files"
-FileInfo.file_list.__doc__ = "list of strings of the selected files."
-FileInfo.file_indices.__doc__ = "list of integers of the indices of the files."
-FileInfo.file_start_global_evtids.__doc__ = (
-    "list of integers of the first global evtid for each file."
-)
-FileInfo.first_global_evtid.__doc__ = "first global evtid to process."
-FileInfo.last_global_evtid.__doc__ = "Last global evtid to process."
+class FileInfo(NamedTuple):
+    """NamedTuple storing the information on the input files"""
+
+    file_list: list[str]
+    """list of strings of the selected files."""
+
+    file_indices: list[int]
+    """list of integers of the indices of the files."""
+
+    file_start_global_evtids: list[int]
+    """list of integers of the first global evtid for each file."""
+
+    first_global_evtid: int
+    """first global evtid to process."""
+
+    last_global_evtid: int
+    """Last global evtid to process."""
 
 
 def get_selected_files(
     file_list: list[str], table: str, n_evtid: int | None, start_evtid: int
-) -> tuple[list, list, list]:
+) -> FileInfo:
     """Get the files to read based on removing those with global evtid out of the selected range.
 
     - expands wildcards,
@@ -63,12 +63,7 @@ def get_selected_files(
 
     Returns
     -------
-    `FileInfo` named tuple with fields:
-    - `file_list`:list of files.
-    - `file_indices`: indices of selected files.
-    - `file_start_global_evtids`: first global `evtid` in each file.
-    - `first_global_evtid`: first global evtid to process
-    - `last_global_evtid`: last global evtid to process.
+    `FileInfo` object with information on the files.
     """
     # expand wildcards
     expanded_list_file_in = get_file_list(path=file_list)
@@ -214,7 +209,7 @@ def get_include_chunk(
     return (high >= start_glob_evtid) & (low <= end_glob_evtid)
 
 
-def get_hpge(meta_path: str, pars: dict, detector: str) -> legendhpges.HPGe:
+def get_hpge(meta_path: str | None, pars: dict, detector: str) -> legendhpges.HPGe:
     """Extract the :class:`legendhpges.HPGe` object from metadata.
 
     Parameters
@@ -231,10 +226,11 @@ def get_hpge(meta_path: str, pars: dict, detector: str) -> legendhpges.HPGe:
     hpge
         the `legendhpges` object for the detector.
     """
-
-    meta_name = pars.get("meta_name", f"{detector}.json")
-    meta_dict = Path(meta_path) / Path(meta_name)
-    return legendhpges.make_hpge(meta_dict, registry=reg)
+    if metadata_path is not None:
+        meta_name = pars.get("meta_name", f"{detector}.json")
+        meta_dict = Path(meta_path) / Path(meta_name)
+        return legendhpges.make_hpge(meta_dict, registry=reg)
+    None
 
 
 def get_phy_vol(
