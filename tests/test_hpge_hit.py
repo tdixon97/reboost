@@ -122,7 +122,7 @@ def test_reboost_input_file(tmp_path):
     edep_2 = rng.uniform(low=0, high=1000, size=(30040))
 
     vertices_1 = ak.Array({"evtid": np.arange(int(1e5))})
-    vertices_2 = ak.Array({"evtid": np.arange(30040)})
+    vertices_2 = ak.Array({"evtid": np.arange(int(1e5))})
 
     arr_1 = ak.Array({"evtid": evtid_1, "time": time_1, "edep": edep_1})
     arr_2 = ak.Array({"evtid": evtid_2, "time": time_2, "edep": edep_2})
@@ -165,19 +165,19 @@ def test_build_hit(test_reboost_input_file):
     hit.build_hit(
         str(test_reboost_input_file / "out.lh5"),
         [str(test_reboost_input_file / "file1.lh5")],
-        "hit",
-        "hit",
-        proc_config,
-        {},
+        in_field="hit",
+        out_field="hit",
+        proc_config=proc_config,
+        pars={},
         buffer=100000,
     )
     hit.build_hit(
         str(test_reboost_input_file / "out_rem.lh5"),
         [str(test_reboost_input_file / "file2.lh5")],
-        "hit",
-        "hit",
-        proc_config,
-        {},
+        in_field="hit",
+        out_field="hit",
+        proc_config=proc_config,
+        pars={},
         buffer=10000,
     )
 
@@ -185,20 +185,20 @@ def test_build_hit(test_reboost_input_file):
     hit.build_hit(
         str(test_reboost_input_file / "out_merge.lh5"),
         [str(test_reboost_input_file / "file*.lh5")],
-        "hit",
-        "hit",
-        proc_config,
-        {},
+        in_field="hit",
+        out_field="hit",
+        proc_config=proc_config,
+        pars={},
         buffer=100000,
         merge_input_files=True,
     )
     hit.build_hit(
         str(test_reboost_input_file / "out.lh5"),
         [str(test_reboost_input_file / "file*.lh5")],
-        "hit",
-        "hit",
-        proc_config,
-        {},
+        in_field="hit",
+        out_field="hit",
+        proc_config=proc_config,
+        pars={},
         buffer=100000,
         merge_input_files=False,
     )
@@ -222,3 +222,105 @@ def test_build_hit(test_reboost_input_file):
     assert ak.all(ak.all(tab_merge.evtid == ak.firsts(tab_merge.evtid, axis=-1), axis=1))
     assert ak.all(ak.all(tab_0.evtid == ak.firsts(tab_0.evtid, axis=-1), axis=1))
     assert ak.all(ak.all(tab_1.evtid == ak.firsts(tab_1.evtid, axis=-1), axis=1))
+
+
+def test_build_hit_some_row(test_reboost_input_file):
+    proc_config = {
+        "channels": [
+            "det001",
+        ],
+        "outputs": ["t0", "evtid"],
+        "step_group": {
+            "description": "group steps by time and evtid.",
+            "expression": "reboost.hpge.processors.group_by_time(stp,window=10)",
+        },
+        "operations": {
+            "t0": {
+                "description": "first time in the hit.",
+                "mode": "eval",
+                "expression": "ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)",
+            },
+            "truth_energy_sum": {
+                "description": "truth summed energy in the hit.",
+                "mode": "eval",
+                "expression": "ak.sum(hit.edep,axis=-1)",
+            },
+        },
+    }
+
+    # test asking to read too many rows
+    with pytest.raises(ValueError):
+        hit.build_hit(
+            str(test_reboost_input_file / "out.lh5"),
+            [str(test_reboost_input_file / "file1.lh5")],
+            n_evtid=int(1e7),
+            in_field="hit",
+            out_field="hit",
+            proc_config=proc_config,
+            pars={},
+            buffer=100000,
+        )
+
+    # test read only some events
+    hit.build_hit(
+        str(test_reboost_input_file / "out_some_rows.lh5"),
+        [str(test_reboost_input_file / "file1.lh5"), str(test_reboost_input_file / "file2.lh5")],
+        n_evtid=int(1e4),
+        start_evtid=0,
+        in_field="hit",
+        out_field="hit",
+        proc_config=proc_config,
+        pars={},
+        buffer=100000,
+    )
+
+    hit.build_hit(
+        str(test_reboost_input_file / "out_rest_rows.lh5"),
+        [str(test_reboost_input_file / "file1.lh5"), str(test_reboost_input_file / "file2.lh5")],
+        n_evtid=int(1e5 - 1e4),
+        start_evtid=int(1e4),
+        in_field="hit",
+        out_field="hit",
+        proc_config=proc_config,
+        pars={},
+        buffer=100000,
+    )
+    # read all of file 1
+    hit.build_hit(
+        str(test_reboost_input_file / "out_all_file_one.lh5"),
+        [str(test_reboost_input_file / "file1.lh5"), str(test_reboost_input_file / "file2.lh5")],
+        n_evtid=int(1e5),
+        start_evtid=0,
+        in_field="hit",
+        out_field="hit",
+        proc_config=proc_config,
+        pars={},
+        buffer=100000,
+    )
+
+    # read a mix of the two files
+    hit.build_hit(
+        str(test_reboost_input_file / "out_mix.lh5"),
+        [str(test_reboost_input_file / "file1.lh5"), str(test_reboost_input_file / "file2.lh5")],
+        n_evtid=int(1e5),
+        start_evtid=1000,
+        in_field="hit",
+        out_field="hit",
+        proc_config=proc_config,
+        pars={},
+        buffer=100000,
+    )
+
+    tab_some = lh5.read("hit/det001", str(test_reboost_input_file / "out_some_rows.lh5")).view_as(
+        "ak"
+    )
+    tab_rest = lh5.read("hit/det001", str(test_reboost_input_file / "out_rest_rows.lh5")).view_as(
+        "ak"
+    )
+
+    tab_1 = lh5.read("hit/det001", str(test_reboost_input_file / "out_all_file_one.lh5")).view_as(
+        "ak"
+    )
+
+    tab_merge = ak.concatenate((tab_some, tab_rest))
+    assert ak.all(ak.all(tab_merge.evtid == tab_1.evtid, axis=-1))

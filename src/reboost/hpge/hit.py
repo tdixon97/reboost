@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+import awkward as ak
 import legendhpges
 import numpy as np
 import pyg4ometry
@@ -136,6 +137,8 @@ def build_hit(
     in_field: str,
     proc_config: dict,
     pars: dict,
+    n_evtid: int | None = None,
+    start_evtid: int = 0,
     buffer: int = 1000000,
     gdml: str | None = None,
     metadata_path: str | None = None,
@@ -217,6 +220,10 @@ def build_hit(
 
             If these keys are not present both will be set to the remage output table name.
 
+        start_evtid
+            first `evtid` to read, defaults to 0.
+        n_evtid
+            number of `evtid` to read, if `None` all steps are read (the default).
         buffer
             length of buffer
         gdml
@@ -233,20 +240,27 @@ def build_hit(
      - The operations can depend on the outputs of previous steps, so operations order is important.
      - It would be better to have a cleaner way to supply metadata and detector maps.
     """
-    # expand wildcards
-    expanded_list_file_in = utils.get_file_list(list_file_in)
 
     # get the gdml file
     reg = pyg4ometry.gdml.Reader(gdml).getRegistry() if gdml is not None else None
 
+    # get info on the files to read in a nice named tuple
+    file_info = utils.get_selected_files(
+        table=in_field,
+        file_list=list_file_in,
+        n_evtid=n_evtid,
+        start_evtid=start_evtid,
+    )
+
     # loop over input files
-    for file_idx, file_in in enumerate(expanded_list_file_in):
+    for first_evtid, file_idx, file_in in zip(
+        file_info.file_start_global_evtids, file_info.file_indices, file_info.file_list
+    ):
         for ch_idx, d in enumerate(proc_config["channels"]):
             msg = f"...running hit tier for {d}"
             log.info(msg)
 
             # get HPGe and phy_vol object to pass to build_hit
-
             hpge = (
                 utils.get_hpge(metadata_path, pars=pars, detector=d)
                 if (metadata_path is not None)
@@ -293,6 +307,24 @@ def build_hit(
                 obj, buffer_rows, mode = utils._merge_arrays(
                     ak_obj, buffer_rows, idx=idx, max_idx=max_idx, delete_input=delete_input
                 )
+
+                # add global evtid
+                obj = ak.with_field(obj, first_evtid + obj.evtid, "global_evtid")
+
+                # check if the chunk can be skipped
+
+                if not utils.get_include_chunk(
+                    obj.global_evtid,
+                    start_glob_evtid=file_info.first_global_evtid,
+                    end_glob_evtid=file_info.last_global_evtid,
+                ):
+                    continue
+
+                # select just the correct global evtid objects
+                obj = obj[
+                    (obj.global_evtid >= file_info.first_global_evtid)
+                    & (obj.global_evtid <= file_info.last_global_evtid)
+                ]
 
                 # convert back to a table, should work
                 data = Table(obj)

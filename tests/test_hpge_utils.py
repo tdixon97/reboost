@@ -15,7 +15,10 @@ from lgdo import Array, Table, lh5
 from reboost.hpge.utils import (
     _merge_arrays,
     get_file_list,
+    get_files_to_read,
+    get_global_evtid_range,
     get_hpge,
+    get_include_chunk,
     get_num_simulated,
     get_phy_vol,
     load_dict,
@@ -187,11 +190,11 @@ def test_lh5_files(tmp_path):
 def test_get_n_sim(test_lh5_files):
     # single file
     n1 = get_num_simulated([str(test_lh5_files / "file1.lh5")])
-    assert n1 == 14002
+    assert n1 == [14002]
 
     # two files
     n12 = get_num_simulated([str(test_lh5_files / "file1.lh5"), str(test_lh5_files / "file2.lh5")])
-    assert n12 == 14002 + 25156
+    assert n12 == [14002, 25156]
 
     # length > buffer
     n123 = get_num_simulated(
@@ -201,4 +204,47 @@ def test_get_n_sim(test_lh5_files):
             str(test_lh5_files / "file3.lh5"),
         ]
     )
-    assert n123 == 14002 + 25156 + int(1e7)
+    assert n123 == [14002, 25156, int(1e7)]
+
+
+def test_global_evtid_range():
+    # raise exception if n_evtid is too large
+    with pytest.raises(ValueError):
+        get_global_evtid_range(100, 1000, 200)
+
+    # test that we get the right ranges
+    assert get_global_evtid_range(200, 5, 2000) == (200, 204)
+    assert get_global_evtid_range(200, None, 2000) == (200, 1999)
+
+
+def test_get_files_to_read():
+    n_sim = [1000, 1200, 200, 5000]
+    n_sim = np.concatenate([[0], np.cumsum(n_sim)])
+
+    # read all evtid and thus all files
+    assert np.all(get_files_to_read(n_sim, start_glob_evtid=0, end_glob_evtid=7399) == [0, 1, 2, 3])
+
+    # all of file 0
+    assert np.all(get_files_to_read(n_sim, start_glob_evtid=0, end_glob_evtid=999) == [0])
+
+    # and some of file 1
+    assert np.all(get_files_to_read(n_sim, start_glob_evtid=0, end_glob_evtid=1000) == [0, 1])
+
+    # some of file 0, 1 and 2
+    assert np.all(get_files_to_read(n_sim, start_glob_evtid=0, end_glob_evtid=2200) == [0, 1, 2])
+
+    # only file 1 and 2
+    assert np.all(get_files_to_read(n_sim, start_glob_evtid=1000, end_glob_evtid=2300) == [1, 2])
+
+    # only file 3
+    assert np.all(get_files_to_read(n_sim, start_glob_evtid=2400, end_glob_evtid=5000) == [3])
+
+
+def test_skip_chunk():
+    evtid = ak.Array([4, 5, 10, 30])
+
+    assert get_include_chunk(evtid, start_glob_evtid=0, end_glob_evtid=35)
+    assert get_include_chunk(evtid, start_glob_evtid=0, end_glob_evtid=4)
+    assert get_include_chunk(evtid, start_glob_evtid=30, end_glob_evtid=33)
+    assert not get_include_chunk(evtid, start_glob_evtid=0, end_glob_evtid=3)
+    assert not get_include_chunk(evtid, start_glob_evtid=31, end_glob_evtid=100)
