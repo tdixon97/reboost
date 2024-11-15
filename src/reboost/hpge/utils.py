@@ -204,8 +204,8 @@ def get_include_chunk(
     boolean flag of whether to include in the chunk.
 
     """
-    low = ak.min(global_evtid, axis=0)
-    high = ak.max(global_evtid, axis=0)
+    low = np.min(global_evtid)
+    high = np.max(global_evtid)
     return (high >= start_glob_evtid) & (low <= end_glob_evtid)
 
 
