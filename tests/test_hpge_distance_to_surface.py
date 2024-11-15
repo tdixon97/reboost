@@ -5,6 +5,7 @@ import pytest
 from legendhpges import make_hpge
 from legendtestdata import LegendTestData
 from lgdo import types
+
 from reboost.hpge.processors import distance_to_surface
 
 
@@ -35,4 +36,6 @@ def test_distance_to_surface(test_data_configs):
 
     # check it can be written
 
-    assert isinstance(distance_to_surface(pos.xloc, pos.yloc, pos.zloc, gedet, dist, None),types.LGDO)
+    assert isinstance(
+        distance_to_surface(pos.xloc, pos.yloc, pos.zloc, gedet, dist, None), types.LGDO
+    )
