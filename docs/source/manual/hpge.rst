@@ -255,7 +255,7 @@ The processing is again based on a YAML or JSON configuration file. For example:
 .. code-block:: json
 
         {
-                
+
                 "channels":{
                     "geds_usable":[
                         "det000",
