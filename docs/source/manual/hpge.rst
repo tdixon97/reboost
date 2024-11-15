@@ -68,7 +68,7 @@ However, this format is not directly comparable to experimental data.
 Data tiers
 ----------
 
-The processing is defined in terms of several *tiers*:
+The processing is defined in terms of several *tiers*, mirroring the logic of the `pygama <https://pygama.readthedocs.io/en/stable/>`_ data processing software used for LEGEND.
 
 - **stp** or "step" the raw *remage* outputs corresponding to Geant4 steps,
 - **hit** the data from each channel independently after grouping in discrete physical interactions in the detector.
@@ -79,6 +79,8 @@ The processing is divided into two steps :func:`build_hit`  ``build_evt`` [WIP].
 Hit tier processing
 -------------------
 
+The hit tier converts the raw remage file based on Geant4 steps to a file corresponding to the physical interactions in the detectors.
+Only steps corresponding to individual detectors are performed in this step.
 The processing is based on a YAML or JSON configuration file. For example:
 
 .. code-block:: json
@@ -127,7 +129,7 @@ It is necessary to provide several sub-dictionaries:
 
 - **channels**: list of HPGe channels to process.
 - **outputs**: list of fields for the output file.
-- **locals**: get objects used by the processors (passed as ``locals`` to ``LGDO.Table.eval``)
+- **locals**: get objects used by the processors (passed as ``locals`` to ``LGDO.Table.eval``), more details below.
 - **step_group**: this should describe the function that groups the Geant4 steps into physical *hits*.
 - **operations**: further computations / manipulations to apply.
 
@@ -169,7 +171,7 @@ Next a set of operations can be specified, these can perform any operation that 
 Finally the outputs field specifies the columns of the Table to include in the output table.
 
 lh5 i/o operations
-------------------
+^^^^^^^^^^^^^^^^^^
 
 :func:`build_hit` contains several options to handle i/o of lh5 files.
 
@@ -183,7 +185,7 @@ Finally, it is sometimes desirable to process a subset of the simulated events, 
 keywords arguments control the first simulation index to process and the number of events. Note that the indices refer to the *global* evtid when multiple files are used.
 
 parameters and other *local* variables
---------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Often it is necessary to include processors that depend on parameters (which) may vary by detector. To enable this the user can specify a dictionary of
 parameters with the *pars* keyword, this should contain a sub-dictionary per detector for example:
@@ -209,10 +211,10 @@ From the GDML file the ``pyg4ometry.geant4.Registry`` is extracted.
 To allow the flexibility to write processors depending on arbitrary (more complicated python objects), it is possible to add the *locals* dictionary
 to the config file. The code will then evaluate the supplied expression for each sub-dictionary. These expressions can depend on:
 
-- the *remage* detector name: "detector",
-- the path to the metadata: "meta",
-- the geant4 registry: "reg",
-- the parameters for this detector: "pars".
+- **detector**: the *remage* detector name,
+- **meta**: the path to the metadata,
+- **reg**: the geant4 registry,
+- **pars**: the parameters for this detector.
 
 These expressions are then evaluated (once per detector) and added to the *locals* dictionary of ``Table.eval``, so can be references in the expressions.
 
@@ -231,8 +233,47 @@ Possible intended use case of this functionality are:
  - extracting the kernel of a machine learning model.
  - any more complicated (non-JSON serialisable objects).
 
-adding new processors
----------------------
+Adding new processors
+^^^^^^^^^^^^^^^^^^^^^
 
-Any python function can be a ``reboost.hit`` processor. The only requirement is that it should return a :class:`VectorOfVectors`, :class:`Array`` or :class:`ArrayOfEqualSizedArrays`
+Any python function can be a ``reboost.hit`` processor. The only requirement is that it should return a:
+
+- :class:`VectorOfVectors`,
+- :class:`Array`` or
+- :class:`ArrayOfEqualSizedArrays`
+
 with the same length as the hit table. This means processors can act on subarrays (``axis=-1`` in awkward syntax) but should not combine multiple rows of the hit table.
+
+Event tier processing (work in progress)
+----------------------------------------
+
+The event tier combines the information from various detector systems. Including in future the optical detector channels. This step is thus only necessary for experiments with
+many output channels.
+
+The processing is again based on a YAML or JSON configuration file. For example:
+
+.. code-block:: json
+
+        {
+                
+                "channels":{
+                    "geds_usable":[
+                        "det000",
+                        "det001",
+                        "det002"
+                    ],
+                    "geds_ac":[
+                        "det003"
+                    ]
+                },
+                "outputs": [
+                    "energy",
+                    "detector",
+                    "is_good_hit",
+                    "multiplicity"
+                ],
+                "event_group": {
+                    "description": "group hits by time and evtid.",
+                    "expression": "reboost.hpge.processors.group_by_time(stp,window=10)"
+                }
+        }
