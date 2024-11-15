@@ -22,6 +22,7 @@ from reboost.hpge.utils import (
     get_num_simulated,
     get_phy_vol,
     load_dict,
+    dict2tuple
 )
 
 configs = pathlib.Path(__file__).parent.resolve() / pathlib.Path("configs")
@@ -142,11 +143,11 @@ def test_data_configs():
 
 def test_get_hpge(test_data_configs):
     # specify name in pars
-    hpge = get_hpge(str(test_data_configs), {"meta_name": "C99000A.json"}, "det001")
+    hpge = get_hpge(str(test_data_configs), dict2tuple({"meta_name": "C99000A.json"}), "det001")
     assert isinstance(hpge, HPGe)
 
     # now read without metaname
-    hpge_ic = get_hpge(str(test_data_configs), {}, "V99000A")
+    hpge_ic = get_hpge(str(test_data_configs), dict2tuple({}), "V99000A")
     assert isinstance(hpge_ic, HPGe)
 
 
@@ -156,12 +157,12 @@ def test_get_phy_vol():
     gdml = pyg4ometry.gdml.Reader(gdml_path).getRegistry()
 
     # read with the det_phy_vol_name
-    phy = get_phy_vol(gdml, {"phy_vol_name": "det_phy_1"}, "det001")
+    phy = get_phy_vol(gdml, dict2tuple({"phy_vol_name": "det_phy_1"}), "det001")
 
     assert isinstance(phy, pyg4ometry.geant4.PhysicalVolume)
 
     # read without
-    phy = get_phy_vol(gdml, {}, "det_phy_0")
+    phy = get_phy_vol(gdml, dict2tuple({}), "det_phy_0")
     assert isinstance(phy, pyg4ometry.geant4.PhysicalVolume)
 
 

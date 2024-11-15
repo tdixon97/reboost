@@ -198,4 +198,4 @@ def distance_to_surface(
     # distance calc itself
     distances = hpge.distance_to_surface(local_positions, surface_indices=surface_indices)
 
-    return ak.unflatten(distances, size)
+    return VectorOfVectors(ak.unflatten(distances, size))

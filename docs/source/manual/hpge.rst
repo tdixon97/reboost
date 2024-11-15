@@ -13,7 +13,7 @@ A command line tool *reboost-hpge* is created to run the processing.
 
     $ reboost-hpge -h
 
-Different modes are implemented to run the tiers. For example to run the **hit** tier processing (more details in the next section).
+Different modes are implemented to run the tiers. For example to run the *hit* tier processing (more details in the next section).
 
 .. code-block:: console
 
@@ -101,8 +101,7 @@ The processing is based on a YAML or JSON configuration file. For example:
                         "expression": "reboost.hpge.processors.group_by_time(stp,window=10)"
                     },
                     "locals": {
-                        "hpge": "reboost.hpge.utils.get_hpge()"
-
+                        "hpge": "reboost.hpge.utils(meta_path=meta,pars=pars,detector=detector)"
                     },
                     "operations": {
                         "t0": {
@@ -205,10 +204,35 @@ This dictionary is internally converted into a python ``NamedTuple`` to make cle
 
 In addition, for many post-processing applications it is necessary for the processor functions to know the geometry. This is made possible
 by passing the path to the GDML file and the path to the metadata ("diodes" folder) with the *gdml* and *meta_path* arguments to build_hit.
+From the GDML file the ``pyg4ometry.geant4.Registry`` is extracted.
 
+To allow the flexibility to write processors depending on arbitrary (more complicated python objects), it is possible to add the *locals* dictionary
+to the config file. The code will then evaluate the supplied expression for each sub-dictionary. These expressions can depend on:
 
+- the *remage* detector name: "detector",
+- the path to the metadata: "meta",
+- the geant4 registry: "reg",
+- the parameters for this detector: "pars".
+
+These expressions are then evaluated (once per detector) and added to the *locals* dictionary of ``Table.eval``, so can be references in the expressions.
+
+For example one useful object for post-processing is the `legendhpges.base.HPGe <https://legend-pygeom-hpges.readthedocs.io/en/latest/api/legendhpges.html#legendhpges.base.HPGe>`_ object for the detector.
+This can be constructed from the metadata using.
+
+.. code-block:: json
+
+    {"hpge": "reboost.hpge.utils(meta_path=meta,pars=pars,detector=detector)"}
+
+This will then create the hpge object for each detector and add it to the "locals" mapping of "eval" so it can be used.
+
+Possible intended use case of this functionality are:
+
+ - extracting detector mappings (eg drift time maps),
+ - extracting the kernel of a machine learning model.
+ - any more complicated (non-JSON serialisable objects).
 
 adding new processors
 ---------------------
 
-Any python function
+Any python function can be a ``reboost.hit`` processor. The only requirement is that it should return a :class:`VectorOfVectors`, :class:`Array`` or :class:`ArrayOfEqualSizedArrays`
+with the same length as the hit table. This means processors can act on subarrays (``axis=-1`` in awkward syntax) but should not combine multiple rows of the hit table.

@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import logging
-from typing import NamedTuple
 
 import awkward as ak
-import legendhpges
 import numpy as np
 import pyg4ometry
 from lgdo import Array, ArrayOfEqualSizedArrays, Table, VectorOfVectors, lh5
@@ -49,17 +47,58 @@ def step_group(data: Table, group_config: dict) -> Table:
     return eval(group_func, globs, locs)
 
 
-def get_locals(local_dict: dict, pars: NamedTuple, detector: str, meta_path: str) -> dict:
-    """Compute any local variables needed for processing"""
-    raise NotImplementedError
+def get_locals(
+    local_info: dict,
+    pars_dict: dict | None,
+    detector: str|None=None,
+    meta_path: str|None=None,
+    reg: pyg4ometry.geant4.Registry|None =None,
+) -> dict:
+    """Compute any local variables needed for processing.
+
+    Parameters
+    ----------
+    local_info
+        config file block of the local objects to compute. For example:
+    
+        ..code-block::
+
+            {"hpge": "reboost.hpge.utils(meta_path=meta,pars=pars,detector=detector)"}
+
+    pars_dict
+        dictionary of parameters
+    detector
+        remage name for the dete
+    meta_path
+        path to thhe diodes folder of the metadata
+    reg
+        geant4 registry of the experiment
+
+    Returns
+    -------
+    dictionary of local variables to pass to eval
+    """
+    local_dict = {}
+
+    # get parameters named tuple
+    if pars_dict is not None:
+        pars_tuple = utils.dict2tuple(pars_dict)
+        local_dict = {"pars": pars_tuple}
+
+    objs = {"pars": pars_tuple, "detector": detector, "meta": meta_path, "reg": reg}
+
+    for name, eval_str in local_info.items():
+        proc_func, globs = utils.get_function_string(eval_str)
+
+        msg = f"extracting local object with {eval_str} "
+        log.debug(msg)
+        obj = eval(proc_func, globs, objs)
+        local_dict = local_dict | {name: obj}
+    return local_dict
 
 
 def eval_expression(
-    table: Table,
-    info: dict,
-    pars: dict | None = None,
-    hpge: legendhpges.HPGe | None = None,
-    phy_vol: pyg4ometry.geant4.PhysicalVolume | None = None,
+    table: Table, info: dict, local_dict: dict | None
 ) -> Array | ArrayOfEqualSizedArrays | VectorOfVectors:
     """Evaluate an expression returning an LGDO object.
 
@@ -81,17 +120,10 @@ def eval_expression(
         in which case a simple expression is based (only involving numpy, awkward or inbuilt python functions),
         or `function` in which case an arbitrary function is passed (for example defined in processors).
 
-        There are several objects passed to the evaluation as 'locals' which can be references by the expression.
-         - `pars`: dictionary of parameters (converted to namedtuple) (see `pars` argument),
-         - `hpge`: the legendhpges object for this detector (see `hpge` argument),
-         - `phy_vol`:  the physical volume of the detector (see `phy` argument).
+        There are several objects passed to the evaluation as 'locals' determined by the `local_dict`
 
-    pars
-        dict of parameters, can contain any fields passed to the expression prefixed by `pars.`.
-    hpge
-        `legendhpges` object with the information on the HPGe detector.
-    phy_vol
-        `pyg4ometry.geant4.PhysicalVolume` object from GDML,
+    local_dict
+        mapping of local variables for the evaluation
 
     Returns
     -------
@@ -101,15 +133,8 @@ def eval_expression(
     ----
     In future the passing of local variables (pars,hpge,reg) to the evaluation should be make more generic.
     """
-    local_dict = {}
-
-    if pars is not None:
-        pars_tuple = utils.dict2tuple(pars)
-        local_dict = {"pars": pars_tuple}
-    if phy_vol is not None:
-        local_dict |= {"phy_vol": phy_vol}
-    if hpge is not None:
-        local_dict |= {"hpge": hpge}
+    if local_dict is None:
+        local_dict = {}
 
     if info["mode"] == "eval":
         # replace hit.
@@ -165,6 +190,7 @@ def build_hit(
             lh5 group name for input
         proc_config
             the configuration file for the processing. Must contain the fields `channels`, `outputs`, `step_group` and operations`.
+            Optionally can also contain the `locals` field to extract other non-JSON serializable objects used by the processors.
             For example:
 
             .. code-block:: json
@@ -185,6 +211,9 @@ def build_hit(
                     "step_group": {
                         "description": "group steps by time and evtid.",
                         "expression": "reboost.hpge.processors.group_by_time(stp,window=10)"
+                    },
+                    "locals": {
+                        "hpge": "reboost.hpge.utils(meta_path=meta,pars=pars,detector=detector)"
                     },
                     "operations": {
                         "t0": {
@@ -234,8 +263,6 @@ def build_hit(
             length of buffer
         gdml
             path to the input gdml file.
-        macro
-            path to the macro file.
         metadata_path
             path to the folder with the metadata (i.e. the `hardware.detectors.germanium.diodes` folder of `legend-metadata`)
         merge_input_files
@@ -266,10 +293,9 @@ def build_hit(
             msg = f"...running hit tier for {d}"
             log.info(msg)
 
-            # get HPGe and phy_vol object to pass to build_hit
-            hpge = utils.get_hpge(metadata_path, pars=pars, detector=d)
-
-            phy_vol = utils.get_phy_vol(reg, pars=pars, detector=d)
+            # get local variables
+            local_info = proc_config.get("locals",{})
+            local_dict = get_locals(local_info,pars_dict=pars.get(d,{}), meta_path=metadata_path, detector=d, reg=reg)
 
             is_first_chan = bool(ch_idx == 0)
             is_first_file = bool(file_idx == 0)
@@ -340,7 +366,7 @@ def build_hit(
                     msg = f"adding column {name}"
                     log.debug(msg)
 
-                    col = eval_expression(grouped, info, pars=pars, phy_vol=phy_vol, hpge=hpge)
+                    col = eval_expression(grouped, info, local_dict=local_dict)
                     grouped.add_field(name, col)
 
                 # remove unwanted columns

@@ -7,6 +7,7 @@ import numpy as np
 import pyg4ometry
 import pytest
 from legendhpges import make_hpge
+from legendhpges.base import HPGe
 from legendtestdata import LegendTestData
 from lgdo import Table, lh5
 from pyg4ometry import geant4
@@ -22,6 +23,13 @@ def test_data_configs():
     ldata.checkout("5f9b368")
     return ldata.get_path("legend/metadata/hardware/detectors/germanium/diodes")
 
+def test_get_locals(test_data_configs):
+
+    local_info = {"hpge": "reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)"}
+
+    local_dict = hit.get_locals(local_info,pars_dict={"meta_name":"V99000A.json"},detector="det001",meta_path=test_data_configs)
+
+    assert isinstance(local_dict["hpge"],HPGe)
 
 def test_eval():
     in_arr = ak.Array(
@@ -49,13 +57,15 @@ def test_eval():
         "expression": "reboost.hpge.processors.smear_energies(hit.e_sum,reso=pars.reso)",
     }
     pars = {"reso": 2}
-
-    assert np.size(hit.eval_expression(tab, func_eval, pars).view_as("np")) == 5
+    # test get locals
+    local_dict = hit.get_locals({},pars_dict=pars)
+    assert np.size(hit.eval_expression(tab, func_eval, local_dict).view_as("np")) == 5
 
 
 def test_eval_with_hpge(test_data_configs):
-    reg = geant4.Registry()
-    gedet = make_hpge(test_data_configs + "/V99000A.json", registry=reg)
+    
+    local_info = {"hpge": "reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)"}
+    local_dict = hit.get_locals(local_info,pars_dict={"meta_name":"V99000A.json"},detector="det001",meta_path=test_data_configs)
 
     pos = ak.Array(
         {
@@ -72,14 +82,20 @@ def test_eval_with_hpge(test_data_configs):
     }
 
     assert ak.all(
-        ak.num(hit.eval_expression(tab, func_eval, {}, hpge=gedet, phy_vol=None), axis=1)
+        ak.num(hit.eval_expression(tab, func_eval, local_dict), axis=1)
         == [3, 1, 3]
     )
 
 
 def test_eval_with_hpge_and_phy_vol(test_data_configs):
-    reg = geant4.Registry()
-    gedet = make_hpge(test_data_configs + "/V99000A.json", registry=reg)
+    gdml_path = configs / pathlib.Path("geom.gdml")
+
+    gdml = pyg4ometry.gdml.Reader(gdml_path).getRegistry()
+
+    local_info = {"hpge": "reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)",
+                "phy_vol":"reboost.hpge.utils.get_phy_vol(reg=reg,pars=pars,detector=detector)"
+    }
+    local_dict = hit.get_locals(local_info,pars_dict={"meta_name":"V99000A.json","phy_vol_name":"det_phy_1"},detector="det001",meta_path=test_data_configs,reg=gdml)
 
     pos = ak.Array(
         {
@@ -94,15 +110,9 @@ def test_eval_with_hpge_and_phy_vol(test_data_configs):
         "mode": "function",
         "expression": "reboost.hpge.processors.distance_to_surface(hit.xloc, hit.yloc, hit.zloc, hpge, phy_vol.position.eval(), None)",
     }
-    gdml_path = configs / pathlib.Path("geom.gdml")
-
-    gdml = pyg4ometry.gdml.Reader(gdml_path).getRegistry()
-
-    # read with the det_phy_vol_name
-    phy = utils.get_phy_vol(gdml, {"phy_vol_name": "det_phy_1"}, "det001")
 
     assert ak.all(
-        ak.num(hit.eval_expression(tab, func_eval, {}, hpge=gedet, phy_vol=phy), axis=1)
+        ak.num(hit.eval_expression(tab, func_eval, local_dict), axis=1)
         == [3, 1, 3]
     )
 
@@ -115,17 +125,24 @@ def test_reboost_input_file(tmp_path):
     evtid_1 = np.sort(rng.integers(int(1e5), size=(int(1e6))))
     time_1 = rng.uniform(low=0, high=1, size=(int(1e6)))
     edep_1 = rng.uniform(low=0, high=1000, size=(int(1e6)))
+    pos_x_1 = rng.uniform(low=-50,high=50,size=(int(1e6)))
+    pos_y_1 = rng.uniform(low=-50,high=50,size=(int(1e6)))
+    pos_z_1 = rng.uniform(low=-50,high=50,size=(int(1e6)))
+
 
     # make it not divide by the buffer len
     evtid_2 = np.sort(rng.integers(int(1e5), size=(30040)))
     time_2 = rng.uniform(low=0, high=1, size=(30040))
     edep_2 = rng.uniform(low=0, high=1000, size=(30040))
+    pos_x_2 = rng.uniform(low=-50,high=50,size=(30040))
+    pos_y_2 = rng.uniform(low=-50,high=50,size=(30040))
+    pos_z_2 = rng.uniform(low=-50,high=50,size=(30040))
 
     vertices_1 = ak.Array({"evtid": np.arange(int(1e5))})
     vertices_2 = ak.Array({"evtid": np.arange(int(1e5))})
 
-    arr_1 = ak.Array({"evtid": evtid_1, "time": time_1, "edep": edep_1})
-    arr_2 = ak.Array({"evtid": evtid_2, "time": time_2, "edep": edep_2})
+    arr_1 = ak.Array({"evtid": evtid_1, "time": time_1, "edep": edep_1, "xloc":pos_x_1,"yloc":pos_y_1,"zloc":pos_z_1})
+    arr_2 = ak.Array({"evtid": evtid_2, "time": time_2, "edep": edep_2, "xloc":pos_x_2,"yloc":pos_y_2,"zloc":pos_z_2})
 
     lh5.write(Table(vertices_1), "hit/vertices", tmp_path / "file1.lh5", wo_mode="of")
     lh5.write(Table(vertices_2), "hit/vertices", tmp_path / "file2.lh5", wo_mode="of")
@@ -162,36 +179,18 @@ def test_build_hit(test_reboost_input_file):
         },
     }
 
-    hit.build_hit(
-        str(test_reboost_input_file / "out.lh5"),
-        [str(test_reboost_input_file / "file1.lh5")],
-        in_field="hit",
-        out_field="hit",
-        proc_config=proc_config,
-        pars={},
-        buffer=100000,
-    )
-    hit.build_hit(
-        str(test_reboost_input_file / "out_rem.lh5"),
-        [str(test_reboost_input_file / "file2.lh5")],
-        in_field="hit",
-        out_field="hit",
-        proc_config=proc_config,
-        pars={},
-        buffer=10000,
-    )
-
-    # now with wildcard
-    hit.build_hit(
-        str(test_reboost_input_file / "out_merge.lh5"),
-        [str(test_reboost_input_file / "file*.lh5")],
-        in_field="hit",
-        out_field="hit",
-        proc_config=proc_config,
-        pars={},
-        buffer=100000,
-        merge_input_files=True,
-    )
+    for output_file,input_file in zip(["out.lh5","out_rem.lh5","out_merge.lh5"],
+                                      ["file1.lh5","file2.lh5","file*.lh5"]):
+        hit.build_hit(
+            str(test_reboost_input_file / output_file),
+            [str(test_reboost_input_file / input_file)],
+            in_field="hit",
+            out_field="hit",
+            proc_config=proc_config,
+            pars={},
+            buffer=100000,
+        )
+ 
     hit.build_hit(
         str(test_reboost_input_file / "out.lh5"),
         [str(test_reboost_input_file / "file*.lh5")],
@@ -261,56 +260,23 @@ def test_build_hit_some_row(test_reboost_input_file):
             buffer=100000,
         )
 
-    # test read only some events
-    hit.build_hit(
-        str(test_reboost_input_file / "out_some_rows.lh5"),
-        [str(test_reboost_input_file / "file1.lh5"), str(test_reboost_input_file / "file2.lh5")],
-        n_evtid=int(1e4),
-        start_evtid=0,
-        in_field="hit",
-        out_field="hit",
-        proc_config=proc_config,
-        pars={},
-        buffer=100000,
-    )
+    for n_ev,s_ev,out in zip([int(1e4),int(1e5-1e4),int(1e5),int(1e5)],
+                            [0,int(1e4),0,1000],["out_some_rows.lh5","out_rest_rows.lh5","out_all_file_one.lh5","out_mix.lh5"]):
+    
+        # test read only some events
+        hit.build_hit(
+            str(test_reboost_input_file / out),
+            [str(test_reboost_input_file / "file1.lh5"), str(test_reboost_input_file / "file2.lh5")],
+            n_evtid=n_ev,
+            start_evtid=s_ev,
+            in_field="hit",
+            out_field="hit",
+            proc_config=proc_config,
+            pars={},
+            buffer=100000,
+        )
 
-    hit.build_hit(
-        str(test_reboost_input_file / "out_rest_rows.lh5"),
-        [str(test_reboost_input_file / "file1.lh5"), str(test_reboost_input_file / "file2.lh5")],
-        n_evtid=int(1e5 - 1e4),
-        start_evtid=int(1e4),
-        in_field="hit",
-        out_field="hit",
-        proc_config=proc_config,
-        pars={},
-        buffer=100000,
-    )
-    # read all of file 1
-    hit.build_hit(
-        str(test_reboost_input_file / "out_all_file_one.lh5"),
-        [str(test_reboost_input_file / "file1.lh5"), str(test_reboost_input_file / "file2.lh5")],
-        n_evtid=int(1e5),
-        start_evtid=0,
-        in_field="hit",
-        out_field="hit",
-        proc_config=proc_config,
-        pars={},
-        buffer=100000,
-    )
-
-    # read a mix of the two files
-    hit.build_hit(
-        str(test_reboost_input_file / "out_mix.lh5"),
-        [str(test_reboost_input_file / "file1.lh5"), str(test_reboost_input_file / "file2.lh5")],
-        n_evtid=int(1e5),
-        start_evtid=1000,
-        in_field="hit",
-        out_field="hit",
-        proc_config=proc_config,
-        pars={},
-        buffer=100000,
-    )
-
+ 
     tab_some = lh5.read("hit/det001", str(test_reboost_input_file / "out_some_rows.lh5")).view_as(
         "ak"
     )
@@ -324,3 +290,62 @@ def test_build_hit_some_row(test_reboost_input_file):
 
     tab_merge = ak.concatenate((tab_some, tab_rest))
     assert ak.all(ak.all(tab_merge.evtid == tab_1.evtid, axis=-1))
+
+
+
+def test_build_hit_with_locals(test_reboost_input_file,test_data_configs):
+
+
+    proc_config = {
+        "channels": [
+            "det001",
+        ],
+        "outputs": ["t0", "evtid","distance_to_surface"],
+
+        "step_group": {
+            "description": "group steps by time and evtid.",
+            "expression": "reboost.hpge.processors.group_by_time(stp,window=10)",
+        },
+        "locals":{
+            "hpge":"reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)",
+            "phy_vol":"reboost.hpge.utils.get_phy_vol(reg=reg,pars=pars,detector=detector)"
+        },
+        "operations": {
+            "t0": {
+                "description": "first time in the hit.",
+                "mode": "eval",
+                "expression": "ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)",
+            },
+            "truth_energy_sum": {
+                "description": "truth summed energy in the hit.",
+                "mode": "eval",
+                "expression": "ak.sum(hit.edep,axis=-1)",
+            },
+            "smear_energy_sum":{
+                "description": "summed energy after convolution with energy response.",
+                "mode": "function",
+                "expression": "reboost.hpge.processors.smear_energies(hit.truth_energy_sum,reso=pars.reso)"
+            },
+            "distance_to_surface":{
+                "description":"distance to the nplus surface",
+                "mode":"function",
+                "expression":"reboost.hpge.processors.distance_to_surface(hit.xloc, hit.yloc, hit.zloc, hpge, phy_vol.position.eval(), None)"
+            }
+        }
+    }
+    gdml_path = configs / pathlib.Path("geom.gdml")
+    meta_path = test_data_configs
+    # complete check on the processing chain including parameters / local variables
+
+    hit.build_hit(
+        str(test_reboost_input_file / "out.lh5"),
+        [str(test_reboost_input_file / "file*.lh5")],
+        in_field="hit",
+        out_field="hit",
+        proc_config=proc_config,
+        pars={"det001":{"reso":1,"meta_name":"V99000A.json","phy_vol_name":"det_phy_1"}},
+        buffer=100000,
+        merge_input_files=False,
+        metadata_path = meta_path,
+        gdml =gdml_path
+    )

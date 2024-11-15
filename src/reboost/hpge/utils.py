@@ -209,7 +209,7 @@ def get_include_chunk(
     return (high >= start_glob_evtid) & (low <= end_glob_evtid)
 
 
-def get_hpge(meta_path: str | None, pars: dict, detector: str) -> legendhpges.HPGe:
+def get_hpge(meta_path: str | None, pars: NamedTuple, detector: str) -> legendhpges.HPGe:
     """Extract the :class:`legendhpges.HPGe` object from metadata.
 
     Parameters
@@ -217,7 +217,7 @@ def get_hpge(meta_path: str | None, pars: dict, detector: str) -> legendhpges.HP
     meta_path
         path to the folder with the `diodes` metadata.
     pars
-        dictionary of parameters.
+        named tuple of parameters.
     detector
         remage output name for the detector
 
@@ -226,15 +226,16 @@ def get_hpge(meta_path: str | None, pars: dict, detector: str) -> legendhpges.HP
     hpge
         the `legendhpges` object for the detector.
     """
+    reg = pyg4ometry.geant4.Registry()
     if meta_path is not None:
-        meta_name = pars.get("meta_name", f"{detector}.json")
+        meta_name = pars.meta_name if ("meta_name" in pars._fields) else f"{detector}.json"
         meta_dict = Path(meta_path) / Path(meta_name)
         return legendhpges.make_hpge(meta_dict, registry=reg)
     return None
 
 
 def get_phy_vol(
-    reg: pyg4ometry.geant4.Registry | None, pars: dict, detector: str
+    reg: pyg4ometry.geant4.Registry | None, pars: NamedTuple, detector: str
 ) -> pyg4ometry.geant4.PhysicalVolume:
     """Extract the :class:`pyg4ometry.geant4.PhysicalVolume` object from GDML
 
@@ -243,7 +244,7 @@ def get_phy_vol(
     reg
         Geant4 registry from GDML
     pars
-        dictionary of parameters.
+        named tuple of parameters.
     detector
         remage output name for the detector.
 
@@ -253,7 +254,7 @@ def get_phy_vol(
         the `pyg4ometry.geant4.PhysicalVolume` object for the detector
     """
     if reg is not None:
-        phy_name = pars.get("phy_vol_name", f"{detector}")
+        phy_name = pars.phy_vol_name if ("phy_vol_name" in pars._fields) else f"{detector}"
         return reg.physicalVolumeDict[phy_name]
     return None
 
