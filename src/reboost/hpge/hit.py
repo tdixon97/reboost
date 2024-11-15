@@ -50,9 +50,9 @@ def step_group(data: Table, group_config: dict) -> Table:
 def get_locals(
     local_info: dict,
     pars_dict: dict | None,
-    detector: str|None=None,
-    meta_path: str|None=None,
-    reg: pyg4ometry.geant4.Registry|None =None,
+    detector: str | None = None,
+    meta_path: str | None = None,
+    reg: pyg4ometry.geant4.Registry | None = None,
 ) -> dict:
     """Compute any local variables needed for processing.
 
@@ -60,7 +60,7 @@ def get_locals(
     ----------
     local_info
         config file block of the local objects to compute. For example:
-    
+
         ..code-block::
 
             {"hpge": "reboost.hpge.utils(meta_path=meta,pars=pars,detector=detector)"}
@@ -294,8 +294,10 @@ def build_hit(
             log.info(msg)
 
             # get local variables
-            local_info = proc_config.get("locals",{})
-            local_dict = get_locals(local_info,pars_dict=pars.get(d,{}), meta_path=metadata_path, detector=d, reg=reg)
+            local_info = proc_config.get("locals", {})
+            local_dict = get_locals(
+                local_info, pars_dict=pars.get(d, {}), meta_path=metadata_path, detector=d, reg=reg
+            )
 
             is_first_chan = bool(ch_idx == 0)
             is_first_file = bool(file_idx == 0)

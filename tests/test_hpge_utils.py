@@ -14,6 +14,7 @@ from lgdo import Array, Table, lh5
 
 from reboost.hpge.utils import (
     _merge_arrays,
+    dict2tuple,
     get_file_list,
     get_files_to_read,
     get_global_evtid_range,
@@ -22,7 +23,6 @@ from reboost.hpge.utils import (
     get_num_simulated,
     get_phy_vol,
     load_dict,
-    dict2tuple
 )
 
 configs = pathlib.Path(__file__).parent.resolve() / pathlib.Path("configs")
