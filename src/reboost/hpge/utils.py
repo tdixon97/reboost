@@ -6,6 +6,7 @@ import json
 import logging
 import re
 from collections import namedtuple
+from contextlib import contextmanager
 from pathlib import Path
 from typing import NamedTuple
 
@@ -226,12 +227,13 @@ def get_hpge(meta_path: str | None, pars: NamedTuple, detector: str) -> legendhp
     hpge
         the `legendhpges` object for the detector.
     """
-    reg = pyg4ometry.geant4.Registry()
-    if meta_path is not None:
-        meta_name = pars.meta_name if ("meta_name" in pars._fields) else f"{detector}.json"
-        meta_dict = Path(meta_path) / Path(meta_name)
-        return legendhpges.make_hpge(meta_dict, registry=reg)
-    return None
+    with debug_logging(logging.CRITICAL):
+        reg = pyg4ometry.geant4.Registry()
+        if meta_path is not None:
+            meta_name = pars.meta_name if ("meta_name" in pars._fields) else f"{detector}.json"
+            meta_dict = Path(meta_path) / Path(meta_name)
+            return legendhpges.make_hpge(meta_dict, registry=reg)
+        return None
 
 
 def get_phy_vol(
@@ -253,10 +255,24 @@ def get_phy_vol(
     phy_vol
         the `pyg4ometry.geant4.PhysicalVolume` object for the detector
     """
-    if reg is not None:
-        phy_name = pars.phy_vol_name if ("phy_vol_name" in pars._fields) else f"{detector}"
-        return reg.physicalVolumeDict[phy_name]
-    return None
+
+    with debug_logging(logging.CRITICAL):
+        if reg is not None:
+            phy_name = pars.phy_vol_name if ("phy_vol_name" in pars._fields) else f"{detector}"
+            return reg.physicalVolumeDict[phy_name]
+
+        return None
+
+
+@contextmanager
+def debug_logging(level):
+    logger = logging.getLogger("root")
+    old_level = logger.getEffectiveLevel()
+    logger.setLevel(level)
+    try:
+        yield
+    finally:
+        logger.setLevel(old_level)
 
 
 def dict2tuple(dictionary: dict) -> namedtuple:

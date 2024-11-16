@@ -147,6 +147,7 @@ def distance_to_surface(
     hpge: legendhpges.base.HPGe,
     det_pos: ArrayLike,
     surface_type: str | None = None,
+    unit: str = "mm",
 ) -> Array:
     """Computes the distance from each step to the detector surface.
 
@@ -164,6 +165,8 @@ def distance_to_surface(
         position of the detector origin, must be a 3 component array corresponding to `(x,y,z)`.
     surface_type
         string of which surface to use, can be `nplus`, `pplus` `passive` or None (in which case the distance to any surface is calculated).
+    unit
+        unit for the hit tier positions table.
 
     Returns
     -------
@@ -174,12 +177,13 @@ def distance_to_surface(
     `positions_x/positions_y/positions_z` must all have the same shape.
 
     """
+    factor = np.array([1, 100, 1000])[unit == np.array(["mm", "cm", "m"])][0]
 
     # compute local positions
     pos = []
     sizes = []
     for idx, pos_tmp in enumerate([positions_x, positions_y, positions_z]):
-        local_pos_tmp = ak.Array(pos_tmp) - det_pos[idx]
+        local_pos_tmp = ak.Array(pos_tmp) * factor - det_pos[idx]
         local_pos_flat_tmp = ak.flatten(local_pos_tmp).to_numpy()
         pos.append(local_pos_flat_tmp)
         sizes.append(ak.num(local_pos_tmp, axis=1))
@@ -193,7 +197,10 @@ def distance_to_surface(
     local_positions = np.vstack(pos).T
 
     # get indices
-    surface_indices = np.where(hpge.surfaces == surface_type) if surface_type is not None else None
+
+    surface_indices = (
+        np.where(np.array(hpge.surfaces) == surface_type) if surface_type is not None else None
+    )
 
     # distance calc itself
     distances = hpge.distance_to_surface(local_positions, surface_indices=surface_indices)

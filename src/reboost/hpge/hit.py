@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import logging
+import time
 
 import awkward as ak
 import numpy as np
 import pyg4ometry
 from lgdo import Array, ArrayOfEqualSizedArrays, Table, VectorOfVectors, lh5
 from lgdo.lh5 import LH5Iterator
+from tqdm import tqdm
 
 from . import utils
 
@@ -174,6 +176,7 @@ def build_hit(
     gdml: str | None = None,
     metadata_path: str | None = None,
     merge_input_files: bool = True,
+    has_global_evtid: bool = False,
 ) -> None:
     """
     Read incrementally the files compute something and then write output
@@ -267,6 +270,8 @@ def build_hit(
             path to the folder with the metadata (i.e. the `hardware.detectors.germanium.diodes` folder of `legend-metadata`)
         merge_input_files
             boolean flag to merge all input files into a single output.
+        has_global_evtid
+            boolean flag to indicate the evtid are already global
 
     Note
     ----
@@ -274,8 +279,21 @@ def build_hit(
      - It would be better to have a cleaner way to supply metadata and detector maps.
     """
 
+    time_dict = {
+        "setup": 0,
+        "read": 0,
+        "write": 0,
+        "locals": 0,
+        "step_group": 0,
+        "proc": {},
+    }
+
+    time_start = time.time()
+
     # get the gdml file
-    reg = pyg4ometry.gdml.Reader(gdml).getRegistry() if gdml is not None else None
+
+    with utils.debug_logging(logging.CRITICAL):
+        reg = pyg4ometry.gdml.Reader(gdml).getRegistry() if gdml is not None else None
 
     # get info on the files to read in a nice named tuple
     file_info = utils.get_selected_files(
@@ -285,30 +303,46 @@ def build_hit(
         start_evtid=start_evtid,
     )
 
+    time_end = time.time()
+
+    time_dict["setup"] += time_end - time_start
+
+    # initialise timing object
+    time_start = time.time()
+    time_end = time.time()
+
     # loop over input files
-    for first_evtid, file_idx, file_in in zip(
-        file_info.file_start_global_evtids, file_info.file_indices, file_info.file_list
+    for first_evtid, file_idx, file_in in tqdm(
+        zip(file_info.file_start_global_evtids, file_info.file_indices, file_info.file_list)
     ):
         for ch_idx, d in enumerate(proc_config["channels"]):
             msg = f"...running hit tier for {d}"
-            log.info(msg)
+            log.debug(msg)
 
             # get local variables
+            time_start = time.time()
+
             local_info = proc_config.get("locals", {})
             local_dict = get_locals(
                 local_info, pars_dict=pars.get(d, {}), meta_path=metadata_path, detector=d, reg=reg
             )
 
+            time_end = time.time()
+
+            time_dict["locals"] += time_end - time_start
+
             is_first_chan = bool(ch_idx == 0)
             is_first_file = bool(file_idx == 0)
 
             # flag to overwrite input file
-            delete_input = (is_first_chan & merge_input_files is False) | (
+            delete_input = (is_first_chan & (merge_input_files is False)) | (
                 is_first_chan & is_first_file
             )
 
-            msg = f"...begin processing with {file_in} to {file_out}"
-            log.info(msg)
+            msg = (
+                f"...begin processing with {file_in} to {file_out} and delete input {delete_input}"
+            )
+            log.debug(msg)
 
             entries = LH5Iterator(
                 file_in, f"{in_field}/{d}", buffer_len=buffer
@@ -340,9 +374,15 @@ def build_hit(
                 )
 
                 # add global evtid
-                obj = ak.with_field(obj, first_evtid + obj.evtid, "global_evtid")
+                if has_global_evtid is False:
+                    obj = ak.with_field(obj, first_evtid + obj.evtid, "global_evtid")
+                else:
+                    obj = ak.with_field(obj, obj.evtid, "global_evtid")
 
-                # check if the chunk can be skipped
+                time_end = time.time()
+                time_dict["read"] += time_end - time_start
+
+                # check if the chunk can be skipped, does lack of sorting break this?
 
                 if not utils.get_include_chunk(
                     obj.global_evtid,
@@ -361,18 +401,32 @@ def build_hit(
                 data = Table(obj)
 
                 # group steps into hits
+                time_start = time.time()
                 grouped = step_group(data, proc_config["step_group"])
+                time_end = time.time()
+
+                time_dict["step_group"] += time_end - time_start
 
                 # processors
                 for name, info in proc_config["operations"].items():
-                    msg = f"adding column {name}"
+                    msg = f"... adding column {name}"
                     log.debug(msg)
+
+                    time_start = time.time()
 
                     col = eval_expression(grouped, info, local_dict=local_dict)
                     grouped.add_field(name, col)
 
+                    time_end = time.time()
+
+                    if name in time_dict["proc"]:
+                        time_dict["proc"][name] += time_end - time_start
+                    else:
+                        time_dict["proc"][name] = 0
+
                 # remove unwanted columns
-                log.debug("removing unwanted columns")
+                log.debug("... removing unwanted columns")
+                time_start = time.time()
 
                 existing_cols = list(grouped.keys())
                 for col in existing_cols:
@@ -380,8 +434,6 @@ def build_hit(
                         grouped.remove_column(col, delete=True)
 
                 # write lh5 file
-                msg = f"...finished processing and save file with wo_mode {mode}"
-                log.debug(msg)
 
                 file_out_tmp = (
                     f"{file_out.split('.')[0]}_{file_idx}.lh5"
@@ -389,3 +441,23 @@ def build_hit(
                     else file_out
                 )
                 lh5.write(grouped, f"{out_field}/{d}", file_out_tmp, wo_mode=mode)
+                time_end = time.time()
+
+                time_dict["write"] += time_end - time_start
+
+                # start timing read
+                time_start = time.time()
+
+    # print timing info
+
+    for step, time_val in time_dict.items():
+        if isinstance(time_val, dict):
+            msg = "Time for processors:"
+            log.info(msg)
+
+            for name, t in time_val.items():
+                msg = f"    {name} elapsed time: {t:.1f} s"
+                log.info(msg)
+        else:
+            msg = f"{step} elapsed time: {time_val:.1f} s"
+            log.info(msg)
