@@ -244,6 +244,12 @@ Any python function can be a ``reboost.hit`` processor. The only requirement is 
 
 with the same length as the hit table. This means processors can act on subarrays (``axis=-1`` in awkward syntax) but should not combine multiple rows of the hit table.
 
+It is simple to accommodate most of the current and future envisiged post-processing in this framework. For example:
+
+- clustering hits would result in a new VectorOfVectors with the same number of rows but fewer entries per vector,
+- pulse shape simulations to produce waveforms (or ML emmulation of this) would give an ArrayOfEqualSizedArrays,
+- processing in parallel many parameters (eg for systematic) studies would give a nested VectorOfVectors.
+
 Event tier processing (work in progress)
 ----------------------------------------
 

@@ -128,7 +128,7 @@ For this tutorial we perform a basic post-processing of the *hit* tier
 for the two Germanium channels.
 
 2.1) Setup the environment
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 First we set up the python environment.
 
