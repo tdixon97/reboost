@@ -2,7 +2,7 @@ Basic HPGe simulation processing
 ================================
 
 This tutorial describes how to process the HPGe detector simulations
-from **remage** with **reboost**. It buils on the offical **remage**
+from **remage** with **reboost**. It buils on the official **remage**
 tutorial
 `[link] <https://remage.readthedocs.io/en/stable/tutorial.html>`__
 
@@ -13,13 +13,13 @@ tutorial
    directory structure to organise the outputs and config inputs.
 
 
-    ├── cfg 
-    │   └── metadata 
-    ├── output 
-    │   
-    ├── stp 
-    │   
-    └── hit 
+    ├── cfg
+    │   └── metadata
+    ├── output
+    │  
+    ├── stp
+    │  
+    └── hit
     └── reboost_hpge_tutorial.ipynb
 
 ..
@@ -30,7 +30,7 @@ Part 1) Running the remage simulation
 Before we can run any post-processing we need to run the Geant4
 simulation. For this we follow the remage tutorial to generate the GDML
 geometry. We save this into the GDML file *cfg/geom.gdml* for use by
-remage. We also need to save the metadata dictonaries into json files
+remage. We also need to save the metadata dictionaries into json files
 (in the *cfg/metadata* folder as *BEGe.json* and *Coax.json*
 
 We use a slightly modified Geant4 macro to demonstrate some features of
@@ -59,7 +59,7 @@ command line).
 
    /run/beamOn 10000000
 
-We then use the remage exectuable (see
+We then use the remage executable (see
 `[remage-docs] <https://remage.readthedocs.io/en/stable/>`__ for
 installation instructions) to run the simulation: > #### *Note* > Both
 of *cfg/th228.mac* and *cfg/geometry.gdml* are needed to run remage
@@ -83,43 +83,43 @@ We can use ``lh5.show()`` to check the output files.
 .. code:: text
 
     /
-    └── stp · struct{det001,det002,det003,vertices} 
-        ├── det001 · table{evtid,particle,edep,time,xloc,yloc,zloc} 
-        │   ├── edep · array<1>{real} 
-        │   ├── evtid · array<1>{real} 
-        │   ├── particle · array<1>{real} 
-        │   ├── time · array<1>{real} 
-        │   ├── xloc · array<1>{real} 
-        │   ├── yloc · array<1>{real} 
-        │   └── zloc · array<1>{real} 
-        ├── det002 · table{evtid,particle,edep,time,xloc,yloc,zloc} 
-        │   ├── edep · array<1>{real} 
-        │   ├── evtid · array<1>{real} 
-        │   ├── particle · array<1>{real} 
-        │   ├── time · array<1>{real} 
-        │   ├── xloc · array<1>{real} 
-        │   ├── yloc · array<1>{real} 
-        │   └── zloc · array<1>{real} 
-        ├── det003 · table{evtid,particle,edep,time,xloc_pre,yloc_pre,zloc_pre,xloc_post,yloc_post,zloc_post,v_pre,v_post} 
-        │   ├── edep · array<1>{real} 
-        │   ├── evtid · array<1>{real} 
-        │   ├── particle · array<1>{real} 
-        │   ├── time · array<1>{real} 
-        │   ├── v_post · array<1>{real} 
-        │   ├── v_pre · array<1>{real} 
-        │   ├── xloc_post · array<1>{real} 
-        │   ├── xloc_pre · array<1>{real} 
-        │   ├── yloc_post · array<1>{real} 
-        │   ├── yloc_pre · array<1>{real} 
-        │   ├── zloc_post · array<1>{real} 
-        │   └── zloc_pre · array<1>{real} 
-        └── vertices · table{evtid,time,xloc,yloc,zloc,n_part} 
-            ├── evtid · array<1>{real} 
-            ├── n_part · array<1>{real} 
-            ├── time · array<1>{real} 
-            ├── xloc · array<1>{real} 
-            ├── yloc · array<1>{real} 
-            └── zloc · array<1>{real} 
+    └── stp · struct{det001,det002,det003,vertices}
+        ├── det001 · table{evtid,particle,edep,time,xloc,yloc,zloc}
+        │   ├── edep · array<1>{real}
+        │   ├── evtid · array<1>{real}
+        │   ├── particle · array<1>{real}
+        │   ├── time · array<1>{real}
+        │   ├── xloc · array<1>{real}
+        │   ├── yloc · array<1>{real}
+        │   └── zloc · array<1>{real}
+        ├── det002 · table{evtid,particle,edep,time,xloc,yloc,zloc}
+        │   ├── edep · array<1>{real}
+        │   ├── evtid · array<1>{real}
+        │   ├── particle · array<1>{real}
+        │   ├── time · array<1>{real}
+        │   ├── xloc · array<1>{real}
+        │   ├── yloc · array<1>{real}
+        │   └── zloc · array<1>{real}
+        ├── det003 · table{evtid,particle,edep,time,xloc_pre,yloc_pre,zloc_pre,xloc_post,yloc_post,zloc_post,v_pre,v_post}
+        │   ├── edep · array<1>{real}
+        │   ├── evtid · array<1>{real}
+        │   ├── particle · array<1>{real}
+        │   ├── time · array<1>{real}
+        │   ├── v_post · array<1>{real}
+        │   ├── v_pre · array<1>{real}
+        │   ├── xloc_post · array<1>{real}
+        │   ├── xloc_pre · array<1>{real}
+        │   ├── yloc_post · array<1>{real}
+        │   ├── yloc_pre · array<1>{real}
+        │   ├── zloc_post · array<1>{real}
+        │   └── zloc_pre · array<1>{real}
+        └── vertices · table{evtid,time,xloc,yloc,zloc,n_part}
+            ├── evtid · array<1>{real}
+            ├── n_part · array<1>{real}
+            ├── time · array<1>{real}
+            ├── xloc · array<1>{real}
+            ├── yloc · array<1>{real}
+            └── zloc · array<1>{real}
 
 Part 2) reboost config files
 ----------------------------
@@ -127,10 +127,10 @@ Part 2) reboost config files
 For this tutorial we perform a basic post-processing of the *hit* tier
 for the two Germanium channels.
 
-2.1) Setup the enviroment
+2.1) Setup the environment
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-First we set up the python enviroment.
+First we set up the python environment.
 
 .. code:: ipython3
 
@@ -144,14 +144,14 @@ First we set up the python enviroment.
     import colorlog
     import hist
     import numpy as np
-    
-    
+
+
     plt.rcParams['figure.figsize'] = [12, 4]
     plt.rcParams['axes.titlesize'] =12
     plt.rcParams['axes.labelsize'] = 12
     plt.rcParams['legend.fontsize'] = 12
-    
-    
+
+
     handler = colorlog.StreamHandler()
     handler.setFormatter(
         colorlog.ColoredFormatter("%(log_color)s%(name)s [%(levelname)s] %(message)s")
@@ -161,7 +161,7 @@ First we set up the python enviroment.
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
     logger.info("test")
-    
+
 
 
 
@@ -203,7 +203,7 @@ effect of the processors.
                 "energy_sum_deadlayer",         # energy sum after dead layers
                 "energy_sum_smeared"            # energy sum after smearing with resolution
             ],
-            "step_group": {          
+            "step_group": {
                 "description": "group steps by time and evtid with 10us window",
                 "expression": "reboost.hpge.processors.group_by_time(stp,window=10)",
             },
@@ -262,7 +262,7 @@ effect of the processors.
                     "mode": "function",
                     "expression": "reboost.hpge.processors.smear_energies(hit.energy_sum_deadlayer,reso=pars.fwhm_in_keV/2.355)"
                 }
-        
+
             }
     }
 
@@ -274,16 +274,16 @@ We also create our parameters file.
         "det001": {
             "meta_name":"BEGe.json",
             "phy_vol_name":"BEGe",
-            "fwhm_in_keV":2.69, 
-            "fccd_in_mm":1.42, # dead layer in mm     
+            "fwhm_in_keV":2.69,
+            "fccd_in_mm":1.42, # dead layer in mm
         },
         "det002": {
             "meta_name":"Coax.json",
             "phy_vol_name":"Coax",
-            "fwhm_in_keV":4.42, 
-            "fccd_in_mm":2.19,   
+            "fwhm_in_keV":4.42,
+            "fccd_in_mm":2.19,
         }
-        
+
     }
 
 Part 3) Running the processing
@@ -345,61 +345,61 @@ distance to the detector surface.
 .. parsed-literal::
 
     /
-    └── hit · HDF5 group 
-        ├── det001 · table{edep,time,t0,hit_evtid,hit_global_evtid,distance_to_nplus_surface_mm,activeness,rpos_loc,zpos_loc,energy_sum,energy_sum_deadlayer,energy_sum_smeared} 
-        │   ├── activeness · array<1>{array<1>{real}} 
-        │   │   ├── cumulative_length · array<1>{real} 
-        │   │   └── flattened_data · array<1>{real} 
-        │   ├── distance_to_nplus_surface_mm · array<1>{array<1>{real}} 
-        │   │   ├── cumulative_length · array<1>{real} 
-        │   │   └── flattened_data · array<1>{real} 
-        │   ├── edep · array<1>{array<1>{real}} 
-        │   │   ├── cumulative_length · array<1>{real} 
-        │   │   └── flattened_data · array<1>{real} 
-        │   ├── energy_sum · array<1>{real} 
-        │   ├── energy_sum_deadlayer · array<1>{real} 
-        │   ├── energy_sum_smeared · array<1>{real} 
-        │   ├── hit_evtid · array<1>{real} 
-        │   ├── hit_global_evtid · array<1>{real} 
-        │   ├── rpos_loc · array<1>{array<1>{real}} 
-        │   │   ├── cumulative_length · array<1>{real} 
-        │   │   └── flattened_data · array<1>{real} 
-        │   ├── t0 · array<1>{real} 
-        │   ├── time · array<1>{array<1>{real}} 
-        │   │   ├── cumulative_length · array<1>{real} 
-        │   │   └── flattened_data · array<1>{real} 
-        │   └── zpos_loc · array<1>{array<1>{real}} 
-        │       ├── cumulative_length · array<1>{real} 
-        │       └── flattened_data · array<1>{real} 
-        └── det002 · table{edep,time,t0,hit_evtid,hit_global_evtid,distance_to_nplus_surface_mm,activeness,rpos_loc,zpos_loc,energy_sum,energy_sum_deadlayer,energy_sum_smeared} 
-            ├── activeness · array<1>{array<1>{real}} 
-            │   ├── cumulative_length · array<1>{real} 
-            │   └── flattened_data · array<1>{real} 
-            ├── distance_to_nplus_surface_mm · array<1>{array<1>{real}} 
-            │   ├── cumulative_length · array<1>{real} 
-            │   └── flattened_data · array<1>{real} 
-            ├── edep · array<1>{array<1>{real}} 
-            │   ├── cumulative_length · array<1>{real} 
-            │   └── flattened_data · array<1>{real} 
-            ├── energy_sum · array<1>{real} 
-            ├── energy_sum_deadlayer · array<1>{real} 
-            ├── energy_sum_smeared · array<1>{real} 
-            ├── hit_evtid · array<1>{real} 
-            ├── hit_global_evtid · array<1>{real} 
-            ├── rpos_loc · array<1>{array<1>{real}} 
-            │   ├── cumulative_length · array<1>{real} 
-            │   └── flattened_data · array<1>{real} 
-            ├── t0 · array<1>{real} 
-            ├── time · array<1>{array<1>{real}} 
-            │   ├── cumulative_length · array<1>{real} 
-            │   └── flattened_data · array<1>{real} 
-            └── zpos_loc · array<1>{array<1>{real}} 
-                ├── cumulative_length · array<1>{real} 
-                └── flattened_data · array<1>{real} 
+    └── hit · HDF5 group
+        ├── det001 · table{edep,time,t0,hit_evtid,hit_global_evtid,distance_to_nplus_surface_mm,activeness,rpos_loc,zpos_loc,energy_sum,energy_sum_deadlayer,energy_sum_smeared}
+        │   ├── activeness · array<1>{array<1>{real}}
+        │   │   ├── cumulative_length · array<1>{real}
+        │   │   └── flattened_data · array<1>{real}
+        │   ├── distance_to_nplus_surface_mm · array<1>{array<1>{real}}
+        │   │   ├── cumulative_length · array<1>{real}
+        │   │   └── flattened_data · array<1>{real}
+        │   ├── edep · array<1>{array<1>{real}}
+        │   │   ├── cumulative_length · array<1>{real}
+        │   │   └── flattened_data · array<1>{real}
+        │   ├── energy_sum · array<1>{real}
+        │   ├── energy_sum_deadlayer · array<1>{real}
+        │   ├── energy_sum_smeared · array<1>{real}
+        │   ├── hit_evtid · array<1>{real}
+        │   ├── hit_global_evtid · array<1>{real}
+        │   ├── rpos_loc · array<1>{array<1>{real}}
+        │   │   ├── cumulative_length · array<1>{real}
+        │   │   └── flattened_data · array<1>{real}
+        │   ├── t0 · array<1>{real}
+        │   ├── time · array<1>{array<1>{real}}
+        │   │   ├── cumulative_length · array<1>{real}
+        │   │   └── flattened_data · array<1>{real}
+        │   └── zpos_loc · array<1>{array<1>{real}}
+        │       ├── cumulative_length · array<1>{real}
+        │       └── flattened_data · array<1>{real}
+        └── det002 · table{edep,time,t0,hit_evtid,hit_global_evtid,distance_to_nplus_surface_mm,activeness,rpos_loc,zpos_loc,energy_sum,energy_sum_deadlayer,energy_sum_smeared}
+            ├── activeness · array<1>{array<1>{real}}
+            │   ├── cumulative_length · array<1>{real}
+            │   └── flattened_data · array<1>{real}
+            ├── distance_to_nplus_surface_mm · array<1>{array<1>{real}}
+            │   ├── cumulative_length · array<1>{real}
+            │   └── flattened_data · array<1>{real}
+            ├── edep · array<1>{array<1>{real}}
+            │   ├── cumulative_length · array<1>{real}
+            │   └── flattened_data · array<1>{real}
+            ├── energy_sum · array<1>{real}
+            ├── energy_sum_deadlayer · array<1>{real}
+            ├── energy_sum_smeared · array<1>{real}
+            ├── hit_evtid · array<1>{real}
+            ├── hit_global_evtid · array<1>{real}
+            ├── rpos_loc · array<1>{array<1>{real}}
+            │   ├── cumulative_length · array<1>{real}
+            │   └── flattened_data · array<1>{real}
+            ├── t0 · array<1>{real}
+            ├── time · array<1>{array<1>{real}}
+            │   ├── cumulative_length · array<1>{real}
+            │   └── flattened_data · array<1>{real}
+            └── zpos_loc · array<1>{array<1>{real}}
+                ├── cumulative_length · array<1>{real}
+                └── flattened_data · array<1>{real}
 
 
 The new format is a factor of x17 times smaller than the input file due
-to the removal of many *step* based fields which use alot of memory and
+to the removal of many *step* based fields which use a lot of memory and
 due to the removal of the *vertices* table and the LAr hits. So we can
 easily read the whole file into memory. We use *awkward* to analyse the
 output files.
@@ -540,24 +540,24 @@ processor works as expected.
         fig, axs = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
         n=100000
         for idx, (data,config) in enumerate(zip([data_det001,data_det002],["cfg/metadata/BEGe.json","cfg/metadata/Coax.json"])):
-    
+
             reg=pg4.geant4.Registry()
             hpge = legendhpges.make_hpge(config,registry=reg)
-    
+
             legendhpges.draw.plot_profile(hpge, split_by_type=True,axes=axs[idx])
             r = np.random.choice([-1,1],p=[0.5,0.5],size=len(ak.flatten(data.rpos_loc)))*ak.flatten(data.rpos_loc)
             z = ak.flatten(data.zpos_loc)
             c=ak.flatten(data[field])
             cut = c<5
-    
+
             s=axs[idx].scatter(r[cut][0:n],z[cut][0:n], c= c[cut][0:n],marker=".", label="gen. points",cmap=scale)
             #axs[idx].axis("equal")
-    
+
             if idx == 0:
                 axs[idx].set_ylabel("Height [mm]")
             c=plt.colorbar(s)
             c.set_label(clab)
-    
+
             axs[idx].set_xlabel("Radius [mm]")
 
 
@@ -582,7 +582,7 @@ We can also plot a histogram of the distance to the surface.
 .. code:: ipython3
 
     def plot_distances(axes,distances,xrange=None,label=" ",**kwargs):
-        
+
         h=hist.new.Reg(100,*xrange, name="Distance to n+ surface [mm]").Double()
         h.fill(distances)
         h.plot(**kwargs,label=label)
@@ -590,7 +590,7 @@ We can also plot a histogram of the distance to the surface.
         ax.set_yscale("log")
         if xrange is not None:
             ax.set_xlim(*xrange)
-        
+
 
 .. code:: ipython3
 
@@ -613,7 +613,7 @@ after weighting by the activeness.
 .. code:: ipython3
 
     def plot_energy(axes,energy,bins=400,xrange=None,label=" ",log_y=True,**kwargs):
-        
+
         h=hist.new.Reg(bins,*xrange, name="energy [keV]").Double()
         h.fill(energy)
         h.plot(**kwargs,label=label)
@@ -653,7 +653,7 @@ after weighting by the activeness.
 The final step in the processing chain smeared the energies by the
 energy resolution. This represents a general class of processors based
 on ‘’heuristic’’ models. Other similar processors could be implemented
-in a similar way. It would also be simple to use insted an energy
+in a similar way. It would also be simple to use instead an energy
 dependent resolution curve. To see the effect we have to zoom into the
 2615 keV peak.
 
@@ -677,4 +677,3 @@ Part 5) Adding a new processor
 The next part of the tutorial describes how to add a new processor to
 the chain. We use as an example spatial *clustering* of steps. This will
 be added later.
-
