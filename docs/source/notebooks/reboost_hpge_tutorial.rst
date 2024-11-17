@@ -72,11 +72,11 @@ You can lower the number of simulated events to speed up the simulation.
 
 We can use ``lh5.show()`` to check the output files.
 
-.. code:: ipython3
+.. code:: python
 
     from lgdo import lh5
 
-.. code:: ipython3
+.. code:: python
 
     lh5.show("output/stp/output_t0.lh5")
 
@@ -132,7 +132,7 @@ for the two Germanium channels.
 
 First we set up the python environment.
 
-.. code:: ipython3
+.. code:: python
 
     from reboost.hpge import hit
     import matplotlib.pyplot as plt
@@ -182,7 +182,7 @@ response model (gaussian energy resolution).
 We also include some step based quantities in the output to show the
 effect of the processors.
 
-.. code:: ipython3
+.. code:: python
 
     chain = {
             "channels": [
@@ -291,7 +291,7 @@ Part 3) Running the processing
 
 Now we can run our post-processing
 
-.. code:: ipython3
+.. code:: python
 
     %%time
     hit.build_hit(file_out="output/hit/output.lh5",list_file_in="output/stp/*.lh5", out_field="hit",in_field="stp",
@@ -337,7 +337,7 @@ fraction of the time spent on the geant4 simulation (around 30 mins).
 The most time consuming steps are writing the file and computing the
 distance to the detector surface.
 
-.. code:: ipython3
+.. code:: python
 
     lh5.show("output/hit/output.lh5")
 
@@ -404,12 +404,12 @@ due to the removal of the *vertices* table and the LAr hits. So we can
 easily read the whole file into memory. We use *awkward* to analyse the
 output files.
 
-.. code:: ipython3
+.. code:: python
 
     data_det001 = lh5.read_as("hit/det001","output/hit/output.lh5","ak")
     data_det002 = lh5.read_as("hit/det002","output/hit/output.lh5","ak")
 
-.. code:: ipython3
+.. code:: python
 
     data_det001[0]
 
@@ -463,7 +463,7 @@ correspond to “hits” in the detector, as we expect. We also see that a
 single decay does not often produce multiple hits. This is also expected
 since the probability of detection is fairly low.
 
-.. code:: ipython3
+.. code:: python
 
     plt.scatter(np.sort(data_det001.hit_global_evtid),np.arange(len(data_det001)),marker=".",alpha=1)
     plt.xlabel("Decay index (evtid)")
@@ -488,7 +488,7 @@ since the probability of detection is fairly low.
 However, we can use some array manipulation to extract decay index with
 multiple hits, by plotting the times we see the effect of the windowing.
 
-.. code:: ipython3
+.. code:: python
 
     def plot_times(times:ak.Array,xrange=None,sub_zero=False,**kwargs):
         fig,ax = plt.subplots()
@@ -504,11 +504,11 @@ multiple hits, by plotting the times we see the effect of the windowing.
                 ax.set_xlim(*xrange)
 
 
-.. code:: ipython3
+.. code:: python
 
     unique,counts = np.unique(data_det001.hit_global_evtid,return_counts=True)
 
-.. code:: ipython3
+.. code:: python
 
     plot_times(data_det001[data_det001.hit_global_evtid==unique[counts>1][1]].time,histtype="step",yerr=False)
 
@@ -534,7 +534,7 @@ detector surface and the activeness for each step. We select only events
 within 5 mm of the surface for the first plots. We can see that the
 processor works as expected.
 
-.. code:: ipython3
+.. code:: python
 
     def plot_map(field,scale="BuPu",clab="Distance [mm]"):
         fig, axs = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
@@ -561,7 +561,7 @@ processor works as expected.
             axs[idx].set_xlabel("Radius [mm]")
 
 
-.. code:: ipython3
+.. code:: python
 
     plot_map("distance_to_nplus_surface_mm")
 
@@ -569,7 +569,7 @@ processor works as expected.
 .. image:: images/output_27_1.png
 
 
-.. code:: ipython3
+.. code:: python
 
     plot_map("activeness",clab="Activeness",scale="viridis")
 
@@ -579,7 +579,7 @@ processor works as expected.
 
 We can also plot a histogram of the distance to the surface.
 
-.. code:: ipython3
+.. code:: python
 
     def plot_distances(axes,distances,xrange=None,label=" ",**kwargs):
 
@@ -592,7 +592,7 @@ We can also plot a histogram of the distance to the surface.
             ax.set_xlim(*xrange)
 
 
-.. code:: ipython3
+.. code:: python
 
     fig,ax = plt.subplots()
     plot_distances(ax,ak.flatten(data_det001.distance_to_nplus_surface_mm),xrange=(0,35),label="BEGe",histtype="step",yerr=False)
@@ -610,7 +610,7 @@ We can also plot a histogram of the distance to the surface.
 Our processing chain also sums the energies of the hits, both before and
 after weighting by the activeness.
 
-.. code:: ipython3
+.. code:: python
 
     def plot_energy(axes,energy,bins=400,xrange=None,label=" ",log_y=True,**kwargs):
 
@@ -623,7 +623,7 @@ after weighting by the activeness.
         if xrange is not None:
             axes.set_xlim(*xrange)
 
-.. code:: ipython3
+.. code:: python
 
     fig, ax = plt.subplots()
     ax.set_title("BEGe energy spectrum")
@@ -635,7 +635,7 @@ after weighting by the activeness.
 .. image:: images/output_34_0.png
 
 
-.. code:: ipython3
+.. code:: python
 
     fig, ax = plt.subplots()
     ax.set_title("COAX energy spectrum")
@@ -657,7 +657,7 @@ in a similar way. It would also be simple to use instead an energy
 dependent resolution curve. To see the effect we have to zoom into the
 2615 keV peak.
 
-.. code:: ipython3
+.. code:: python
 
     fig, axs = plt.subplots()
     plot_energy(axs,data_det001.energy_sum_smeared,yerr=False,label="BEGe",xrange=(2600,2630),log_y=False,bins=150,density=True)
