@@ -12,6 +12,7 @@ tutorial
    To run this tutorial it is recommended to create the following
    directory structure to organise the outputs and config inputs.
 
+.. code:: text
 
     ├── cfg
     │ └── metadata
@@ -21,6 +22,7 @@ tutorial
     │
     └── hit
     └── reboost_hpge_tutorial.ipynb
+
 
 ..
 
