@@ -14,11 +14,11 @@ tutorial
 
 
     ├── cfg
-    │   └── metadata
+    │ └── metadata
     ├── output
-    │  
+    │
     ├── stp
-    │  
+    │
     └── hit
     └── reboost_hpge_tutorial.ipynb
 
@@ -268,7 +268,7 @@ effect of the processors.
 
 We also create our parameters file.
 
-.. code:: ipython3
+.. code:: python
 
     pars = {
         "det001": {
