@@ -148,10 +148,10 @@ First we set up the python environment.
     import numpy as np
 
 
-    plt.rcParams['figure.figsize'] = [12, 4]
-    plt.rcParams['axes.titlesize'] =12
-    plt.rcParams['axes.labelsize'] = 12
-    plt.rcParams['legend.fontsize'] = 12
+    plt.rcParams["figure.figsize"] = [12, 4]
+    plt.rcParams["axes.titlesize"] = 12
+    plt.rcParams["axes.labelsize"] = 12
+    plt.rcParams["legend.fontsize"] = 12
 
 
     handler = colorlog.StreamHandler()
@@ -187,85 +187,81 @@ effect of the processors.
 .. code:: python
 
     chain = {
-            "channels": [
-                "det001",
-                "det002"
-            ],
-            "outputs": [
-                "t0",                           # first timestamp
-                "time",                         # time of each step
-                "edep",                         # energy deposited in each step
-                "hit_evtid",                    # id of the hit
-                "hit_global_evtid",             # global id of the hit
-                "distance_to_nplus_surface_mm", # distance to detector nplus surface
-                "activeness",                   # activeness for the step
-                "rpos_loc",                     # radius of step
-                "zpos_loc",                     # z position
-                "energy_sum",                   # true summed energy before dead layer or smearing
-                "energy_sum_deadlayer",         # energy sum after dead layers
-                "energy_sum_smeared"            # energy sum after smearing with resolution
-            ],
-            "step_group": {
-                "description": "group steps by time and evtid with 10us window",
-                "expression": "reboost.hpge.processors.group_by_time(stp,window=10)",
+        "channels": ["det001", "det002"],
+        "outputs": [
+            "t0",  # first timestamp
+            "time",  # time of each step
+            "edep",  # energy deposited in each step
+            "hit_evtid",  # id of the hit
+            "hit_global_evtid",  # global id of the hit
+            "distance_to_nplus_surface_mm",  # distance to detector nplus surface
+            "activeness",  # activeness for the step
+            "rpos_loc",  # radius of step
+            "zpos_loc",  # z position
+            "energy_sum",  # true summed energy before dead layer or smearing
+            "energy_sum_deadlayer",  # energy sum after dead layers
+            "energy_sum_smeared",  # energy sum after smearing with resolution
+        ],
+        "step_group": {
+            "description": "group steps by time and evtid with 10us window",
+            "expression": "reboost.hpge.processors.group_by_time(stp,window=10)",
+        },
+        "locals": {
+            "hpge": "reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)",
+            "phy_vol": "reboost.hpge.utils.get_phy_vol(reg=reg,pars=pars,detector=detector)",
+        },
+        "operations": {
+            "t0": {
+                "description": "first time in the hit.",
+                "mode": "eval",
+                "expression": "ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)",
             },
-            "locals": {
-                "hpge": "reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)",
-                "phy_vol": "reboost.hpge.utils.get_phy_vol(reg=reg,pars=pars,detector=detector)",
+            "hit_evtid": {
+                "description": "global evtid of the hit.",
+                "mode": "eval",
+                "expression": "ak.fill_none(ak.firsts(hit.evtid,axis=-1),np.nan)",
             },
-            "operations": {
-                "t0": {
-                    "description": "first time in the hit.",
-                    "mode": "eval",
-                    "expression": "ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)",
-                },
-                "hit_evtid": {
-                    "description": "global evtid of the hit.",
-                    "mode": "eval",
-                    "expression": "ak.fill_none(ak.firsts(hit.evtid,axis=-1),np.nan)",
-                },
-                "hit_global_evtid": {
-                    "description": "global evtid of the hit.",
-                    "mode": "eval",
-                    "expression": "ak.fill_none(ak.firsts(hit.global_evtid,axis=-1),np.nan)",
-                },
-                "distance_to_nplus_surface_mm": {
-                    "description": "distance to the nplus surface in mm",
-                    "mode": "function",
-                    "expression": "reboost.hpge.processors.distance_to_surface(hit.xloc, hit.yloc, hit.zloc, hpge, phy_vol.position.eval(), surface_type='nplus',unit='m')",
-                },
-                "activeness": {
-                    "description": "activness based on FCCD (no TL)",
-                    "mode": "eval",
-                    "expression": "ak.where(hit.distance_to_nplus_surface_mm<pars.fccd_in_mm,0,1)",
-                },
-                 "rpos_loc": {
-                    "description": "Local radius ",
-                    "mode": "eval",
-                    "expression": "((1000*hit.xloc-phy_vol.position.eval()[0])**2+(1000*hit.yloc-phy_vol.position.eval()[1])**2)**0.5"
-                },
-                 "zpos_loc": {
-                    "description": "Local z ",
-                    "mode": "eval",
-                    "expression": "1000*hit.zloc-phy_vol.position.eval()[2]"
-                },
-                "energy_sum": {
-                    "description": "truth summed energy in the hit.",
-                    "mode": "eval",
-                    "expression": "ak.sum(hit.edep,axis=-1)",
-                },
-                "energy_sum_deadlayer": {
-                    "description": "summed energy in the hit after deadlayr",
-                    "mode": "eval",
-                    "expression": "ak.sum(hit.edep*hit.activeness,axis=-1)",
-                },
-                "energy_sum_smeared": {
-                    "description": "summed energy after convolution with energy response.",
-                    "mode": "function",
-                    "expression": "reboost.hpge.processors.smear_energies(hit.energy_sum_deadlayer,reso=pars.fwhm_in_keV/2.355)"
-                }
-
-            }
+            "hit_global_evtid": {
+                "description": "global evtid of the hit.",
+                "mode": "eval",
+                "expression": "ak.fill_none(ak.firsts(hit.global_evtid,axis=-1),np.nan)",
+            },
+            "distance_to_nplus_surface_mm": {
+                "description": "distance to the nplus surface in mm",
+                "mode": "function",
+                "expression": "reboost.hpge.processors.distance_to_surface(hit.xloc, hit.yloc, hit.zloc, hpge, phy_vol.position.eval(), surface_type='nplus',unit='m')",
+            },
+            "activeness": {
+                "description": "activness based on FCCD (no TL)",
+                "mode": "eval",
+                "expression": "ak.where(hit.distance_to_nplus_surface_mm<pars.fccd_in_mm,0,1)",
+            },
+            "rpos_loc": {
+                "description": "Local radius ",
+                "mode": "eval",
+                "expression": "((1000*hit.xloc-phy_vol.position.eval()[0])**2+(1000*hit.yloc-phy_vol.position.eval()[1])**2)**0.5",
+            },
+            "zpos_loc": {
+                "description": "Local z ",
+                "mode": "eval",
+                "expression": "1000*hit.zloc-phy_vol.position.eval()[2]",
+            },
+            "energy_sum": {
+                "description": "truth summed energy in the hit.",
+                "mode": "eval",
+                "expression": "ak.sum(hit.edep,axis=-1)",
+            },
+            "energy_sum_deadlayer": {
+                "description": "summed energy in the hit after deadlayr",
+                "mode": "eval",
+                "expression": "ak.sum(hit.edep*hit.activeness,axis=-1)",
+            },
+            "energy_sum_smeared": {
+                "description": "summed energy after convolution with energy response.",
+                "mode": "function",
+                "expression": "reboost.hpge.processors.smear_energies(hit.energy_sum_deadlayer,reso=pars.fwhm_in_keV/2.355)",
+            },
+        },
     }
 
 We also create our parameters file.
@@ -274,18 +270,17 @@ We also create our parameters file.
 
     pars = {
         "det001": {
-            "meta_name":"BEGe.json",
-            "phy_vol_name":"BEGe",
-            "fwhm_in_keV":2.69,
-            "fccd_in_mm":1.42, # dead layer in mm
+            "meta_name": "BEGe.json",
+            "phy_vol_name": "BEGe",
+            "fwhm_in_keV": 2.69,
+            "fccd_in_mm": 1.42,  # dead layer in mm
         },
         "det002": {
-            "meta_name":"Coax.json",
-            "phy_vol_name":"Coax",
-            "fwhm_in_keV":4.42,
-            "fccd_in_mm":2.19,
-        }
-
+            "meta_name": "Coax.json",
+            "phy_vol_name": "Coax",
+            "fwhm_in_keV": 4.42,
+            "fccd_in_mm": 2.19,
+        },
     }
 
 Part 3) Running the processing
@@ -295,8 +290,18 @@ Now we can run our post-processing
 
 .. code:: python
 
-    hit.build_hit(file_out="output/hit/output.lh5",list_file_in="output/stp/*.lh5", out_field="hit",in_field="stp",
-                  proc_config=chain,pars=pars,gdml="cfg/geom.gdml",metadata_path="cfg/metadata/",merge_input_files=True,has_global_evtid=True)
+    hit.build_hit(
+        file_out="output/hit/output.lh5",
+        list_file_in="output/stp/*.lh5",
+        out_field="hit",
+        in_field="stp",
+        proc_config=chain,
+        pars=pars,
+        gdml="cfg/geom.gdml",
+        metadata_path="cfg/metadata/",
+        merge_input_files=True,
+        has_global_evtid=True,
+    )
 
 
 
@@ -407,8 +412,8 @@ output files.
 
 .. code:: python
 
-    data_det001 = lh5.read_as("hit/det001","output/hit/output.lh5","ak")
-    data_det002 = lh5.read_as("hit/det002","output/hit/output.lh5","ak")
+    data_det001 = lh5.read_as("hit/det001", "output/hit/output.lh5", "ak")
+    data_det002 = lh5.read_as("hit/det002", "output/hit/output.lh5", "ak")
 
 .. code:: python
 
@@ -466,12 +471,17 @@ since the probability of detection is fairly low.
 
 .. code:: python
 
-    plt.scatter(np.sort(data_det001.hit_global_evtid),np.arange(len(data_det001)),marker=".",alpha=1)
+    plt.scatter(
+        np.sort(data_det001.hit_global_evtid),
+        np.arange(len(data_det001)),
+        marker=".",
+        alpha=1,
+    )
     plt.xlabel("Decay index (evtid)")
     plt.ylabel("Hit Index")
     plt.grid()
-    plt.xlim(0,1000)
-    plt.ylim(0,100)
+    plt.xlim(0, 1000)
+    plt.ylim(0, 100)
 
 
 
@@ -491,14 +501,19 @@ multiple hits, by plotting the times we see the effect of the windowing.
 
 .. code:: python
 
-    def plot_times(times:ak.Array,xrange=None,sub_zero=False,**kwargs):
-        fig,ax = plt.subplots()
-        for idx,_time in enumerate(times):
-            if (sub_zero):
-                _time=_time-ak.min(_time)
-            h=hist.new.Reg(100,(ak.min(times)/1e9),(ak.max(times)/1e9)+1, name="Time since event start [s]").Double()
-            h.fill(_time/1e9)
-            h.plot(**kwargs,label=f"Hit {idx}")
+    def plot_times(times: ak.Array, xrange=None, sub_zero=False, **kwargs):
+        fig, ax = plt.subplots()
+        for idx, _time in enumerate(times):
+            if sub_zero:
+                _time = _time - ak.min(_time)
+            h = hist.new.Reg(
+                100,
+                (ak.min(times) / 1e9),
+                (ak.max(times) / 1e9) + 1,
+                name="Time since event start [s]",
+            ).Double()
+            h.fill(_time / 1e9)
+            h.plot(**kwargs, label=f"Hit {idx}")
             ax.legend()
             ax.set_yscale("log")
             if xrange is not None:
@@ -507,11 +522,15 @@ multiple hits, by plotting the times we see the effect of the windowing.
 
 .. code:: python
 
-    unique,counts = np.unique(data_det001.hit_global_evtid,return_counts=True)
+    unique, counts = np.unique(data_det001.hit_global_evtid, return_counts=True)
 
 .. code:: python
 
-    plot_times(data_det001[data_det001.hit_global_evtid==unique[counts>1][1]].time,histtype="step",yerr=False)
+    plot_times(
+        data_det001[data_det001.hit_global_evtid == unique[counts > 1][1]].time,
+        histtype="step",
+        yerr=False,
+    )
 
 
 
@@ -537,26 +556,39 @@ processor works as expected.
 
 .. code:: python
 
-    def plot_map(field,scale="BuPu",clab="Distance [mm]"):
+    def plot_map(field, scale="BuPu", clab="Distance [mm]"):
         fig, axs = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
-        n=100000
-        for idx, (data,config) in enumerate(zip([data_det001,data_det002],["cfg/metadata/BEGe.json","cfg/metadata/Coax.json"])):
+        n = 100000
+        for idx, (data, config) in enumerate(
+            zip(
+                [data_det001, data_det002],
+                ["cfg/metadata/BEGe.json", "cfg/metadata/Coax.json"],
+            )
+        ):
+            reg = pg4.geant4.Registry()
+            hpge = legendhpges.make_hpge(config, registry=reg)
 
-            reg=pg4.geant4.Registry()
-            hpge = legendhpges.make_hpge(config,registry=reg)
-
-            legendhpges.draw.plot_profile(hpge, split_by_type=True,axes=axs[idx])
-            r = np.random.choice([-1,1],p=[0.5,0.5],size=len(ak.flatten(data.rpos_loc)))*ak.flatten(data.rpos_loc)
+            legendhpges.draw.plot_profile(hpge, split_by_type=True, axes=axs[idx])
+            r = np.random.choice(
+                [-1, 1], p=[0.5, 0.5], size=len(ak.flatten(data.rpos_loc))
+            ) * ak.flatten(data.rpos_loc)
             z = ak.flatten(data.zpos_loc)
-            c=ak.flatten(data[field])
-            cut = c<5
+            c = ak.flatten(data[field])
+            cut = c < 5
 
-            s=axs[idx].scatter(r[cut][0:n],z[cut][0:n], c= c[cut][0:n],marker=".", label="gen. points",cmap=scale)
-            #axs[idx].axis("equal")
+            s = axs[idx].scatter(
+                r[cut][0:n],
+                z[cut][0:n],
+                c=c[cut][0:n],
+                marker=".",
+                label="gen. points",
+                cmap=scale,
+            )
+            # axs[idx].axis("equal")
 
             if idx == 0:
                 axs[idx].set_ylabel("Height [mm]")
-            c=plt.colorbar(s)
+            c = plt.colorbar(s)
             c.set_label(clab)
 
             axs[idx].set_xlabel("Radius [mm]")
@@ -572,7 +604,7 @@ processor works as expected.
 
 .. code:: python
 
-    plot_map("activeness",clab="Activeness",scale="viridis")
+    plot_map("activeness", clab="Activeness", scale="viridis")
 
 
 .. image:: images/output_28_1.png
@@ -582,11 +614,10 @@ We can also plot a histogram of the distance to the surface.
 
 .. code:: python
 
-    def plot_distances(axes,distances,xrange=None,label=" ",**kwargs):
-
-        h=hist.new.Reg(100,*xrange, name="Distance to n+ surface [mm]").Double()
+    def plot_distances(axes, distances, xrange=None, label=" ", **kwargs):
+        h = hist.new.Reg(100, *xrange, name="Distance to n+ surface [mm]").Double()
         h.fill(distances)
-        h.plot(**kwargs,label=label)
+        h.plot(**kwargs, label=label)
         ax.legend()
         ax.set_yscale("log")
         if xrange is not None:
@@ -595,9 +626,23 @@ We can also plot a histogram of the distance to the surface.
 
 .. code:: python
 
-    fig,ax = plt.subplots()
-    plot_distances(ax,ak.flatten(data_det001.distance_to_nplus_surface_mm),xrange=(0,35),label="BEGe",histtype="step",yerr=False)
-    plot_distances(ax,ak.flatten(data_det002.distance_to_nplus_surface_mm),xrange=(0,35),label="Coax",histtype="step",yerr=False)
+    fig, ax = plt.subplots()
+    plot_distances(
+        ax,
+        ak.flatten(data_det001.distance_to_nplus_surface_mm),
+        xrange=(0, 35),
+        label="BEGe",
+        histtype="step",
+        yerr=False,
+    )
+    plot_distances(
+        ax,
+        ak.flatten(data_det002.distance_to_nplus_surface_mm),
+        xrange=(0, 35),
+        label="Coax",
+        histtype="step",
+        yerr=False,
+    )
 
 
 
@@ -613,13 +658,12 @@ after weighting by the activeness.
 
 .. code:: python
 
-    def plot_energy(axes,energy,bins=400,xrange=None,label=" ",log_y=True,**kwargs):
-
-        h=hist.new.Reg(bins,*xrange, name="energy [keV]").Double()
+    def plot_energy(axes, energy, bins=400, xrange=None, label=" ", log_y=True, **kwargs):
+        h = hist.new.Reg(bins, *xrange, name="energy [keV]").Double()
         h.fill(energy)
-        h.plot(**kwargs,label=label)
+        h.plot(**kwargs, label=label)
         axes.legend()
-        if (log_y):
+        if log_y:
             axes.set_yscale("log")
         if xrange is not None:
             axes.set_xlim(*xrange)
@@ -628,8 +672,16 @@ after weighting by the activeness.
 
     fig, ax = plt.subplots()
     ax.set_title("BEGe energy spectrum")
-    plot_energy(ax,data_det001.energy_sum,yerr=False,label="True energy",xrange=(0,4000))
-    plot_energy(ax,data_det001.energy_sum_deadlayer,yerr=False,label="Energy after dead layer",xrange=(0,4000))
+    plot_energy(
+        ax, data_det001.energy_sum, yerr=False, label="True energy", xrange=(0, 4000)
+    )
+    plot_energy(
+        ax,
+        data_det001.energy_sum_deadlayer,
+        yerr=False,
+        label="Energy after dead layer",
+        xrange=(0, 4000),
+    )
 
 
 
@@ -640,8 +692,16 @@ after weighting by the activeness.
 
     fig, ax = plt.subplots()
     ax.set_title("COAX energy spectrum")
-    plot_energy(ax,data_det002.energy_sum,yerr=False,label="True energy",xrange=(0,4000))
-    plot_energy(ax,data_det002.energy_sum_deadlayer,yerr=False,label="Energy after dead layer",xrange=(0,4000))
+    plot_energy(
+        ax, data_det002.energy_sum, yerr=False, label="True energy", xrange=(0, 4000)
+    )
+    plot_energy(
+        ax,
+        data_det002.energy_sum_deadlayer,
+        yerr=False,
+        label="Energy after dead layer",
+        xrange=(0, 4000),
+    )
 
 
 
@@ -661,8 +721,26 @@ dependent resolution curve. To see the effect we have to zoom into the
 .. code:: python
 
     fig, axs = plt.subplots()
-    plot_energy(axs,data_det001.energy_sum_smeared,yerr=False,label="BEGe",xrange=(2600,2630),log_y=False,bins=150,density=True)
-    plot_energy(axs,data_det002.energy_sum_smeared,yerr=False,label="COAX",xrange=(2600,2630),log_y=False,bins=150,density=True)
+    plot_energy(
+        axs,
+        data_det001.energy_sum_smeared,
+        yerr=False,
+        label="BEGe",
+        xrange=(2600, 2630),
+        log_y=False,
+        bins=150,
+        density=True,
+    )
+    plot_energy(
+        axs,
+        data_det002.energy_sum_smeared,
+        yerr=False,
+        label="COAX",
+        xrange=(2600, 2630),
+        log_y=False,
+        bins=150,
+        density=True,
+    )
 
 
 
