@@ -270,16 +270,6 @@ def build_hit(
         - It would be better to have a cleaner way to supply metadata and detector maps.
     """
 
-    time_dict = {
-        "setup": 0,
-        "read": 0,
-        "write": 0,
-        "locals": 0,
-        "step_group": 0,
-        "proc": {},
-    }
-
-    time_start = time.time()
 
     # get the gdml file
     with utils.debug_logging(logging.CRITICAL):
@@ -293,13 +283,6 @@ def build_hit(
         start_evtid=start_evtid,
     )
 
-    time_end = time.time()
-    time_dict["setup"] += time_end - time_start
-
-    # initialise timing object
-    time_start = time.time()
-    time_end = time.time()
-
     # loop over input files
     for first_evtid, file_idx, file_in in zip(
         finfo.file_start_global_evtids, finfo.file_indices, finfo.file_list
@@ -312,8 +295,7 @@ def build_hit(
             log.debug(msg)
 
             # get local variables
-            time_start = time.time()
-
+           
             local_dict = get_locals(
                 proc_config.get("locals", {}),
                 pars_dict=pars.get(d, {}),
@@ -321,9 +303,6 @@ def build_hit(
                 detector=d,
                 reg=reg,
             )
-
-            time_end = time.time()
-            time_dict["locals"] += time_end - time_start
 
             is_first_chan = bool(ch_idx == 0)
             is_first_file = bool(file_idx == 0)
@@ -364,9 +343,6 @@ def build_hit(
                 # add global evtid
                 obj = utils.get_global_evtid(first_evtid, obj, vertices)
 
-                time_end = time.time()
-                time_dict["read"] += time_end - time_start
-
                 # check if the chunk can be skipped, does lack of sorting break this?
 
                 if not utils.get_include_chunk(
@@ -386,33 +362,19 @@ def build_hit(
                 data = Table(obj)
 
                 # group steps into hits
-                time_start = time.time()
                 grouped = step_group(data, proc_config["step_group"])
-                time_end = time.time()
-
-                time_dict["step_group"] += time_end - time_start
-
+              
                 # processors
                 for name, info in proc_config["operations"].items():
                     msg = f"... adding column {name}"
                     log.debug(msg)
 
-                    time_start = time.time()
-
                     col = eval_expression(grouped, info, local_dict=local_dict)
                     grouped.add_field(name, col)
 
-                    time_end = time.time()
-
-                    if name in time_dict["proc"]:
-                        time_dict["proc"][name] += time_end - time_start
-                    else:
-                        time_dict["proc"][name] = 0
-
                 # remove unwanted columns
                 log.debug("... removing unwanted columns")
-                time_start = time.time()
-
+             
                 existing_cols = list(grouped.keys())
                 for col in existing_cols:
                     if col not in proc_config["outputs"]:
@@ -426,23 +388,4 @@ def build_hit(
                     else file_out
                 )
                 lh5.write(grouped, f"{out_field}/{d}", file_out_tmp, wo_mode=mode)
-                time_end = time.time()
-
-                time_dict["write"] += time_end - time_start
-
-                # start timing read
-                time_start = time.time()
-
-    # print timing info
-
-    for step, time_val in time_dict.items():
-        if isinstance(time_val, dict):
-            msg = "Time for processors:"
-            log.info(msg)
-
-            for name, t in time_val.items():
-                msg = f"    {name} elapsed time: {t:.1f} s"
-                log.info(msg)
-        else:
-            msg = f"{step} elapsed time: {time_val:.1f} s"
-            log.info(msg)
+                

@@ -303,6 +303,7 @@ def test_build_hit_some_row(test_reboost_input_file):
             buffer=100000,
         )
 
+    # test reading the data in two goes gives the same result
     for n_ev, s_ev, out in zip(
         [int(1e4), int(1e5 - 1e4), int(1e5), int(1e5)],
         [0, int(1e4), 0, 1000],
