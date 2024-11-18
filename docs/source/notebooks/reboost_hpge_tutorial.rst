@@ -295,7 +295,6 @@ Now we can run our post-processing
 
 .. code:: python
 
-    %%time
     hit.build_hit(file_out="output/hit/output.lh5",list_file_in="output/stp/*.lh5", out_field="hit",in_field="stp",
                   proc_config=chain,pars=pars,gdml="cfg/geom.gdml",metadata_path="cfg/metadata/",merge_input_files=True,has_global_evtid=True)
 
