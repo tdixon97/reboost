@@ -3,12 +3,8 @@ from __future__ import annotations
 import logging
 import time
 
-import awkward as ak
-import numpy as np
 import pyg4ometry
 from lgdo import Array, ArrayOfEqualSizedArrays, Table, VectorOfVectors, lh5
-from lgdo.lh5 import LH5Iterator
-from tqdm import tqdm
 
 from . import utils
 
@@ -65,7 +61,7 @@ def get_locals(
 
         ..code-block::
 
-            {"hpge": "reboost.hpge.utils(meta_path=meta,pars=pars,detector=detector)"}
+            {"hpge": "reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)"}
 
     pars_dict
         dictionary of parameters
@@ -176,107 +172,102 @@ def build_hit(
     gdml: str | None = None,
     metadata_path: str | None = None,
     merge_input_files: bool = True,
-    has_global_evtid: bool = False,
 ) -> None:
     """
-    Read incrementally the files compute something and then write output
+       Read incrementally the files compute something and then write output
 
-    Parameters
-    ----------
-        file_out
-            output file path
-        list_file_in
-            list of input files
-        out_field
-            lh5 group name for output
-        in_field
-            lh5 group name for input
-        proc_config
-            the configuration file for the processing. Must contain the fields `channels`, `outputs`, `step_group` and operations`.
-            Optionally can also contain the `locals` field to extract other non-JSON serializable objects used by the processors.
-            For example:
+       Parameters
+       ----------
+           file_out
+               output file path
+           list_file_in
+               list of input files
+           out_field
+               lh5 group name for output
+           in_field
+               lh5 group name for input
+           proc_config
+               the configuration file for the processing. Must contain the fields `channels`, `outputs`, `step_group` and operations`.
+               Optionally can also contain the `locals` field to extract other non-JSON serializable objects used by the processors.
+               For example:
 
-            .. code-block:: json
+               .. code-block:: json
 
-               {
-                    "channels": [
-                        "det000",
-                        "det001",
-                        "det002",
-                        "det003"
-                    ],
-                    "outputs": [
-                        "t0",
-                        "truth_energy_sum",
-                        "smeared_energy_sum",
-                        "evtid"
-                    ],
-                    "step_group": {
-                        "description": "group steps by time and evtid.",
-                        "expression": "reboost.hpge.processors.group_by_time(stp,window=10)"
-                    },
-                    "locals": {
-                        "hpge": "reboost.hpge.utils(meta_path=meta,pars=pars,detector=detector)"
-                    },
-                    "operations": {
-                        "t0": {
-                            "description": "first time in the hit.",
-                            "mode": "eval",
-                            "expression": "ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)"
-                        },
-                        "truth_energy_sum": {
-                            "description": "truth summed energy in the hit.",
-                            "mode": "eval",
-                            "expression": "ak.sum(hit.edep,axis=-1)"
-                        },
-                        "smeared_energy_sum": {
-                            "description": "summed energy after convolution with energy response.",
-                            "mode": "function",
-                            "expression": "reboost.hpge.processors.smear_energies(hit.truth_energy_sum,reso=pars.reso)"
-                        }
+                  {
+                       "channels": [
+                           "det000",
+                          has_global_evtid: bool = False,
+    ],
+                       "outputs": [
+                           "t0",
+                           "truth_energy_sum",
+                           "smeared_energy_sum",
+                           "evtid"
+                       ],
+                       "step_group": {
+                           "description": "group steps by time and evtid.",
+                           "expression": "reboost.hpge.processors.group_by_time(stp,window=10)"
+                       },
+                       "locals": {
+                           "hpge": "reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)"
+                       },
+                       "operations": {
+                           "t0": {
+                               "description": "first time in the hit.",
+                               "mode": "eval",
+                               "expression": "ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)"
+                           },
+                           "truth_energy_sum": {
+                               "description": "truth summed energy in the hit.",
+                               "mode": "eval",
+                               "expression": "ak.sum(hit.edep,axis=-1)"
+                           },
+                           "smeared_energy_sum": {
+                               "description": "summed energy after convolution with energy response.",
+                               "mode": "function",
+                               "expression": "reboost.hpge.processors.smear_energies(hit.truth_energy_sum,reso=pars.reso)"
+                           }
 
-                    }
-                }
+                       }
+                   }
 
-        pars
-            a dictionary of parameters, must have a field per channel consisting of a `dict` of parameters. For example:
+           pars
+               a dictionary of parameters, must have a field per channel consisting of a `dict` of parameters. For example:
 
-            .. code-block:: json
+               .. code-block:: json
 
-                {
-                    "det000": {
-                        "reso": 1,
-                        "fccd": 0.1,
-                        "phy_vol_name":"det_phy",
-                        "meta_name": "icpc.json"
-                    }
-                }
+                   {
+                       "det000": {
+                           "reso": 1,
+                           "fccd": 0.1,
+                           "phy_vol_name":"det_phy",
+                           "meta_name": "icpc.json"
+                       }
+                   }
 
-            this should also contain the channel mappings needed by reboost. These are:
-             - `phy_vol_name`: is the name of the physical volume,
-             - `meta_name`    : is the name of the JSON file with the metadata.
+               this should also contain the channel mappings needed by reboost. These are:
+                - `phy_vol_name`: is the name of the physical volume,
+                - `meta_name`    : is the name of the JSON file with the metadata.
 
-            If these keys are not present both will be set to the remage output table name.
+               If these keys are not present both will be set to the remage output table name.
 
-        start_evtid
-            first `evtid` to read, defaults to 0.
-        n_evtid
-            number of `evtid` to read, if `None` all steps are read (the default).
-        buffer
-            length of buffer
-        gdml
-            path to the input gdml file.
-        metadata_path
-            path to the folder with the metadata (i.e. the `hardware.detectors.germanium.diodes` folder of `legend-metadata`)
-        merge_input_files
-            boolean flag to merge all input files into a single output.
-        has_global_evtid
-            boolean flag to indicate the evtid are already global
+           start_evtid
+               first `evtid` to read, defaults to 0.
+           n_evtid
+               number of `evtid` to read, if `None` all steps are read (the default).
+           buffer
+               length of buffer
+           gdml
+               path to the input gdml file.
+           metadata_path
+               path to the folder with the metadata (i.e. the `hardware.detectors.germanium.diodes` folder of `legend-metadata`)
+           merge_input_files
+               boolean flag to merge all input files into a single output.
 
-    Note
-    ----
-     - The operations can depend on the outputs of previous steps, so operations order is important.
-     - It would be better to have a cleaner way to supply metadata and detector maps.
+       Note
+       ----
+        - The operations can depend on the outputs of previous steps, so operations order is important.
+        - It would be better to have a cleaner way to supply metadata and detector maps.
     """
 
     time_dict = {
@@ -291,12 +282,11 @@ def build_hit(
     time_start = time.time()
 
     # get the gdml file
-
     with utils.debug_logging(logging.CRITICAL):
         reg = pyg4ometry.gdml.Reader(gdml).getRegistry() if gdml is not None else None
 
     # get info on the files to read in a nice named tuple
-    file_info = utils.get_selected_files(
+    finfo = utils.get_selected_files(
         table=in_field,
         file_list=list_file_in,
         n_evtid=n_evtid,
@@ -304,7 +294,6 @@ def build_hit(
     )
 
     time_end = time.time()
-
     time_dict["setup"] += time_end - time_start
 
     # initialise timing object
@@ -312,9 +301,12 @@ def build_hit(
     time_end = time.time()
 
     # loop over input files
-    for first_evtid, file_idx, file_in in tqdm(
-        zip(file_info.file_start_global_evtids, file_info.file_indices, file_info.file_list)
+    for first_evtid, file_idx, file_in in zip(
+        finfo.file_start_global_evtids, finfo.file_indices, finfo.file_list
     ):
+        # get the evtids in the file: may use a lot of memory
+        vertices = lh5.read_as(f"{in_field}/vertices/evtid", file_in, "np")
+
         for ch_idx, d in enumerate(proc_config["channels"]):
             msg = f"...running hit tier for {d}"
             log.debug(msg)
@@ -322,13 +314,15 @@ def build_hit(
             # get local variables
             time_start = time.time()
 
-            local_info = proc_config.get("locals", {})
             local_dict = get_locals(
-                local_info, pars_dict=pars.get(d, {}), meta_path=metadata_path, detector=d, reg=reg
+                proc_config.get("locals", {}),
+                pars_dict=pars.get(d, {}),
+                meta_path=metadata_path,
+                detector=d,
+                reg=reg,
             )
 
             time_end = time.time()
-
             time_dict["locals"] += time_end - time_start
 
             is_first_chan = bool(ch_idx == 0)
@@ -344,29 +338,23 @@ def build_hit(
             )
             log.debug(msg)
 
-            entries = LH5Iterator(
-                file_in, f"{in_field}/{d}", buffer_len=buffer
-            )._get_file_cumentries(0)
-
-            # number of blocks is ceil of entries/buffer,
-            # shift by 1 since idx starts at 0
-
-            max_idx = int(np.ceil(entries / buffer)) - 1
-            remainder = entries % buffer
+            # number of iterations (used to handle last iteration)
+            it, entries, max_idx = utils.get_iterator(
+                file=file_in, field=in_field, detector=d, buffer=buffer
+            )
             buffer_rows = None
 
-            for idx, (lh5_obj, _, _) in enumerate(
-                LH5Iterator(file_in, f"{in_field}/{d}", buffer_len=buffer)
-            ):
+            # iterate over the LH5 file
+            for idx, (lh5_obj, _, n_rows) in enumerate(it):
                 msg = f"... processed {idx} chunks out of {max_idx}"
-                log.debug(msg)
+                log.info(msg)
 
                 # convert to awkward
                 ak_obj = lh5_obj.view_as("ak")
 
                 # fix for a bug in lh5 iterator
-                if idx == max_idx & remainder != 0:
-                    ak_obj = ak_obj[:remainder]
+                if idx == max_idx:
+                    ak_obj = ak_obj[:n_rows]
 
                 # handle the buffers
                 obj, buffer_rows, mode = utils._merge_arrays(
@@ -374,10 +362,7 @@ def build_hit(
                 )
 
                 # add global evtid
-                if has_global_evtid is False:
-                    obj = ak.with_field(obj, first_evtid + obj.evtid, "global_evtid")
-                else:
-                    obj = ak.with_field(obj, obj.evtid, "global_evtid")
+                obj = utils.get_global_evtid(first_evtid, obj, vertices)
 
                 time_end = time.time()
                 time_dict["read"] += time_end - time_start
@@ -386,15 +371,15 @@ def build_hit(
 
                 if not utils.get_include_chunk(
                     obj.global_evtid,
-                    start_glob_evtid=file_info.first_global_evtid,
-                    end_glob_evtid=file_info.last_global_evtid,
+                    start_glob_evtid=finfo.first_global_evtid,
+                    end_glob_evtid=finfo.last_global_evtid,
                 ):
                     continue
 
                 # select just the correct global evtid objects
                 obj = obj[
-                    (obj.global_evtid >= file_info.first_global_evtid)
-                    & (obj.global_evtid <= file_info.last_global_evtid)
+                    (obj.global_evtid >= finfo.first_global_evtid)
+                    & (obj.global_evtid <= finfo.last_global_evtid)
                 ]
 
                 # convert back to a table, should work

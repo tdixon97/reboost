@@ -8,7 +8,7 @@ from lgdo import Array, Table, VectorOfVectors
 from numpy.typing import ArrayLike
 
 
-def sort_data(obj: ak.Array) -> ak.Array:
+def sort_data(obj: ak.Array, *, time_name: str = "time", evtid_name: str = "evtid") -> ak.Array:
     """Sort the data by evtid then time.
 
     Parameters
@@ -20,7 +20,7 @@ def sort_data(obj: ak.Array) -> ak.Array:
     -------
     sorted awkward array
     """
-    indices = np.lexsort((obj.time, obj.evtid))
+    indices = np.lexsort((obj[time_name], obj[evtid_name]))
     return obj[indices]
 
 
@@ -65,7 +65,9 @@ def group_by_evtid(data: Table) -> Table:
     return out_tbl
 
 
-def group_by_time(data: Table, window: float = 10) -> lgdo.Table:
+def group_by_time(
+    data: Table | ak.Array, window: float = 10, time_name: str = "time", evtid_name: str = "evtid"
+) -> lgdo.Table:
     """Grouping of steps by `evtid` and `time`.
 
     Takes the input `stp` :class:`LGOD.Table` from remage and defines groupings of steps (i.e the
@@ -79,7 +81,13 @@ def group_by_time(data: Table, window: float = 10) -> lgdo.Table:
     Parameters
     ----------
     data
-        LGDO Table which must contain the `evtid`, `time` field.
+        LGDO Table or ak.Array which must contain the time_name and evtid_name fields
+    window
+        time window in us used to search for coincident hits
+    time_name
+        name of the timing field
+    evtid_name
+        name of the evtid field
 
     Returns
     -------
@@ -90,12 +98,12 @@ def group_by_time(data: Table, window: float = 10) -> lgdo.Table:
     The input table must be sorted (first by `evtid` then `time`).
     """
 
-    obj = data.view_as("ak")
-    obj = sort_data(obj)
+    obj = data.view_as("ak") if isinstance(data, Table) else data
+    obj = sort_data(obj, time_name=time_name, evtid_name=evtid_name)
 
     # get difference
-    time_diffs = np.diff(obj.time)
-    index_diffs = np.diff(obj.evtid)
+    time_diffs = np.diff(obj[time_name])
+    index_diffs = np.diff(obj[evtid_name])
 
     # index of thhe last element in each run
     time_change = (time_diffs > window * 1000) & (index_diffs == 0)
@@ -105,7 +113,7 @@ def group_by_time(data: Table, window: float = 10) -> lgdo.Table:
     cumulative_length = np.array(np.where(time_change | index_change))[0] + 1
 
     # add the las grouping
-    cumulative_length = np.append(cumulative_length, len(obj.time))
+    cumulative_length = np.append(cumulative_length, len(obj[time_name]))
 
     # build output table
     out_tbl = Table(size=len(cumulative_length))

@@ -205,8 +205,9 @@ def test_build_hit(test_reboost_input_file):
         },
     }
 
+    # build hit for file 1 and 2 separately and then also merging them
     for output_file, input_file in zip(
-        ["out.lh5", "out_rem.lh5", "out_merge.lh5"], ["file1.lh5", "file2.lh5", "file*.lh5"]
+        ["out_1.lh5", "out_2.lh5", "out_merge.lh5"], ["file1.lh5", "file2.lh5", "file*.lh5"]
     ):
         hit.build_hit(
             str(test_reboost_input_file / output_file),
@@ -218,6 +219,16 @@ def test_build_hit(test_reboost_input_file):
             buffer=100000,
         )
 
+    tab_1 = lh5.read("hit/det001", str(test_reboost_input_file / "out_1.lh5")).view_as("ak")
+    tab_2 = lh5.read("hit/det001", str(test_reboost_input_file / "out_2.lh5")).view_as("ak")
+    tab_merge = lh5.read("hit/det001", str(test_reboost_input_file / "out_merge.lh5")).view_as("ak")
+
+    # check lengths
+    assert len(ak.flatten(tab_1.evtid, axis=-1)) == int(1e6)
+    assert len(ak.flatten(tab_2.evtid, axis=-1)) == 30040
+    assert len(ak.flatten(tab_merge.evtid, axis=-1)) == 30040 + int(1e6)
+
+    # one call but write both files
     hit.build_hit(
         str(test_reboost_input_file / "out.lh5"),
         [str(test_reboost_input_file / "file*.lh5")],
@@ -229,25 +240,30 @@ def test_build_hit(test_reboost_input_file):
         merge_input_files=False,
     )
 
-    # read back in the data and check this works (no errors)
+    tab_1 = lh5.read("hit/det001", str(test_reboost_input_file / "out_0.lh5")).view_as("ak")
+    tab_2 = lh5.read("hit/det001", str(test_reboost_input_file / "out_1.lh5")).view_as("ak")
 
-    tab = lh5.read("hit/det001", str(test_reboost_input_file / "out.lh5")).view_as("ak")
-    tab_merge = lh5.read("hit/det001", str(test_reboost_input_file / "out_merge.lh5")).view_as("ak")
-    tab_0 = lh5.read("hit/det001", str(test_reboost_input_file / "out_0.lh5")).view_as("ak")
-    tab_1 = lh5.read("hit/det001", str(test_reboost_input_file / "out_1.lh5")).view_as("ak")
+    # check lengths
+    assert len(ak.flatten(tab_1.evtid, axis=-1)) == int(1e6)
+    assert len(ak.flatten(tab_2.evtid, axis=-1)) == 30040
 
-    # check size of the output
-    assert len(ak.flatten(tab.evtid, axis=-1)) == int(1e6)
-    assert len(ak.flatten(tab_merge.evtid, axis=-1)) == int(1e6 + 30040)
-    assert len(ak.flatten(tab_0.evtid, axis=-1)) == int(1e6)
-    assert len(ak.flatten(tab_1.evtid, axis=-1)) == 30040
+    # test with a smaller buffer
+    hit.build_hit(
+        str(test_reboost_input_file / "out_small_buffer.lh5"),
+        [str(test_reboost_input_file / "file*.lh5")],
+        in_field="hit",
+        out_field="hit",
+        proc_config=proc_config,
+        pars={},
+        buffer=10000,
+    )
 
-    # check on evtid
+    tab_small = lh5.read(
+        "hit/det001", str(test_reboost_input_file / "out_small_buffer.lh5")
+    ).view_as("ak")
 
-    assert ak.all(ak.all(tab.evtid == ak.firsts(tab.evtid, axis=-1), axis=1))
-    assert ak.all(ak.all(tab_merge.evtid == ak.firsts(tab_merge.evtid, axis=-1), axis=1))
-    assert ak.all(ak.all(tab_0.evtid == ak.firsts(tab_0.evtid, axis=-1), axis=1))
-    assert ak.all(ak.all(tab_1.evtid == ak.firsts(tab_1.evtid, axis=-1), axis=1))
+    # buffer does not affect results
+    assert ak.all(ak.flatten(tab_merge.evtid) == ak.flatten(tab_small.evtid))
 
 
 def test_build_hit_some_row(test_reboost_input_file):
@@ -362,6 +378,7 @@ def test_build_hit_with_locals(test_reboost_input_file, test_data_configs):
     }
     gdml_path = configs / pathlib.Path("geom.gdml")
     meta_path = test_data_configs
+
     # complete check on the processing chain including parameters / local variables
 
     hit.build_hit(

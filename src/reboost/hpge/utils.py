@@ -16,6 +16,7 @@ import numpy as np
 import pyg4ometry
 import yaml
 from lgdo import lh5
+from lgdo.lh5 import LH5Iterator
 from numpy.typing import ArrayLike, NDArray
 
 log = logging.getLogger(__name__)
@@ -185,6 +186,37 @@ def get_files_to_read(cum_n_sim: ArrayLike, start_glob_evtid: int, end_glob_evti
     return np.array(file_indices)
 
 
+def get_global_evtid(first_evtid: int, obj: ak.Array, vertices: ArrayLike) -> ak.Array:
+    """Adds a global evtid field to the array.
+
+    The global evtid is the index of the decay in the order the files are read in. This is obtained
+    from the first_evtid, defined as the number of decays in the previous files, plus the row of the
+    vertices array corresponding to this evtid. In this way we obtain an index both sorted and unique
+    over all the input files, this enables easy selection of some chunks.
+
+    Parameters
+    ----------
+    first_evtid
+        number of decays in the previous files
+    obj
+        awkward array of the input data
+    vertices
+        array of the vertex evtids
+
+    Returns
+    -------
+    the obj with the global_evtid field added
+    """
+    vertices = np.array(vertices)
+    indices = np.searchsorted(vertices, np.array(obj.evtid))
+
+    if np.any(vertices[indices] != np.array(obj.evtid)):
+        msg = "Some of the evtids in the obj do not correspond to rows in the input"
+        raise ValueError(msg)
+
+    return ak.with_field(obj, first_evtid + indices, "global_evtid")
+
+
 def get_include_chunk(
     global_evtid: ak.Array,
     start_glob_evtid: int,
@@ -334,7 +366,10 @@ def _merge_arrays(
     rows = ak.num(ak_obj, axis=-1)
     end_rows = counts[-1]
 
-    if idx == 0:
+    if max_idx == 0:
+        mode = "of" if (delete_input) else "append"
+        obj = ak_obj
+    elif idx == 0:
         mode = "of" if (delete_input) else "append"
         obj = ak_obj[0 : rows - end_rows]
         buffer_rows = copy.deepcopy(ak_obj[rows - end_rows :])
@@ -348,6 +383,19 @@ def _merge_arrays(
         buffer_rows = None
 
     return obj, buffer_rows, mode
+
+
+def get_iterator(file: str, field: str, detector: str, buffer: int):
+    """Get information on the iterator (number of index and entries)."""
+
+    it = LH5Iterator(file, f"{field}/{detector}", buffer_len=buffer)
+    entries = it._get_file_cumentries(0)
+
+    # number of blocks is ceil of entries/buffer,
+    # shift by 1 since idx starts at 0
+    max_idx = int(np.ceil(entries / buffer)) - 1
+
+    return it, entries, max_idx
 
 
 __file_extensions__ = {"json": [".json"], "yaml": [".yaml", ".yml"]}

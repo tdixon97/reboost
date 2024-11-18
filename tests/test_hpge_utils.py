@@ -17,6 +17,7 @@ from reboost.hpge.utils import (
     dict2tuple,
     get_file_list,
     get_files_to_read,
+    get_global_evtid,
     get_global_evtid_range,
     get_hpge,
     get_include_chunk,
@@ -216,6 +217,23 @@ def test_global_evtid_range():
     # test that we get the right ranges
     assert get_global_evtid_range(200, 5, 2000) == (200, 204)
     assert get_global_evtid_range(200, None, 2000) == (200, 1999)
+
+
+def test_get_global_evtid():
+    # single file
+    first_evtid = 0
+    vertices = [0, 1, 2, 3, 4, 5]
+    input_evtid = [2, 3, 4, 5, 5, 5]
+    obj = ak.Array({"evtid": input_evtid})
+    assert np.all(get_global_evtid(first_evtid, obj, vertices).global_evtid == input_evtid)
+
+    # now if we only have some vertices
+    vertices = [0, 2, 4, 6, 8, 10]
+    input_evtid = [4, 6, 8, 10, 10, 10]
+    obj = ak.Array({"evtid": input_evtid})
+    assert np.all(
+        get_global_evtid(first_evtid, obj, vertices).global_evtid == np.array(input_evtid) / 2.0
+    )
 
 
 def test_get_files_to_read():
