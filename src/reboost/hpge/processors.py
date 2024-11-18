@@ -66,7 +66,11 @@ def group_by_evtid(data: Table) -> Table:
 
 
 def group_by_time(
-    data: Table | ak.Array, window: float = 10, time_name: str = "time", evtid_name: str = "evtid"
+    data: Table | ak.Array,
+    window: float = 10,
+    time_name: str = "time",
+    evtid_name: str = "evtid",
+    fields: list | None = None,
 ) -> lgdo.Table:
     """Grouping of steps by `evtid` and `time`.
 
@@ -88,6 +92,8 @@ def group_by_time(
         name of the timing field
     evtid_name
         name of the evtid field
+    fields
+        names of fields to include in the output table, if None includes all
 
     Returns
     -------
@@ -118,6 +124,7 @@ def group_by_time(
     # build output table
     out_tbl = Table(size=len(cumulative_length))
 
+    fields = obj.fields if fields is None else fields
     for f in obj.fields:
         out_tbl.add_field(
             f, VectorOfVectors(cumulative_length=cumulative_length, flattened_data=obj[f])

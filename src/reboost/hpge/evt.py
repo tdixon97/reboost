@@ -57,5 +57,9 @@ def build_tcm(
     obj_tot = ak.concatenate(sort_objs)
 
     return processors.group_by_time(
-        obj_tot, time_name=time_name, evtid_name=idx_name, window=window
+        obj_tot,
+        time_name=time_name,
+        evtid_name=idx_name,
+        window=window,
+        fields=["rawid", "hit_idx"],
     )

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import time
 
 import pyg4ometry
 from lgdo import Array, ArrayOfEqualSizedArrays, Table, VectorOfVectors, lh5
@@ -270,7 +269,6 @@ def build_hit(
         - It would be better to have a cleaner way to supply metadata and detector maps.
     """
 
-
     # get the gdml file
     with utils.debug_logging(logging.CRITICAL):
         reg = pyg4ometry.gdml.Reader(gdml).getRegistry() if gdml is not None else None
@@ -295,7 +293,7 @@ def build_hit(
             log.debug(msg)
 
             # get local variables
-           
+
             local_dict = get_locals(
                 proc_config.get("locals", {}),
                 pars_dict=pars.get(d, {}),
@@ -363,7 +361,7 @@ def build_hit(
 
                 # group steps into hits
                 grouped = step_group(data, proc_config["step_group"])
-              
+
                 # processors
                 for name, info in proc_config["operations"].items():
                     msg = f"... adding column {name}"
@@ -374,7 +372,7 @@ def build_hit(
 
                 # remove unwanted columns
                 log.debug("... removing unwanted columns")
-             
+
                 existing_cols = list(grouped.keys())
                 for col in existing_cols:
                     if col not in proc_config["outputs"]:
@@ -388,4 +386,3 @@ def build_hit(
                     else file_out
                 )
                 lh5.write(grouped, f"{out_field}/{d}", file_out_tmp, wo_mode=mode)
-                
