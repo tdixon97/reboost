@@ -195,8 +195,8 @@ def build_hit(
                   {
                        "channels": [
                            "det000",
-                          has_global_evtid: bool = False,
-    ],
+                           "det001"
+                        ],
                        "outputs": [
                            "t0",
                            "truth_energy_sum",
