@@ -8,7 +8,7 @@ from lgdo import Array, Table, VectorOfVectors
 from numpy.typing import ArrayLike
 
 
-def sort_data(obj: ak.Array, *, time_name: str = "time", evtid_name: str = "evtid") -> ak.Array:
+def sort_data(obj: ak.Array, *, time_name: str = "time", evtid_name: str = "_evtid") -> ak.Array:
     """Sort the data by evtid then time.
 
     Parameters
@@ -52,7 +52,7 @@ def group_by_evtid(data: Table) -> Table:
     obj_ak = sort_data(obj_ak)
 
     # extract cumulative lengths
-    counts = ak.run_lengths(obj_ak.evtid)
+    counts = ak.run_lengths(obj_ak._evtid)
     cumulative_length = np.cumsum(counts)
 
     # build output table
@@ -69,7 +69,7 @@ def group_by_time(
     data: Table | ak.Array,
     window: float = 10,
     time_name: str = "time",
-    evtid_name: str = "evtid",
+    evtid_name: str = "_evtid",
     fields: list | None = None,
 ) -> lgdo.Table:
     """Grouping of steps by `evtid` and `time`.
@@ -125,7 +125,7 @@ def group_by_time(
     out_tbl = Table(size=len(cumulative_length))
 
     fields = obj.fields if fields is None else fields
-    for f in obj.fields:
+    for f in fields:
         out_tbl.add_field(
             f, VectorOfVectors(cumulative_length=cumulative_length, flattened_data=obj[f])
         )

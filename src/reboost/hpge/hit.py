@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+import awkward as ak
 import pyg4ometry
 from lgdo import Array, ArrayOfEqualSizedArrays, Table, VectorOfVectors, lh5
 
@@ -173,100 +174,100 @@ def build_hit(
     merge_input_files: bool = True,
 ) -> None:
     """
-       Read incrementally the files compute something and then write output
+    Read incrementally the files compute something and then write output
 
-       Parameters
-       ----------
-           file_out
-               output file path
-           list_file_in
-               list of input files
-           out_field
-               lh5 group name for output
-           in_field
-               lh5 group name for input
-           proc_config
-               the configuration file for the processing. Must contain the fields `channels`, `outputs`, `step_group` and operations`.
-               Optionally can also contain the `locals` field to extract other non-JSON serializable objects used by the processors.
-               For example:
+    Parameters
+    ----------
+        file_out
+            output file path
+        list_file_in
+            list of input files
+        out_field
+            lh5 group name for output
+        in_field
+            lh5 group name for input
+        proc_config
+            the configuration file for the processing. Must contain the fields `channels`, `outputs`, `step_group` and operations`.
+            Optionally can also contain the `locals` field to extract other non-JSON serializable objects used by the processors.
+            For example:
 
-               .. code-block:: json
+            .. code-block:: json
 
-                  {
-                       "channels": [
-                           "det000",
-                           "det001"
-                        ],
-                       "outputs": [
-                           "t0",
-                           "truth_energy_sum",
-                           "smeared_energy_sum",
-                           "evtid"
-                       ],
-                       "step_group": {
-                           "description": "group steps by time and evtid.",
-                           "expression": "reboost.hpge.processors.group_by_time(stp,window=10)"
-                       },
-                       "locals": {
-                           "hpge": "reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)"
-                       },
-                       "operations": {
-                           "t0": {
-                               "description": "first time in the hit.",
-                               "mode": "eval",
-                               "expression": "ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)"
-                           },
-                           "truth_energy_sum": {
-                               "description": "truth summed energy in the hit.",
-                               "mode": "eval",
-                               "expression": "ak.sum(hit.edep,axis=-1)"
-                           },
-                           "smeared_energy_sum": {
-                               "description": "summed energy after convolution with energy response.",
-                               "mode": "function",
-                               "expression": "reboost.hpge.processors.smear_energies(hit.truth_energy_sum,reso=pars.reso)"
-                           }
+               {
+                    "channels": [
+                        "det000",
+                        "det001"
+                     ],
+                    "outputs": [
+                        "t0",
+                        "truth_energy_sum",
+                        "smeared_energy_sum",
+                        "evtid"
+                    ],
+                    "step_group": {
+                        "description": "group steps by time and evtid.",
+                        "expression": "reboost.hpge.processors.group_by_time(stp,window=10)"
+                    },
+                    "locals": {
+                        "hpge": "reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)"
+                    },
+                    "operations": {
+                        "t0": {
+                            "description": "first time in the hit.",
+                            "mode": "eval",
+                            "expression": "ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)"
+                        },
+                        "truth_energy_sum": {
+                            "description": "truth summed energy in the hit.",
+                            "mode": "eval",
+                            "expression": "ak.sum(hit.edep,axis=-1)"
+                        },
+                        "smeared_energy_sum": {
+                            "description": "summed energy after convolution with energy response.",
+                            "mode": "function",
+                            "expression": "reboost.hpge.processors.smear_energies(hit.truth_energy_sum,reso=pars.reso)"
+                        }
 
-                       }
-                   }
+                    }
+                }
 
-           pars
-               a dictionary of parameters, must have a field per channel consisting of a `dict` of parameters. For example:
+        pars
+            a dictionary of parameters, must have a field per channel consisting of a `dict` of parameters. For example:
 
-               .. code-block:: json
+            .. code-block:: json
 
-                   {
-                       "det000": {
-                           "reso": 1,
-                           "fccd": 0.1,
-                           "phy_vol_name":"det_phy",
-                           "meta_name": "icpc.json"
-                       }
-                   }
+                {
+                    "det000": {
+                        "reso": 1,
+                        "fccd": 0.1,
+                        "phy_vol_name":"det_phy",
+                        "meta_name": "icpc.json"
+                    }
+                }
 
-               this should also contain the channel mappings needed by reboost. These are:
-                - `phy_vol_name`: is the name of the physical volume,
-                - `meta_name`    : is the name of the JSON file with the metadata.
+            this should also contain the channel mappings needed by reboost. These are:
+             - `phy_vol_name`: is the name of the physical volume,
+             - `meta_name`    : is the name of the JSON file with the metadata.
 
-               If these keys are not present both will be set to the remage output table name.
+            If these keys are not present both will be set to the remage output table name.
 
-           start_evtid
-               first `evtid` to read, defaults to 0.
-           n_evtid
-               number of `evtid` to read, if `None` all steps are read (the default).
-           buffer
-               length of buffer
-           gdml
-               path to the input gdml file.
-           metadata_path
-               path to the folder with the metadata (i.e. the `hardware.detectors.germanium.diodes` folder of `legend-metadata`)
-           merge_input_files
-               boolean flag to merge all input files into a single output.
+        start_evtid
+            first `evtid` to read, defaults to 0.
+        n_evtid
+            number of `evtid` to read, if `None` all steps are read (the default).
+        buffer
+            length of buffer
+        gdml
+            path to the input gdml file.
+        metadata_path
+            path to the folder with the metadata (i.e. the `hardware.detectors.germanium.diodes` folder of `legend-metadata`)
+        merge_input_files
+            boolean flag to merge all input files into a single output.
 
-       Note
-       ----
-        - The operations can depend on the outputs of previous steps, so operations order is important.
-        - It would be better to have a cleaner way to supply metadata and detector maps.
+    Note
+    ----
+     - The operations can depend on the outputs of previous steps, so operations order is important.
+     - It would be better to have a cleaner way to supply metadata and detector maps.
     """
 
     # get the gdml file
@@ -289,8 +290,8 @@ def build_hit(
         vertices = lh5.read_as(f"{in_field}/vertices/evtid", file_in, "np")
 
         for ch_idx, d in enumerate(proc_config["channels"]):
-            msg = f"...running hit tier for {d}"
-            log.debug(msg)
+            msg = f"...running hit tier for {file_in} and {d}"
+            log.info(msg)
 
             # get local variables
 
@@ -317,14 +318,14 @@ def build_hit(
 
             # number of iterations (used to handle last iteration)
             it, entries, max_idx = utils.get_iterator(
-                file=file_in, field=in_field, detector=d, buffer=buffer
+                file=file_in, lh5_table=f"{in_field}/{d}", buffer=buffer
             )
             buffer_rows = None
 
             # iterate over the LH5 file
             for idx, (lh5_obj, _, n_rows) in enumerate(it):
                 msg = f"... processed {idx} chunks out of {max_idx}"
-                log.info(msg)
+                log.debug(msg)
 
                 # convert to awkward
                 ak_obj = lh5_obj.view_as("ak")
@@ -344,7 +345,7 @@ def build_hit(
                 # check if the chunk can be skipped, does lack of sorting break this?
 
                 if not utils.get_include_chunk(
-                    obj.global_evtid,
+                    obj._global_evtid,
                     start_glob_evtid=finfo.first_global_evtid,
                     end_glob_evtid=finfo.last_global_evtid,
                 ):
@@ -352,9 +353,17 @@ def build_hit(
 
                 # select just the correct global evtid objects
                 obj = obj[
-                    (obj.global_evtid >= finfo.first_global_evtid)
-                    & (obj.global_evtid <= finfo.last_global_evtid)
+                    (obj._global_evtid >= finfo.first_global_evtid)
+                    & (obj._global_evtid <= finfo.last_global_evtid)
                 ]
+
+                # rename the fields
+                obj = ak.with_field(
+                    obj,
+                    obj["evtid"],
+                    "_evtid",
+                )
+                obj = ak.without_field(obj, "evtid")
 
                 # convert back to a table, should work
                 data = Table(obj)
@@ -385,4 +394,4 @@ def build_hit(
                     if (merge_input_files is False)
                     else file_out
                 )
-                lh5.write(grouped, f"{out_field}/{d}", file_out_tmp, wo_mode=mode)
+                lh5.write(grouped, f"{d}/{out_field}", file_out_tmp, wo_mode=mode)

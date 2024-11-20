@@ -21,6 +21,7 @@ from reboost.hpge.utils import (
     get_global_evtid_range,
     get_hpge,
     get_include_chunk,
+    get_num_evtid_hit_tier,
     get_num_simulated,
     get_phy_vol,
     load_dict,
@@ -209,6 +210,33 @@ def test_get_n_sim(test_lh5_files):
     assert n123 == [14002, 25156, int(1e7)]
 
 
+@pytest.fixture
+def test_hit_file(tmp_path):
+    n1 = 10
+    tab_ch1 = Table(size=n1)
+    tab_ch1.add_field("global_evtid", Array(np.array([1, 4, 5, 6, 7, 9, 11, 12, 15, 17])))
+    lh5.write(tab_ch1, "det001/hit", tmp_path / "file1.lh5", wo_mode="of")
+
+    n2 = 5
+    tab_ch2 = Table(size=n2)
+    tab_ch2.add_field("global_evtid", Array(np.array([7, 8, 12, 13, 14])))
+    lh5.write(tab_ch2, "det002/hit", tmp_path / "file1.lh5", wo_mode="append")
+    return tmp_path / "file1.lh5"
+
+
+def test_num_evtid_hit_tier(test_hit_file):
+    # both channels
+    assert get_num_evtid_hit_tier(str(test_hit_file), ["det001", "det002"], "global_evtid") == 17
+
+    # one at a time
+    assert get_num_evtid_hit_tier(str(test_hit_file), ["det001"], "global_evtid") == 17
+    assert get_num_evtid_hit_tier(str(test_hit_file), ["det002"], "global_evtid") == 14
+
+
+def test_read_some_index(test_hit_file):
+    pass
+
+
 def test_global_evtid_range():
     # raise exception if n_evtid is too large
     with pytest.raises(ValueError):
@@ -225,14 +253,14 @@ def test_get_global_evtid():
     vertices = [0, 1, 2, 3, 4, 5]
     input_evtid = [2, 3, 4, 5, 5, 5]
     obj = ak.Array({"evtid": input_evtid})
-    assert np.all(get_global_evtid(first_evtid, obj, vertices).global_evtid == input_evtid)
+    assert np.all(get_global_evtid(first_evtid, obj, vertices)._global_evtid == input_evtid)
 
     # now if we only have some vertices
     vertices = [0, 2, 4, 6, 8, 10]
     input_evtid = [4, 6, 8, 10, 10, 10]
     obj = ak.Array({"evtid": input_evtid})
     assert np.all(
-        get_global_evtid(first_evtid, obj, vertices).global_evtid == np.array(input_evtid) / 2.0
+        get_global_evtid(first_evtid, obj, vertices)._global_evtid == np.array(input_evtid) / 2.0
     )
 
 

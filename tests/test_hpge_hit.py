@@ -131,23 +131,23 @@ def test_eval_with_hpge_and_phy_vol(test_data_configs):
 def test_reboost_input_file(tmp_path):
     # make it large enough to be multiple groups
     rng = np.random.default_rng()
-    evtid_1 = np.sort(rng.integers(int(1e5), size=(int(1e6))))
-    time_1 = rng.uniform(low=0, high=1, size=(int(1e6)))
-    edep_1 = rng.uniform(low=0, high=1000, size=(int(1e6)))
-    pos_x_1 = rng.uniform(low=-50, high=50, size=(int(1e6)))
-    pos_y_1 = rng.uniform(low=-50, high=50, size=(int(1e6)))
-    pos_z_1 = rng.uniform(low=-50, high=50, size=(int(1e6)))
+    evtid_1 = np.sort(rng.integers(int(1e4), size=(int(1e5))))
+    time_1 = rng.uniform(low=0, high=1, size=(int(1e5)))
+    edep_1 = rng.uniform(low=0, high=1000, size=(int(1e5)))
+    pos_x_1 = rng.uniform(low=-50, high=50, size=(int(1e5)))
+    pos_y_1 = rng.uniform(low=-50, high=50, size=(int(1e5)))
+    pos_z_1 = rng.uniform(low=-50, high=50, size=(int(1e5)))
 
     # make it not divide by the buffer len
-    evtid_2 = np.sort(rng.integers(int(1e5), size=(30040)))
-    time_2 = rng.uniform(low=0, high=1, size=(30040))
-    edep_2 = rng.uniform(low=0, high=1000, size=(30040))
-    pos_x_2 = rng.uniform(low=-50, high=50, size=(30040))
-    pos_y_2 = rng.uniform(low=-50, high=50, size=(30040))
-    pos_z_2 = rng.uniform(low=-50, high=50, size=(30040))
+    evtid_2 = np.sort(rng.integers(int(1e4), size=(3004)))
+    time_2 = rng.uniform(low=0, high=1, size=(3004))
+    edep_2 = rng.uniform(low=0, high=1000, size=(3004))
+    pos_x_2 = rng.uniform(low=-50, high=50, size=(3004))
+    pos_y_2 = rng.uniform(low=-50, high=50, size=(3004))
+    pos_z_2 = rng.uniform(low=-50, high=50, size=(3004))
 
-    vertices_1 = ak.Array({"evtid": np.arange(int(1e5))})
-    vertices_2 = ak.Array({"evtid": np.arange(int(1e5))})
+    vertices_1 = ak.Array({"evtid": np.arange(int(1e4))})
+    vertices_2 = ak.Array({"evtid": np.arange(int(1e4))})
 
     arr_1 = ak.Array(
         {
@@ -186,7 +186,7 @@ def test_build_hit(test_reboost_input_file):
         "channels": [
             "det001",
         ],
-        "outputs": ["t0", "evtid"],
+        "outputs": ["t0", "_evtid"],
         "step_group": {
             "description": "group steps by time and evtid.",
             "expression": "reboost.hpge.processors.group_by_time(stp,window=10)",
@@ -216,17 +216,17 @@ def test_build_hit(test_reboost_input_file):
             out_field="hit",
             proc_config=proc_config,
             pars={},
-            buffer=100000,
+            buffer=10000,
         )
 
-    tab_1 = lh5.read("hit/det001", str(test_reboost_input_file / "out_1.lh5")).view_as("ak")
-    tab_2 = lh5.read("hit/det001", str(test_reboost_input_file / "out_2.lh5")).view_as("ak")
-    tab_merge = lh5.read("hit/det001", str(test_reboost_input_file / "out_merge.lh5")).view_as("ak")
+    tab_1 = lh5.read("det001/hit", str(test_reboost_input_file / "out_1.lh5")).view_as("ak")
+    tab_2 = lh5.read("det001/hit", str(test_reboost_input_file / "out_2.lh5")).view_as("ak")
+    tab_merge = lh5.read("det001/hit", str(test_reboost_input_file / "out_merge.lh5")).view_as("ak")
 
     # check lengths
-    assert len(ak.flatten(tab_1.evtid, axis=-1)) == int(1e6)
-    assert len(ak.flatten(tab_2.evtid, axis=-1)) == 30040
-    assert len(ak.flatten(tab_merge.evtid, axis=-1)) == 30040 + int(1e6)
+    assert len(ak.flatten(tab_1._evtid, axis=-1)) == int(1e5)
+    assert len(ak.flatten(tab_2._evtid, axis=-1)) == 3004
+    assert len(ak.flatten(tab_merge._evtid, axis=-1)) == 3004 + int(1e5)
 
     # one call but write both files
     hit.build_hit(
@@ -236,16 +236,16 @@ def test_build_hit(test_reboost_input_file):
         out_field="hit",
         proc_config=proc_config,
         pars={},
-        buffer=100000,
+        buffer=10000,
         merge_input_files=False,
     )
 
-    tab_1 = lh5.read("hit/det001", str(test_reboost_input_file / "out_0.lh5")).view_as("ak")
-    tab_2 = lh5.read("hit/det001", str(test_reboost_input_file / "out_1.lh5")).view_as("ak")
+    tab_1 = lh5.read("det001/hit", str(test_reboost_input_file / "out_0.lh5")).view_as("ak")
+    tab_2 = lh5.read("det001/hit", str(test_reboost_input_file / "out_1.lh5")).view_as("ak")
 
     # check lengths
-    assert len(ak.flatten(tab_1.evtid, axis=-1)) == int(1e6)
-    assert len(ak.flatten(tab_2.evtid, axis=-1)) == 30040
+    assert len(ak.flatten(tab_1._evtid, axis=-1)) == int(1e5)
+    assert len(ak.flatten(tab_2._evtid, axis=-1)) == 3004
 
     # test with a smaller buffer
     hit.build_hit(
@@ -255,15 +255,15 @@ def test_build_hit(test_reboost_input_file):
         out_field="hit",
         proc_config=proc_config,
         pars={},
-        buffer=10000,
+        buffer=1000,
     )
 
     tab_small = lh5.read(
-        "hit/det001", str(test_reboost_input_file / "out_small_buffer.lh5")
+        "det001/hit", str(test_reboost_input_file / "out_small_buffer.lh5")
     ).view_as("ak")
 
     # buffer does not affect results
-    assert ak.all(ak.flatten(tab_merge.evtid) == ak.flatten(tab_small.evtid))
+    assert ak.all(ak.flatten(tab_merge._evtid) == ak.flatten(tab_small._evtid))
 
 
 def test_build_hit_some_row(test_reboost_input_file):
@@ -271,7 +271,7 @@ def test_build_hit_some_row(test_reboost_input_file):
         "channels": [
             "det001",
         ],
-        "outputs": ["t0", "evtid"],
+        "outputs": ["t0", "_evtid"],
         "step_group": {
             "description": "group steps by time and evtid.",
             "expression": "reboost.hpge.processors.group_by_time(stp,window=10)",
@@ -300,13 +300,13 @@ def test_build_hit_some_row(test_reboost_input_file):
             out_field="hit",
             proc_config=proc_config,
             pars={},
-            buffer=100000,
+            buffer=10000,
         )
 
     # test reading the data in two goes gives the same result
     for n_ev, s_ev, out in zip(
-        [int(1e4), int(1e5 - 1e4), int(1e5), int(1e5)],
-        [0, int(1e4), 0, 1000],
+        [int(1e3), int(1e4 - 1e3), int(1e4), int(1e4)],
+        [0, int(1e3), 0, 100],
         ["out_some_rows.lh5", "out_rest_rows.lh5", "out_all_file_one.lh5", "out_mix.lh5"],
     ):
         # test read only some events
@@ -325,19 +325,19 @@ def test_build_hit_some_row(test_reboost_input_file):
             buffer=100000,
         )
 
-    tab_some = lh5.read("hit/det001", str(test_reboost_input_file / "out_some_rows.lh5")).view_as(
+    tab_some = lh5.read("det001/hit", str(test_reboost_input_file / "out_some_rows.lh5")).view_as(
         "ak"
     )
-    tab_rest = lh5.read("hit/det001", str(test_reboost_input_file / "out_rest_rows.lh5")).view_as(
+    tab_rest = lh5.read("det001/hit", str(test_reboost_input_file / "out_rest_rows.lh5")).view_as(
         "ak"
     )
 
-    tab_1 = lh5.read("hit/det001", str(test_reboost_input_file / "out_all_file_one.lh5")).view_as(
+    tab_1 = lh5.read("det001/hit", str(test_reboost_input_file / "out_all_file_one.lh5")).view_as(
         "ak"
     )
 
     tab_merge = ak.concatenate((tab_some, tab_rest))
-    assert ak.all(ak.all(tab_merge.evtid == tab_1.evtid, axis=-1))
+    assert ak.all(ak.all(tab_merge._evtid == tab_1._evtid, axis=-1))
 
 
 def test_build_hit_with_locals(test_reboost_input_file, test_data_configs):
@@ -345,7 +345,7 @@ def test_build_hit_with_locals(test_reboost_input_file, test_data_configs):
         "channels": [
             "det001",
         ],
-        "outputs": ["t0", "evtid", "distance_to_surface"],
+        "outputs": ["t0", "_evtid", "distance_to_surface"],
         "step_group": {
             "description": "group steps by time and evtid.",
             "expression": "reboost.hpge.processors.group_by_time(stp,window=10)",

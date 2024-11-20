@@ -115,6 +115,42 @@ def get_num_simulated(file_list: list, table: str = "hit") -> int:
     return n
 
 
+def get_num_evtid_hit_tier(hit_file: str, channels: list[str], idx_name: str) -> int:
+    """Get the number of evtid in the hit file.
+
+    Parameters
+    ----------
+    hit_file
+        path to the hit file
+    channels
+        list of channel names
+    idx_name
+        name of the index field
+
+    Returns
+    -------
+    largest evtid in the files.
+
+    Note
+    ----
+    To avoid reading the full file into memory we assume the hit tier files are sorted by "idx_name". This should always be the case.
+    """
+
+    n_max = 0
+    for channel in channels:
+        # use the iterator to get the file size
+        it = lh5.LH5Iterator(hit_file, f"{channel}/hit/", buffer_len=int(5e6))
+        entries = it._get_file_cumentries(0)
+
+        ob_ak = lh5.read(f"{channel}/hit/", hit_file, idx=[entries - 1]).view_as("ak")
+
+        max_evtid = ob_ak[idx_name][0]
+
+        n_max = max_evtid if (max_evtid > n_max) else n_max
+
+    return n_max
+
+
 def get_file_list(path: str | list[str]) -> NDArray:
     """Get list of files to read.
 
@@ -214,7 +250,7 @@ def get_global_evtid(first_evtid: int, obj: ak.Array, vertices: ArrayLike) -> ak
         msg = "Some of the evtids in the obj do not correspond to rows in the input"
         raise ValueError(msg)
 
-    return ak.with_field(obj, first_evtid + indices, "global_evtid")
+    return ak.with_field(obj, first_evtid + indices, "_global_evtid")
 
 
 def get_include_chunk(
@@ -385,10 +421,10 @@ def _merge_arrays(
     return obj, buffer_rows, mode
 
 
-def get_iterator(file: str, field: str, detector: str, buffer: int):
+def get_iterator(file: str, buffer: int, lh5_table: str, **kwargs) -> tuple[LH5Iterator, int, int]:
     """Get information on the iterator (number of index and entries)."""
 
-    it = LH5Iterator(file, f"{field}/{detector}", buffer_len=buffer)
+    it = LH5Iterator(file, lh5_table, buffer_len=buffer, **kwargs)
     entries = it._get_file_cumentries(0)
 
     # number of blocks is ceil of entries/buffer,
@@ -396,6 +432,79 @@ def get_iterator(file: str, field: str, detector: str, buffer: int):
     max_idx = int(np.ceil(entries / buffer)) - 1
 
     return it, entries, max_idx
+
+
+def read_some_idx_as_ak(
+    channels: list,
+    file: str,
+    n_idx_read: int,
+    idx_buffer: int,
+    idx_name: str,
+    field_mask: list[str],
+    it_buffer: int = 100000,
+) -> tuple[list[ak.Array], int]:
+    """Read just rows corresponding to a idx_name field in the range n_idx_read to n_idx_read + idx_buffer.
+
+    Works by iterating over the file only selecting entries in the desired range, also converting to awkward
+
+    Parameters
+    ----------
+    channels
+        list of channels to read
+    file
+        path to hit tier file to read
+    n_idx_read
+        first index to read
+    idx_buffer
+        number of indices to read.
+    idx_name
+        name of the field containing the index.
+    field_mask
+        fields to read
+    it_buffer
+        buffer for the iterator
+
+    Returns
+    -------
+    tuple of a list of the data per channel and the updated number of index read.
+    """
+
+    hit_data = []
+
+    # loop over channels
+    for channel in channels:
+        data_tmp = []
+        # iteration over the file
+        it, entries, max_idx = get_iterator(
+            file=file, buffer=it_buffer, lh5_table=f"{channel}/hit", field_mask=field_mask
+        )
+
+        for idx, (lh5_obj, _, n_rows) in enumerate(it):
+            ak_obj = lh5_obj.view_as("ak")
+
+            if idx == max_idx:
+                ak_obj = ak_obj[:n_rows]
+
+            # assumes index are sorted
+            low_idx = ak_obj[idx_name][0]
+
+            # check if the chunk contains evtid low_evtid
+            if not ((low_idx >= n_idx_read) & (low_idx < n_idx_read + idx_buffer)):
+                continue
+
+            # slice and select just the needed cols
+            condition = (ak_obj[idx_name] >= n_idx_read) & (
+                ak_obj[idx_name] < n_idx_read + idx_buffer
+            )
+            ak_obj_sel = ak_obj[condition]
+
+            data_tmp.append(ak_obj_sel)
+
+        hit_data.append(ak.concatenate(data_tmp))
+
+    n_idx_read += idx_buffer
+
+    return hit_data, n_idx_read
 
 
 __file_extensions__ = {"json": [".json"], "yaml": [".yaml", ".yml"]}

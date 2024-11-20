@@ -9,14 +9,14 @@ from reboost.hpge import hit, processors
 
 def test_evtid_group():
     in_arr_evtid = ak.Array(
-        {"evtid": [1, 1, 1, 2, 2, 10, 10, 11, 12, 12, 12], "time": np.zeros(11)}
+        {"_evtid": [1, 1, 1, 2, 2, 10, 10, 11, 12, 12, 12], "time": np.zeros(11)}
     )
 
     in_tab = Table(in_arr_evtid)
 
     out = processors.group_by_evtid(in_tab)
     out_ak = out.view_as("ak")
-    assert ak.all(out_ak.evtid == [[1, 1, 1], [2, 2], [10, 10], [11], [12, 12, 12]])
+    assert ak.all(out_ak._evtid == [[1, 1, 1], [2, 2], [10, 10], [11], [12, 12, 12]])
     assert ak.all(out_ak.time == [[0, 0, 0], [0, 0], [0, 0], [0], [0, 0, 0]])
 
     # test the eval in build hit also
@@ -31,7 +31,7 @@ def test_evtid_group():
 
     out_eval_ak = out_eval.view_as("ak")
 
-    assert ak.all(out_ak.evtid == out_eval_ak.evtid)
+    assert ak.all(out_ak._evtid == out_eval_ak._evtid)
     assert ak.all(out_ak.time == out_eval_ak.time)
 
 
@@ -39,7 +39,7 @@ def test_time_group():
     # time units are ns
     in_arr_evtid = ak.Array(
         {
-            "evtid": [1, 1, 1, 2, 2, 2, 2, 2, 11, 12, 12, 12, 15, 15, 15, 15, 15],
+            "_evtid": [1, 1, 1, 2, 2, 2, 2, 2, 11, 12, 12, 12, 15, 15, 15, 15, 15],
             "time": [
                 0,
                 -2000,
@@ -68,7 +68,7 @@ def test_time_group():
     out = processors.group_by_time(in_tab, window=1)
     out_ak = out.view_as("ak")
     assert ak.all(
-        out_ak.evtid
+        out_ak._evtid
         == [[1], [1], [1], [2, 2], [2], [2, 2], [11], [12], [12, 12], [15, 15, 15], [15, 15]]
     )
     assert ak.all(
