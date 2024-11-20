@@ -72,7 +72,7 @@ The processing is defined in terms of several *tiers*, mirroring the logic of th
 
 - **stp** or "step" the raw *remage* outputs corresponding to Geant4 steps,
 - **hit** the data from each channel independently after grouping in discrete physical interactions in the detector.
-- **evt** or "event" the data combining the information from various detectors.
+- **evt** or "event" the data combining the information from various detectors (includes generating the **tcm** or time-coincidence map).
 
 The processing is divided into two steps :func:`build_hit`  ``build_evt`` [WIP].
 
@@ -83,47 +83,40 @@ The hit tier converts the raw remage file based on Geant4 steps to a file corres
 Only steps corresponding to individual detectors are performed in this step.
 The processing is based on a YAML or JSON configuration file. For example:
 
-.. code-block:: json
+.. code-block:: yaml
 
-               {
-                    "channels": [
-                        "det000",
-                        "det001",
-                        "det002",
-                        "det003"
-                    ],
-                    "outputs": [
-                        "t0",
-                        "truth_energy_sum",
-                        "smeared_energy_sum",
-                        "evtid"
-                    ],
-                    "step_group": {
-                        "description": "group steps by time and evtid.",
-                        "expression": "reboost.hpge.processors.group_by_time(stp,window=10)"
-                    },
-                    "locals": {
-                        "hpge": "reboost.hpge.utils(meta_path=meta,pars=pars,detector=detector)"
-                    },
-                    "operations": {
-                        "t0": {
-                            "description": "first time in the hit.",
-                            "mode": "eval",
-                            "expression": "ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)"
-                        },
-                        "truth_energy_sum": {
-                            "description": "truth summed energy in the hit.",
-                            "mode": "eval",
-                            "expression": "ak.sum(hit.edep,axis=-1)"
-                        },
-                        "smeared_energy_sum": {
-                            "description": "summed energy after convolution with energy response.",
-                            "mode": "function",
-                            "expression": "reboost.hpge.processors.smear_energies(hit.truth_energy_sum,reso=pars.reso)"
-                        }
+    channels:
+     - det000
+     - det001
+     - det002
+     - det003
 
-                    }
-                }
+    outputs:
+     - t0
+     - truth_energy_sum
+     - smeared_energy_sum
+     - evtid
+
+    step_group:
+        description: group steps by time and evtid.
+        expression: 'reboost.hpge.processors.group_by_time(stp,window=10)'
+    locals:
+        hpge: 'reboost.hpge.utils(meta_path=meta,pars=pars,detector=detector)'
+
+    operations:
+        t0:
+            description: first time in the hit.
+            mode: eval
+            expression: 'ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)'
+        truth_energy_sum:
+            description: truth summed energy in the hit.
+            mode: eval
+            expression: 'ak.sum(hit.edep,axis=-1)'
+        smeared_energy_sum:
+            description: summed energy after convolution with energy response.
+            mode: function
+            expression: |
+            reboost.hpge.processors.smear_energies(hit.truth_energy_sum,reso=pars.reso)
 
 It is necessary to provide several sub-dictionaries:
 
@@ -143,7 +136,7 @@ with a jagged structure where each row corresponds to a physical hit in the dete
     time:  [0    , 0.1  , 0,     ... ]
     ....
 
-Becomes a Table of ``VectorOfVectors`` with a jagged structure. For example:
+Becomes a :class:`Table`` of :class:`VectorOfVectors` with a jagged structure. For example:
 
 .. code-block:: console
 
@@ -156,8 +149,8 @@ The recommended tool to manipulate jagged arrays is awkward `[docs] <https://awk
 
 
 It is necessary to chose a function to perform this step grouping, this function must take in the *remage* output table and return
-a table where all the input arrays are converted to ``LGDO.VectorOfVectors`` with a jagged structure. In the expression of the function *stp* is an alias
-for the input *remage* Table. This then must return the original LH5 table with the same fields as above restructured so each field is a ``VectorOfVectors``.
+a table where all the input arrays are converted to :class:`LGDO.VectorOfVectors` with a jagged structure. In the expression of the function *stp* is an alias
+for the input *remage* Table. This then must return the original LH5 table with the same fields as above restructured so each field is a :class:`VectorOfVectors`.
 In addition a ``global_evtid`` field is adding which represents the index of the event over all input files.
 
 Next a set of operations can be specified, these can perform any operation that doesn't change the length of the data. They can be either basic numerical operations
@@ -190,16 +183,14 @@ parameters and other *local* variables
 Often it is necessary to include processors that depend on parameters (which) may vary by detector. To enable this the user can specify a dictionary of
 parameters with the *pars* keyword, this should contain a sub-dictionary per detector for example:
 
-.. code-block:: json
+.. code-block:: yaml
 
-                {
-                    "det000": {
-                        "reso": 1,
-                        "fccd": 0.1,
-                        "phy_vol_name":"det_phy",
-                        "meta_name": "icpc.json"
-                    }
-                }
+    det000:
+     reso: 1
+     fccd: 0.1
+     phy_vol_name: det_phy
+     meta_name: icpc.json
+
 
 This dictionary is internally converted into a python ``NamedTuple`` to make cleaner syntax. The named tuple for each detector is then passed as a
 ``local`` dictionary to the evaluation of the operations with name "pars".
@@ -216,14 +207,14 @@ to the config file. The code will then evaluate the supplied expression for each
 - **reg**: the geant4 registry,
 - **pars**: the parameters for this detector.
 
-These expressions are then evaluated (once per detector) and added to the *locals* dictionary of ``Table.eval``, so can be references in the expressions.
+These expressions are then evaluated (once per detector) and added to the *locals* dictionary of :func:`Table.eval`, so can be references in the expressions.
 
-For example one useful object for post-processing is the `legendhpges.base.HPGe <https://legend-pygeom-hpges.readthedocs.io/en/latest/api/legendhpges.html#legendhpges.base.HPGe>`_ object for the detector.
+For example one useful object for post-processing is the :class:`legendhpges.base.HPGe` object for the detector.
 This can be constructed from the metadata using.
 
-.. code-block:: json
+.. code-block:: yaml
 
-    {"hpge": "reboost.hpge.utils(meta_path=meta,pars=pars,detector=detector)"}
+    hpge: 'reboost.hpge.utils(meta_path=meta,pars=pars,detector=detector)'
 
 This will then create the hpge object for each detector and add it to the "locals" mapping of "eval" so it can be used.
 
@@ -246,40 +237,90 @@ with the same length as the hit table. This means processors can act on subarray
 
 It is simple to accommodate most of the current and future envisiged post-processing in this framework. For example:
 
-- clustering hits would result in a new VectorOfVectors with the same number of rows but fewer entries per vector,
-- pulse shape simulations to produce waveforms (or ML emmulation of this) would give an ArrayOfEqualSizedArrays,
-- processing in parallel many parameters (eg for systematic) studies would give a nested VectorOfVectors.
+- clustering hits would result in a new :class:`VectorOfVectors` with the same number of rows but fewer entries per vector,
+- pulse shape simulations to produce waveforms (or ML emmulation of this) would give an :class:`ArrayOfEqualSizedArrays`,
+- processing in parallel many parameters (eg. for systematic) studies would give a nested :class:`VectorOfVectors`.
+
+Time coincidence map (TCM)
+--------------------------
+
+The next step in the processing chain is the **event** tier, this combines the information from the various sub-systems to produce detector wide events.
+However, before we can generate the *evt* tier we need to generate the "time-coincidence-map". This determines which of the hits in the various detectors
+are occurring *simultaneously* (actually within some coincidence time window) and should be part of the same event.
+Some information on the TCM in data is given in `[pygama-evt-docs] <https://pygama.readthedocs.io/en/stable/api/pygama.evt.html#>`_. The *reboost* TCM is fairly similar.
+
+The generation of the TCM is performed by :func:`reboost.hpge.tcm.build_tcm` which generates and stores the TCM on disk.
+
+.. warning::
+    The generation of the TCM from the times of hits is slightly different to the "hardware-tcm" used for LEGEND physics data. In the experimental data, a signal on one channel, triggers
+    the readout of the full array. Care should be taken for deecays or interactions with ~ :math:`10-100 \mu s` time differences between hits.
+    However, in practice for most cases the time differences are very small and the two TCM should be equivalent after removing hits below threshold.
+
+Before explaining how the TCM is constructed we make a detour to explain the different indices present in the reboost and remage files.
+
+- **stp.evtid**: in the remage output files we have a variable called evtid. This is the index of the decay, so as explained earlier a single evtid can result in multiple hits in the detector.
+- **hit.global_evtid**: However, when multiple files are read the evtid are now no longer necessarily sorted or unique and so we define a new index in the hit tier. This is extracted from the vertices table as
+    the sum of the number of evtid in the previous files plus the row in the vertex table of the evtid. A vector of vectors called "hit._global_evtid" is added to the hit table. We can also extract
+    a flat array of indices (for easier use in the evt tier) with a simple processor:
+
+    .. code:: yaml
+
+        global_evtid:
+            description: global evtid of the hit.
+            mode: eval
+            expression: 'ak.fill_none(,axis=-1),np.nan)'
+
+
+    This field is mandatory to generate the TCM, and the name of the field is an argument to "build_tcm".
+- **hit idx**: Multiple rows in the hit table may contain the same "global_evtid" while many "global_evtid" do not result in a hit. The hit idx is just the row of the hit table a hit corresponds to.
+- **channel_id**: When we combine multiple channels we assign them an index, this is set in the original remage macro file.
+
+:func:`build_tcm` saves two VectorOfVectors (with the same shape) to the output file, corresponding to the **channel_id** and the **hit_idx** of each event.
+
+.. note::
+    - This storage is slightly different to the TCM in data, but is chosen to allow easy iteration through the TCM.
+    - We do not currently support merging multiple **hit** tier files, this is since then the TCM would need to know which file each hit corresponded to.
 
 Event tier processing (work in progress)
 ----------------------------------------
 
+
+
 The event tier combines the information from various detector systems. Including in future the optical detector channels. This step is thus only necessary for experiments with
 many output channels.
 
-The processing is again based on a YAML or JSON configuration file. For example:
+The processing is again based on a YAML or JSON configuration file. Most of the work to evaluate each expression is done by the :func:`pygama.evt.build_evt.evaluate_expression`.
 
-.. code-block:: json
+The input configuration file is identical to a pygama evt tier configuration file (see an example in :func:`pygama.evt.build_evt.build_evt`).
 
-        {
+For example:
 
-                "channels":{
-                    "geds_usable":[
-                        "det000",
-                        "det001",
-                        "det002"
-                    ],
-                    "geds_ac":[
-                        "det003"
-                    ]
-                },
-                "outputs": [
-                    "energy",
-                    "detector",
-                    "is_good_hit",
-                    "multiplicity"
-                ],
-                "event_group": {
-                    "description": "group hits by time and evtid.",
-                    "expression": "reboost.hpge.processors.group_by_time(stp,window=10)"
-                }
-        }
+.. code-block:: yaml
+
+        channels:
+            geds_on:
+                - det000
+                - det001
+                - det002
+            geds_ac:
+                - det003
+
+        outputs:
+        - energy
+        - multiplicity
+
+        energy_id:
+            channels: geds_on
+            aggregation_mode: gather
+            query: hit.energy > 25
+            expression: tcm.channel_id
+        energy:
+            aggregation_mode: 'keep_at_ch:evt.energy_id'
+            expression: hit.energy > 25
+        multiplicity:
+            channels:
+                - geds_on
+                - geds_ac
+            aggregation_mode: sum
+            expression: hit.energy > 25
+            initial: 0

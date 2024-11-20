@@ -54,6 +54,8 @@ intersphinx_mapping = {
     "scipy": ("http://docs.scipy.org/doc/scipy/reference", None),
     "pandas": ("https://pandas.pydata.org/docs", None),
     "matplotlib": ("http://matplotlib.org/stable", None),
+    "pygama": ("https://pygama.readthedocs.io/en/stable/", None),
+    "legendhpges": ("https://legend-pygeom-hpges.readthedocs.io/en/latest/", None),
 }  # add new intersphinx mappings here
 
 # sphinx-autodoc

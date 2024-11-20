@@ -1,5 +1,5 @@
-Basic HPGe simulation processing
-================================
+Hit tier simulation processing
+==============================
 
 This tutorial describes how to process the HPGe detector simulations
 from **remage** with **reboost**. It buils on the official **remage**
