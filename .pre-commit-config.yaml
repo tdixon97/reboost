@@ -57,6 +57,17 @@ repos:
         additional_dependencies:
           - pytest
 
+  - repo: https://github.com/kynan/nbstripout
+    rev: "0.7.1"
+    hooks:
+      - id: nbstripout
+        args:
+          [
+            "--drop-empty-cells",
+            "--extra-keys",
+            "metadata.kernelspec metadata.language_info",
+          ]
+
   - repo: https://github.com/codespell-project/codespell
     rev: "v2.3.0"
     hooks:
