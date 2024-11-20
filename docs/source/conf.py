@@ -20,6 +20,8 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_copybutton",
     "myst_parser",
+    "nbsphinx",
+    "IPython.sphinxext.ipython_console_highlighting",
 ]
 
 
@@ -28,7 +30,7 @@ source_suffix = {
     ".md": "markdown",
 }
 master_doc = "index"
-language = "python"
+# language = "python"
 
 # Furo theme
 html_theme = "furo"
@@ -58,6 +60,13 @@ intersphinx_mapping = {
     "legendhpges": ("https://legend-pygeom-hpges.readthedocs.io/en/latest/", None),
 }  # add new intersphinx mappings here
 
+
+suppress_warnings = [
+    # "histogram" is defined both in pygama.dsp.processors.histogram.histogram
+    # and in pygama.math.histogram, leading to a Sphinx cross-referencing
+    # warning.  I don't know how to fix this properly
+    "ref.python",
+]
 # sphinx-autodoc
 # Include __init__() docstring in class docstring
 autoclass_content = "both"
