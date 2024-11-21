@@ -81,43 +81,43 @@ We can use ``lh5.show()`` to check the output files.
 .. parsed-literal::
 
     [1m/[0m
-    └── [1mstp[0m · struct{det001,det002,det003,vertices} 
-        ├── [1mdet001[0m · table{evtid,particle,edep,time,xloc,yloc,zloc} 
-        │   ├── [1medep[0m · array<1>{real} 
-        │   ├── [1mevtid[0m · array<1>{real} 
-        │   ├── [1mparticle[0m · array<1>{real} 
-        │   ├── [1mtime[0m · array<1>{real} 
-        │   ├── [1mxloc[0m · array<1>{real} 
-        │   ├── [1myloc[0m · array<1>{real} 
-        │   └── [1mzloc[0m · array<1>{real} 
-        ├── [1mdet002[0m · table{evtid,particle,edep,time,xloc,yloc,zloc} 
-        │   ├── [1medep[0m · array<1>{real} 
-        │   ├── [1mevtid[0m · array<1>{real} 
-        │   ├── [1mparticle[0m · array<1>{real} 
-        │   ├── [1mtime[0m · array<1>{real} 
-        │   ├── [1mxloc[0m · array<1>{real} 
-        │   ├── [1myloc[0m · array<1>{real} 
-        │   └── [1mzloc[0m · array<1>{real} 
-        ├── [1mdet003[0m · table{evtid,particle,edep,time,xloc_pre,yloc_pre,zloc_pre,xloc_post,yloc_post,zloc_post,v_pre,v_post} 
-        │   ├── [1medep[0m · array<1>{real} 
-        │   ├── [1mevtid[0m · array<1>{real} 
-        │   ├── [1mparticle[0m · array<1>{real} 
-        │   ├── [1mtime[0m · array<1>{real} 
-        │   ├── [1mv_post[0m · array<1>{real} 
-        │   ├── [1mv_pre[0m · array<1>{real} 
-        │   ├── [1mxloc_post[0m · array<1>{real} 
-        │   ├── [1mxloc_pre[0m · array<1>{real} 
-        │   ├── [1myloc_post[0m · array<1>{real} 
-        │   ├── [1myloc_pre[0m · array<1>{real} 
-        │   ├── [1mzloc_post[0m · array<1>{real} 
-        │   └── [1mzloc_pre[0m · array<1>{real} 
-        └── [1mvertices[0m · table{evtid,time,xloc,yloc,zloc,n_part} 
-            ├── [1mevtid[0m · array<1>{real} 
-            ├── [1mn_part[0m · array<1>{real} 
-            ├── [1mtime[0m · array<1>{real} 
-            ├── [1mxloc[0m · array<1>{real} 
-            ├── [1myloc[0m · array<1>{real} 
-            └── [1mzloc[0m · array<1>{real} 
+    └── [1mstp[0m · struct{det001,det002,det003,vertices}
+        ├── [1mdet001[0m · table{evtid,particle,edep,time,xloc,yloc,zloc}
+        │   ├── [1medep[0m · array<1>{real}
+        │   ├── [1mevtid[0m · array<1>{real}
+        │   ├── [1mparticle[0m · array<1>{real}
+        │   ├── [1mtime[0m · array<1>{real}
+        │   ├── [1mxloc[0m · array<1>{real}
+        │   ├── [1myloc[0m · array<1>{real}
+        │   └── [1mzloc[0m · array<1>{real}
+        ├── [1mdet002[0m · table{evtid,particle,edep,time,xloc,yloc,zloc}
+        │   ├── [1medep[0m · array<1>{real}
+        │   ├── [1mevtid[0m · array<1>{real}
+        │   ├── [1mparticle[0m · array<1>{real}
+        │   ├── [1mtime[0m · array<1>{real}
+        │   ├── [1mxloc[0m · array<1>{real}
+        │   ├── [1myloc[0m · array<1>{real}
+        │   └── [1mzloc[0m · array<1>{real}
+        ├── [1mdet003[0m · table{evtid,particle,edep,time,xloc_pre,yloc_pre,zloc_pre,xloc_post,yloc_post,zloc_post,v_pre,v_post}
+        │   ├── [1medep[0m · array<1>{real}
+        │   ├── [1mevtid[0m · array<1>{real}
+        │   ├── [1mparticle[0m · array<1>{real}
+        │   ├── [1mtime[0m · array<1>{real}
+        │   ├── [1mv_post[0m · array<1>{real}
+        │   ├── [1mv_pre[0m · array<1>{real}
+        │   ├── [1mxloc_post[0m · array<1>{real}
+        │   ├── [1mxloc_pre[0m · array<1>{real}
+        │   ├── [1myloc_post[0m · array<1>{real}
+        │   ├── [1myloc_pre[0m · array<1>{real}
+        │   ├── [1mzloc_post[0m · array<1>{real}
+        │   └── [1mzloc_pre[0m · array<1>{real}
+        └── [1mvertices[0m · table{evtid,time,xloc,yloc,zloc,n_part}
+            ├── [1mevtid[0m · array<1>{real}
+            ├── [1mn_part[0m · array<1>{real}
+            ├── [1mtime[0m · array<1>{real}
+            ├── [1mxloc[0m · array<1>{real}
+            ├── [1myloc[0m · array<1>{real}
+            └── [1mzloc[0m · array<1>{real}
 
 
 Part 2) reboost config files
@@ -143,14 +143,14 @@ First we set up the python environment.
     import colorlog
     import hist
     import numpy as np
-    
-    
+
+
     plt.rcParams['figure.figsize'] = [12, 4]
     plt.rcParams['axes.titlesize'] =12
     plt.rcParams['axes.labelsize'] = 12
     plt.rcParams['legend.fontsize'] = 12
-    
-    
+
+
     handler = colorlog.StreamHandler()
     handler.setFormatter(
         colorlog.ColoredFormatter("%(log_color)s%(name)s [%(levelname)s] %(message)s")
@@ -160,7 +160,7 @@ First we set up the python environment.
     logger.addHandler(handler)
     logger.setLevel(logging.INFO)
     logger.info("test")
-    
+
 
 
 
@@ -207,7 +207,7 @@ effect of the processors.
                 "energy_sum_deadlayer",         # energy sum after dead layers
                 "energy_sum_smeared"            # energy sum after smearing with resolution
             ],
-            "step_group": {          
+            "step_group": {
                 "description": "group steps by time and evtid with 10us window",
                 "expression": "reboost.hpge.processors.group_by_time(stp,window=10)",
             },
@@ -266,7 +266,7 @@ effect of the processors.
                     "mode": "function",
                     "expression": "reboost.hpge.processors.smear_energies(hit.energy_sum_deadlayer,reso=pars.fwhm_in_keV/2.355)"
                 }
-        
+
             }
     }
 
@@ -278,16 +278,16 @@ We also create our parameters file.
         "det001": {
             "meta_name":"BEGe.json",
             "phy_vol_name":"BEGe",
-            "fwhm_in_keV":2.69, 
-            "fccd_in_mm":1.420, # dead layer in mm     
+            "fwhm_in_keV":2.69,
+            "fccd_in_mm":1.420, # dead layer in mm
         },
         "det002": {
             "meta_name":"Coax.json",
             "phy_vol_name":"Coax",
-            "fwhm_in_keV":4.420, 
-            "fccd_in_mm":2.69,   
+            "fwhm_in_keV":4.420,
+            "fccd_in_mm":2.69,
         }
-        
+
     }
 
 Part 3) Running the processing
@@ -342,58 +342,58 @@ file structure showing the new *hit* oriented data format.
 .. parsed-literal::
 
     [1m/[0m
-    ├── [1mdet001[0m · HDF5 group 
-    │   └── [1mhit[0m · table{edep,time,t0,evtid,global_evtid,distance_to_nplus_surface_mm,activeness,rpos_loc,zpos_loc,energy_sum,energy_sum_deadlayer,energy_sum_smeared} 
-    │       ├── [1mactiveness[0m · array<1>{array<1>{real}} 
-    │       │   ├── [1mcumulative_length[0m · array<1>{real} 
-    │       │   └── [1mflattened_data[0m · array<1>{real} 
-    │       ├── [1mdistance_to_nplus_surface_mm[0m · array<1>{array<1>{real}} 
-    │       │   ├── [1mcumulative_length[0m · array<1>{real} 
-    │       │   └── [1mflattened_data[0m · array<1>{real} 
-    │       ├── [1medep[0m · array<1>{array<1>{real}} 
-    │       │   ├── [1mcumulative_length[0m · array<1>{real} 
-    │       │   └── [1mflattened_data[0m · array<1>{real} 
-    │       ├── [1menergy_sum[0m · array<1>{real} 
-    │       ├── [1menergy_sum_deadlayer[0m · array<1>{real} 
-    │       ├── [1menergy_sum_smeared[0m · array<1>{real} 
-    │       ├── [1mevtid[0m · array<1>{real} 
-    │       ├── [1mglobal_evtid[0m · array<1>{real} 
-    │       ├── [1mrpos_loc[0m · array<1>{array<1>{real}} 
-    │       │   ├── [1mcumulative_length[0m · array<1>{real} 
-    │       │   └── [1mflattened_data[0m · array<1>{real} 
-    │       ├── [1mt0[0m · array<1>{real} 
-    │       ├── [1mtime[0m · array<1>{array<1>{real}} 
-    │       │   ├── [1mcumulative_length[0m · array<1>{real} 
-    │       │   └── [1mflattened_data[0m · array<1>{real} 
-    │       └── [1mzpos_loc[0m · array<1>{array<1>{real}} 
-    │           ├── [1mcumulative_length[0m · array<1>{real} 
-    │           └── [1mflattened_data[0m · array<1>{real} 
-    └── [1mdet002[0m · HDF5 group 
-        └── [1mhit[0m · table{edep,time,t0,evtid,global_evtid,distance_to_nplus_surface_mm,activeness,rpos_loc,zpos_loc,energy_sum,energy_sum_deadlayer,energy_sum_smeared} 
-            ├── [1mactiveness[0m · array<1>{array<1>{real}} 
-            │   ├── [1mcumulative_length[0m · array<1>{real} 
-            │   └── [1mflattened_data[0m · array<1>{real} 
-            ├── [1mdistance_to_nplus_surface_mm[0m · array<1>{array<1>{real}} 
-            │   ├── [1mcumulative_length[0m · array<1>{real} 
-            │   └── [1mflattened_data[0m · array<1>{real} 
-            ├── [1medep[0m · array<1>{array<1>{real}} 
-            │   ├── [1mcumulative_length[0m · array<1>{real} 
-            │   └── [1mflattened_data[0m · array<1>{real} 
-            ├── [1menergy_sum[0m · array<1>{real} 
-            ├── [1menergy_sum_deadlayer[0m · array<1>{real} 
-            ├── [1menergy_sum_smeared[0m · array<1>{real} 
-            ├── [1mevtid[0m · array<1>{real} 
-            ├── [1mglobal_evtid[0m · array<1>{real} 
-            ├── [1mrpos_loc[0m · array<1>{array<1>{real}} 
-            │   ├── [1mcumulative_length[0m · array<1>{real} 
-            │   └── [1mflattened_data[0m · array<1>{real} 
-            ├── [1mt0[0m · array<1>{real} 
-            ├── [1mtime[0m · array<1>{array<1>{real}} 
-            │   ├── [1mcumulative_length[0m · array<1>{real} 
-            │   └── [1mflattened_data[0m · array<1>{real} 
-            └── [1mzpos_loc[0m · array<1>{array<1>{real}} 
-                ├── [1mcumulative_length[0m · array<1>{real} 
-                └── [1mflattened_data[0m · array<1>{real} 
+    ├── [1mdet001[0m · HDF5 group
+    │   └── [1mhit[0m · table{edep,time,t0,evtid,global_evtid,distance_to_nplus_surface_mm,activeness,rpos_loc,zpos_loc,energy_sum,energy_sum_deadlayer,energy_sum_smeared}
+    │       ├── [1mactiveness[0m · array<1>{array<1>{real}}
+    │       │   ├── [1mcumulative_length[0m · array<1>{real}
+    │       │   └── [1mflattened_data[0m · array<1>{real}
+    │       ├── [1mdistance_to_nplus_surface_mm[0m · array<1>{array<1>{real}}
+    │       │   ├── [1mcumulative_length[0m · array<1>{real}
+    │       │   └── [1mflattened_data[0m · array<1>{real}
+    │       ├── [1medep[0m · array<1>{array<1>{real}}
+    │       │   ├── [1mcumulative_length[0m · array<1>{real}
+    │       │   └── [1mflattened_data[0m · array<1>{real}
+    │       ├── [1menergy_sum[0m · array<1>{real}
+    │       ├── [1menergy_sum_deadlayer[0m · array<1>{real}
+    │       ├── [1menergy_sum_smeared[0m · array<1>{real}
+    │       ├── [1mevtid[0m · array<1>{real}
+    │       ├── [1mglobal_evtid[0m · array<1>{real}
+    │       ├── [1mrpos_loc[0m · array<1>{array<1>{real}}
+    │       │   ├── [1mcumulative_length[0m · array<1>{real}
+    │       │   └── [1mflattened_data[0m · array<1>{real}
+    │       ├── [1mt0[0m · array<1>{real}
+    │       ├── [1mtime[0m · array<1>{array<1>{real}}
+    │       │   ├── [1mcumulative_length[0m · array<1>{real}
+    │       │   └── [1mflattened_data[0m · array<1>{real}
+    │       └── [1mzpos_loc[0m · array<1>{array<1>{real}}
+    │           ├── [1mcumulative_length[0m · array<1>{real}
+    │           └── [1mflattened_data[0m · array<1>{real}
+    └── [1mdet002[0m · HDF5 group
+        └── [1mhit[0m · table{edep,time,t0,evtid,global_evtid,distance_to_nplus_surface_mm,activeness,rpos_loc,zpos_loc,energy_sum,energy_sum_deadlayer,energy_sum_smeared}
+            ├── [1mactiveness[0m · array<1>{array<1>{real}}
+            │   ├── [1mcumulative_length[0m · array<1>{real}
+            │   └── [1mflattened_data[0m · array<1>{real}
+            ├── [1mdistance_to_nplus_surface_mm[0m · array<1>{array<1>{real}}
+            │   ├── [1mcumulative_length[0m · array<1>{real}
+            │   └── [1mflattened_data[0m · array<1>{real}
+            ├── [1medep[0m · array<1>{array<1>{real}}
+            │   ├── [1mcumulative_length[0m · array<1>{real}
+            │   └── [1mflattened_data[0m · array<1>{real}
+            ├── [1menergy_sum[0m · array<1>{real}
+            ├── [1menergy_sum_deadlayer[0m · array<1>{real}
+            ├── [1menergy_sum_smeared[0m · array<1>{real}
+            ├── [1mevtid[0m · array<1>{real}
+            ├── [1mglobal_evtid[0m · array<1>{real}
+            ├── [1mrpos_loc[0m · array<1>{array<1>{real}}
+            │   ├── [1mcumulative_length[0m · array<1>{real}
+            │   └── [1mflattened_data[0m · array<1>{real}
+            ├── [1mt0[0m · array<1>{real}
+            ├── [1mtime[0m · array<1>{array<1>{real}}
+            │   ├── [1mcumulative_length[0m · array<1>{real}
+            │   └── [1mflattened_data[0m · array<1>{real}
+            └── [1mzpos_loc[0m · array<1>{array<1>{real}}
+                ├── [1mcumulative_length[0m · array<1>{real}
+                └── [1mflattened_data[0m · array<1>{real}
 
 
 The new format is a factor of x17 times smaller than the input file due
@@ -546,25 +546,25 @@ processor works as expected.
         fig, axs = plt.subplots(1, 2, figsize=(12, 4), sharey=True)
         n=100000
         for idx, (data,config) in enumerate(zip([data_det001,data_det002],["cfg/metadata/BEGe.json","cfg/metadata/Coax.json"])):
-    
+
             reg=pg4.geant4.Registry()
             hpge = legendhpges.make_hpge(config,registry=reg)
-    
+
             legendhpges.draw.plot_profile(hpge, split_by_type=True,axes=axs[idx])
             rng = np.random.default_rng()
             r = rng.choice([-1,1],p=[0.5,0.5],size=len(ak.flatten(data.rpos_loc)))*ak.flatten(data.rpos_loc)
             z = ak.flatten(data.zpos_loc)
             c=ak.flatten(data[field])
             cut = c<5
-    
+
             s=axs[idx].scatter(r[cut][0:n],z[cut][0:n], c= c[cut][0:n],marker=".", label="gen. points",cmap=scale)
             #axs[idx].axis("equal")
-    
+
             if idx == 0:
                 axs[idx].set_ylabel("Height [mm]")
             c=plt.colorbar(s)
             c.set_label(clab)
-    
+
             axs[idx].set_xlabel("Radius [mm]")
 
 
@@ -615,7 +615,7 @@ We can also plot a histogram of the distance to the surface.
 .. code:: ipython3
 
     def plot_distances(axes,distances,xrange=None,label=" ",**kwargs):
-        
+
         h=hist.new.Reg(100,*xrange, name="Distance to n+ surface [mm]").Double()
         h.fill(distances)
         h.plot(**kwargs,label=label)
@@ -623,7 +623,7 @@ We can also plot a histogram of the distance to the surface.
         axes.set_yscale("log")
         if xrange is not None:
             ax.set_xlim(*xrange)
-        
+
 
 .. code:: ipython3
 
@@ -646,7 +646,7 @@ after weighting by the activeness.
 .. code:: ipython3
 
     def plot_energy(axes,energy,bins=400,xrange=None,label=" ",log_y=True,**kwargs):
-        
+
         h=hist.new.Reg(bins,*xrange, name="energy [keV]").Double()
         h.fill(energy)
         h.plot(**kwargs,label=label)
@@ -686,7 +686,7 @@ after weighting by the activeness.
 The final step in the processing chain smeared the energies by the
 energy resolution. This represents a general class of processors based
 on ‘’heuristic’’ models. Other similar processors could be implemented
-in a similar way. It would also be simple to use insted an energy
+in a similar way. It would also be simple to use instead an energy
 dependent resolution curve. To see the effect we have to zoom into the
 2615 keV peak.
 
