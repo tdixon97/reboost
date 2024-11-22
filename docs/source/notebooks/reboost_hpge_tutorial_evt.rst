@@ -12,7 +12,7 @@ detector system with a large number of detectors. We chose an array of
 0) Setting up the python environment
 ------------------------------------
 
-.. code:: ipython3
+.. code:: python
 
     from lgdo import lh5
     from reboost.hpge import hit, tcm
@@ -59,7 +59,7 @@ detector system with a large number of detectors. We chose an array of
 First we generate a geometry and run the simulation. We use similar BeGe
 detectors as in the part before
 
-.. code:: ipython3
+.. code:: python
 
 
     reg = pg4.geant4.Registry()
@@ -115,7 +115,7 @@ detectors as in the part before
 Uncomment the next block to visualise
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. code:: ipython3
+.. code:: python
 
 
     viewer = pg4.visualisation.VtkViewerColoured(materialVisOptions={"G4_lAr": [0, 0, 1, 0.1]})
@@ -183,12 +183,12 @@ effect of processors.
 
 First we define the config file and parameters.
 
-.. code:: ipython3
+.. code:: python
 
     chans = [f"det{num:03}" for num in range(20)]
 
 
-.. code:: ipython3
+.. code:: python
 
     chain = {
             "channels": chans,
@@ -252,7 +252,7 @@ First we define the config file and parameters.
             }
     }
 
-.. code:: ipython3
+.. code:: python
 
     ## all detectors have the same performance
     pars = {
@@ -266,7 +266,7 @@ First we define the config file and parameters.
 
     }
 
-.. code:: ipython3
+.. code:: python
 
     %%time
     logger.setLevel(logging.CRITICAL)
@@ -289,12 +289,12 @@ In our processing chain we saved both the “local” and “global” evtid,
 and we can extract the “hit_idx” as the row of the output table. We can
 compare these indices.
 
-.. code:: ipython3
+.. code:: python
 
     data_det001 = lh5.read("det001/hit","output/hit/output.lh5")
 
 
-.. code:: ipython3
+.. code:: python
 
     fig,ax = plt.subplots()
     ax.plot(data_det001.evtid,np.arange(len(data_det001.evtid)),label="Local")
@@ -324,11 +324,11 @@ We see that the local index varies between 0 and 1e7 per file while the
 global index increases constantly. We can even check this (as it must
 from our hit tier processing).
 
-.. code:: ipython3
+.. code:: python
 
     evtid_change = np.diff(data_det001.global_evtid)
 
-.. code:: ipython3
+.. code:: python
 
     print(f"evtid change = {evtid_change}, increasing? {np.all(evtid_change>=0)}")
 
@@ -340,7 +340,7 @@ from our hit tier processing).
 
 Now we can build the time-coincidence map and save to a new file.
 
-.. code:: ipython3
+.. code:: python
 
     %%memit
     tcm.build_tcm("output/hit/output.lh5","output/tcm/test_tcm.lh5",chans,time_name="t0",idx_name="global_evtid")
@@ -364,16 +364,16 @@ still quite significant.
 
 Now we can look at our TCM.
 
-.. code:: ipython3
+.. code:: python
 
     tcm_ak = lh5.read("tcm","output/tcm/test_tcm.lh5").view_as("ak")
 
-.. code:: ipython3
+.. code:: python
 
     lh5.show("output/tcm/test_tcm.lh5")
 
 
-.. code:: ipython3
+.. code:: python
 
     tcm_ak
 
@@ -382,7 +382,7 @@ Now we can look at our TCM.
 
 .. raw:: html
 
-    <pre>[{array_id: [11], array_idx: [0]},
+    <prepython[{array_id: [11], array_idx: [0]},
      {array_id: [2], array_idx: [0]},
      {array_id: [11], array_idx: [1]},
      {array_id: [8], array_idx: [0]},
@@ -417,7 +417,7 @@ the number of triggers in the TCM.
 More sophisticated calcations can be performed by also grabbing
 information from the hit tier files. This is done by ``build_evt``.
 
-.. code:: ipython3
+.. code:: python
 
     plt.hist(ak.num(tcm_ak.array_id,axis=-1),range=(.5,20.5),bins=20,alpha=0.3,density=True)
     plt.yscale("log")
@@ -480,7 +480,7 @@ We can define some groups of channels for our processing chain. Lets set
 some channels off and some to ac (this means the channel is used for
 anticoincidence but is not fully usable).
 
-.. code:: ipython3
+.. code:: python
 
     chans_off = ["det003","det007"]
     chans_ac = ["det013","det016"]
@@ -524,7 +524,7 @@ different possible aggregation modes.
    contains any AC hits 7. computes the summed energy, the first
    timestamp and the multiplicity
 
-.. code:: ipython3
+.. code:: python
 
     evt_config = {
         "channels": {
@@ -612,12 +612,12 @@ different possible aggregation modes.
         }
     }
 
-.. code:: ipython3
+.. code:: python
 
     from reboost.hpge import evt
     logger.setLevel(logging.INFO)
 
-.. code:: ipython3
+.. code:: python
 
     %%time
     evt_ak = evt.build_evt(hit_file="output/hit/output.lh5",tcm_file = "output/tcm/test_tcm.lh5",evt_file=None,config = evt_config)
@@ -644,7 +644,7 @@ original ``tcm_id`` removing some hits (below 25 keV) and changing the
 order in some cases. These fields are then useful to extract values from
 other fields keeping the correspondence with channel or tcm index.
 
-.. code:: ipython3
+.. code:: python
 
     print("tcm.array_id       ",tcm_ak.array_id)
     print("evt.all_channel_id ",evt_ak.all_channel_id)
@@ -671,7 +671,7 @@ channel_id. We see in both cases there are some “nan” values
 (corresponding to the “geds_ac” channels) and some elements are removed
 by the energy threshold.
 
-.. code:: ipython3
+.. code:: python
 
     print("evt.energy_vector        ",evt_ak.energy_vector)
     print("evt.energy_no_threshold  ",evt_ak.energy_no_threshold)
@@ -685,7 +685,7 @@ by the energy threshold.
 
 Or we can check if each channel is in AC mode.
 
-.. code:: ipython3
+.. code:: python
 
     print("evt.is_good_channels ",evt_ak.is_good_channels)
 
@@ -706,7 +706,7 @@ For example we checked if every hit is above threshold (compare to the
 energy vectors), compute the total energy and check the number of
 channels above threshold (multiplicity).
 
-.. code:: ipython3
+.. code:: python
 
     print("evt_ak.is_all_above_threshold ",evt_ak.is_all_above_threshold)
     print("evt_ak.energy_sum             ",evt_ak.energy_sum)
@@ -728,7 +728,7 @@ channels above threshold (multiplicity).
 Finally, we can perform some basic operations on evt tier variables, eg.
 first checking if any above threshold channel is in AC mode.
 
-.. code:: ipython3
+.. code:: python
 
     print("evt_ak.is_good_event           ",evt_ak.is_good_event)
 
@@ -745,7 +745,7 @@ first checking if any above threshold channel is in AC mode.
 Finally with our new evt files we can make some plots of experiment wide
 quantities.
 
-.. code:: ipython3
+.. code:: python
 
     def plot_energy(axes,energy,bins=400,xrange=None,label=" ",log_y=True,**kwargs):
 
@@ -758,7 +758,7 @@ quantities.
         if xrange is not None:
             axes.set_xlim(*xrange)
 
-.. code:: ipython3
+.. code:: python
 
     fig, ax = plt.subplots()
     plot_energy(ax,evt_ak.energy_sum[evt_ak.multiplicity>0],yerr=False,label="Summed energies",xrange=(0,4000))
@@ -782,11 +782,11 @@ quantities.
 Or we can select multiplicity two (M2) events and plot the 2D energy
 spectra.
 
-.. code:: ipython3
+.. code:: python
 
     import matplotlib as mpl
 
-.. code:: ipython3
+.. code:: python
 
     def plot_energy_2D(axes,energy_1,energy_2,bins=400,xrange=None,yrange=None,label=" ",**kwargs):
 
@@ -807,7 +807,7 @@ spectra.
         if xrange is not None:
             axes.set_xlim(*xrange)
 
-.. code:: ipython3
+.. code:: python
 
     fig, ax = plt.subplots()
 
