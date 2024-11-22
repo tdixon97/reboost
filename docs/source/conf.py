@@ -19,8 +19,8 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx_copybutton",
-    "myst_parser"
-    ]
+    "myst_parser",
+]
 
 
 source_suffix = {
