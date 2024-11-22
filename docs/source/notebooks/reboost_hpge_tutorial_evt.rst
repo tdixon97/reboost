@@ -16,7 +16,6 @@ detector system with a large number of detectors. We chose an array of
 
     from lgdo import lh5
     from reboost.hpge import hit, tcm
-    %load_ext memory_profiler
     import matplotlib.pyplot as plt
     import pyg4ometry as pg4
     import legendhpges
@@ -28,10 +27,10 @@ detector system with a large number of detectors. We chose an array of
     import numpy as np
 
 
-    plt.rcParams['figure.figsize'] = [12, 4]
-    plt.rcParams['axes.titlesize'] =12
-    plt.rcParams['axes.labelsize'] = 12
-    plt.rcParams['legend.fontsize'] = 12
+    plt.rcParams["figure.figsize"] = [12, 4]
+    plt.rcParams["axes.titlesize"] = 12
+    plt.rcParams["axes.labelsize"] = 12
+    plt.rcParams["legend.fontsize"] = 12
 
 
     handler = colorlog.StreamHandler()
@@ -88,24 +87,34 @@ detectors as in the part before
 
 
     # create a world volume
-    world_s = pg4.geant4.solid.Tubs("World_s", 0,60,100,0,2*np.pi, registry=reg, lunit="cm")
+    world_s = pg4.geant4.solid.Tubs(
+        "World_s", 0, 60, 100, 0, 2 * np.pi, registry=reg, lunit="cm"
+    )
     world_l = pg4.geant4.LogicalVolume(world_s, "G4_Galactic", "World", registry=reg)
     reg.setWorld(world_l)
 
     # let's make a liquid argon balloon
-    lar_s = pg4.geant4.solid.Tubs("LAr_s",  0, 20, 40, 0, 2*np.pi, registry=reg, lunit="cm")
+    lar_s = pg4.geant4.solid.Tubs(
+        "LAr_s", 0, 20, 40, 0, 2 * np.pi, registry=reg, lunit="cm"
+    )
     lar_l = pg4.geant4.LogicalVolume(lar_s, "G4_lAr", "LAr_l", registry=reg)
     pg4.geant4.PhysicalVolume([0, 0, 0], [0, 0, 0], lar_l, "LAr", world_l, registry=reg)
 
     # lets make 4 strings of 5 detectors
 
     det_count = 0
-    for x in [-50,50]:
-        for y in [-50,50]:
-            for z in [-100,-50,0,50,100]:
-
-                pg4.geant4.PhysicalVolume([0, 0, 0], [x, y,z, "mm"], bege_l, f"BEGe_{det_count}", lar_l, registry=reg)
-                det_count+=1
+    for x in [-50, 50]:
+        for y in [-50, 50]:
+            for z in [-100, -50, 0, 50, 100]:
+                pg4.geant4.PhysicalVolume(
+                    [0, 0, 0],
+                    [x, y, z, "mm"],
+                    bege_l,
+                    f"BEGe_{det_count}",
+                    lar_l,
+                    registry=reg,
+                )
+                det_count += 1
 
     w = pg4.gdml.Writer()
     w.addDetector(reg)
@@ -118,7 +127,9 @@ Uncomment the next block to visualise
 .. code:: python
 
 
-    viewer = pg4.visualisation.VtkViewerColoured(materialVisOptions={"G4_lAr": [0, 0, 1, 0.1]})
+    viewer = pg4.visualisation.VtkViewerColoured(
+        materialVisOptions={"G4_lAr": [0, 0, 1, 0.1]}
+    )
     viewer.addLogicalVolume(reg.getWorldVolume())
     viewer.view()
 
@@ -191,65 +202,64 @@ First we define the config file and parameters.
 .. code:: python
 
     chain = {
-            "channels": chans,
-            "outputs": [
-                "t0",                           # first timestamp
-                "evtid",                        # id of the hit
-                "global_evtid",                 # global id of the hit
-                "energy_sum_no_deadlyer",
-                "energy_sum"                   # true summed energy before dead layer or smearing
-            ],
-            "step_group": {
-                "description": "group steps by time and evtid with 10us window",
-                "expression": "reboost.hpge.processors.group_by_time(stp,window=10)",
+        "channels": chans,
+        "outputs": [
+            "t0",  # first timestamp
+            "evtid",  # id of the hit
+            "global_evtid",  # global id of the hit
+            "energy_sum_no_deadlyer",
+            "energy_sum",  # true summed energy before dead layer or smearing
+        ],
+        "step_group": {
+            "description": "group steps by time and evtid with 10us window",
+            "expression": "reboost.hpge.processors.group_by_time(stp,window=10)",
+        },
+        "locals": {
+            "hpge": "reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)",
+            "phy_vol": "reboost.hpge.utils.get_phy_vol(reg=reg,pars=pars,detector=detector)",
+        },
+        "operations": {
+            "t0": {
+                "description": "first time in the hit.",
+                "mode": "eval",
+                "expression": "ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)",
             },
-            "locals": {
-                "hpge": "reboost.hpge.utils.get_hpge(meta_path=meta,pars=pars,detector=detector)",
-                "phy_vol": "reboost.hpge.utils.get_phy_vol(reg=reg,pars=pars,detector=detector)",
+            "evtid": {
+                "description": "global evtid of the hit.",
+                "mode": "eval",
+                "expression": "ak.fill_none(ak.firsts(hit._evtid,axis=-1),np.nan)",
             },
-            "operations": {
-                "t0": {
-                    "description": "first time in the hit.",
-                    "mode": "eval",
-                    "expression": "ak.fill_none(ak.firsts(hit.time,axis=-1),np.nan)",
-                },
-                "evtid": {
-                    "description": "global evtid of the hit.",
-                    "mode": "eval",
-                    "expression": "ak.fill_none(ak.firsts(hit._evtid,axis=-1),np.nan)",
-                },
-                "global_evtid": {
-                    "description": "global evtid of the hit.",
-                    "mode": "eval",
-                    "expression": "ak.fill_none(ak.firsts(hit._global_evtid,axis=-1),np.nan)",
-                },
-                "distance_to_nplus_surface_mm": {
-                    "description": "distance to the nplus surface in mm",
-                    "mode": "function",
-                    "expression": "reboost.hpge.processors.distance_to_surface(hit.xloc, hit.yloc, hit.zloc, hpge, phy_vol.position.eval(), surface_type='nplus',unit='m')",
-                },
-                "activeness": {
-                    "description": "activness based on FCCD (no TL)",
-                    "mode": "eval",
-                    "expression": "ak.where(hit.distance_to_nplus_surface_mm<pars.fccd_in_mm,0,1)",
-                },
-                "energy_sum_deadlayer": {
-                    "description": "summed energy in the hit after deadlayr",
-                    "mode": "eval",
-                    "expression": "ak.sum(hit.edep*hit.activeness,axis=-1)",
-                },
-                "energy_sum_no_deadlayer": {
-                    "description": "summed energy in the hit after deadlayr",
-                    "mode": "eval",
-                    "expression": "ak.sum(hit.edep,axis=-1)",
-                },
-                "energy_sum": {
-                    "description": "summed energy after convolution with energy response.",
-                    "mode": "function",
-                    "expression": "reboost.hpge.processors.smear_energies(hit.energy_sum_deadlayer,reso=pars.fwhm_in_keV/2.355)"
-                }
-
-            }
+            "global_evtid": {
+                "description": "global evtid of the hit.",
+                "mode": "eval",
+                "expression": "ak.fill_none(ak.firsts(hit._global_evtid,axis=-1),np.nan)",
+            },
+            "distance_to_nplus_surface_mm": {
+                "description": "distance to the nplus surface in mm",
+                "mode": "function",
+                "expression": "reboost.hpge.processors.distance_to_surface(hit.xloc, hit.yloc, hit.zloc, hpge, phy_vol.position.eval(), surface_type='nplus',unit='m')",
+            },
+            "activeness": {
+                "description": "activness based on FCCD (no TL)",
+                "mode": "eval",
+                "expression": "ak.where(hit.distance_to_nplus_surface_mm<pars.fccd_in_mm,0,1)",
+            },
+            "energy_sum_deadlayer": {
+                "description": "summed energy in the hit after deadlayr",
+                "mode": "eval",
+                "expression": "ak.sum(hit.edep*hit.activeness,axis=-1)",
+            },
+            "energy_sum_no_deadlayer": {
+                "description": "summed energy in the hit after deadlayr",
+                "mode": "eval",
+                "expression": "ak.sum(hit.edep,axis=-1)",
+            },
+            "energy_sum": {
+                "description": "summed energy after convolution with energy response.",
+                "mode": "function",
+                "expression": "reboost.hpge.processors.smear_energies(hit.energy_sum_deadlayer,reso=pars.fwhm_in_keV/2.355)",
+            },
+        },
     }
 
 .. code:: python
@@ -257,22 +267,29 @@ First we define the config file and parameters.
     ## all detectors have the same performance
     pars = {
         f"det{num:03}": {
-            "meta_name":"BEGe.json",
-            "phy_vol_name":f"BEGe_{num}",
-            "fwhm_in_keV":2.69,
-            "fccd_in_mm":1.420, # dead layer in mm
+            "meta_name": "BEGe.json",
+            "phy_vol_name": f"BEGe_{num}",
+            "fwhm_in_keV": 2.69,
+            "fccd_in_mm": 1.420,  # dead layer in mm
         }
         for num in range(20)
-
     }
 
 .. code:: python
 
-    %%time
     logger.setLevel(logging.CRITICAL)
 
-    hit.build_hit(file_out="output/hit/output.lh5",list_file_in="output/stp/*.lh5", out_field="hit",in_field="stp",
-                  proc_config=chain,pars=pars,gdml="cfg/geom.gdml",metadata_path="cfg/metadata/",merge_input_files=True)
+    hit.build_hit(
+        file_out="output/hit/output.lh5",
+        list_file_in="output/stp/*.lh5",
+        out_field="hit",
+        in_field="stp",
+        proc_config=chain,
+        pars=pars,
+        gdml="cfg/geom.gdml",
+        metadata_path="cfg/metadata/",
+        merge_input_files=True,
+    )
     logger.setLevel(logging.INFO)
 
 
@@ -291,18 +308,20 @@ compare these indices.
 
 .. code:: python
 
-    data_det001 = lh5.read("det001/hit","output/hit/output.lh5")
+    data_det001 = lh5.read("det001/hit", "output/hit/output.lh5")
 
 
 .. code:: python
 
-    fig,ax = plt.subplots()
-    ax.plot(data_det001.evtid,np.arange(len(data_det001.evtid)),label="Local")
+    fig, ax = plt.subplots()
+    ax.plot(data_det001.evtid, np.arange(len(data_det001.evtid)), label="Local")
     ax.set_xlabel("local evtid")
     ax.set_ylabel("hit idx")
 
 
-    ax.plot(data_det001.global_evtid,np.arange(len(data_det001.global_evtid)),label="Global")
+    ax.plot(
+        data_det001.global_evtid, np.arange(len(data_det001.global_evtid)), label="Global"
+    )
     ax.set_xlabel("evtid")
     ax.set_ylabel("hit idx")
     ax.legend(loc="upper left")
@@ -342,8 +361,13 @@ Now we can build the time-coincidence map and save to a new file.
 
 .. code:: python
 
-    %%memit
-    tcm.build_tcm("output/hit/output.lh5","output/tcm/test_tcm.lh5",chans,time_name="t0",idx_name="global_evtid")
+    tcm.build_tcm(
+        "output/hit/output.lh5",
+        "output/tcm/test_tcm.lh5",
+        chans,
+        time_name="t0",
+        idx_name="global_evtid",
+    )
 
 
 
@@ -366,7 +390,7 @@ Now we can look at our TCM.
 
 .. code:: python
 
-    tcm_ak = lh5.read("tcm","output/tcm/test_tcm.lh5").view_as("ak")
+    tcm_ak = lh5.read("tcm", "output/tcm/test_tcm.lh5").view_as("ak")
 
 .. code:: python
 
@@ -419,9 +443,15 @@ information from the hit tier files. This is done by ``build_evt``.
 
 .. code:: python
 
-    plt.hist(ak.num(tcm_ak.array_id,axis=-1),range=(.5,20.5),bins=20,alpha=0.3,density=True)
+    plt.hist(
+        ak.num(tcm_ak.array_id, axis=-1),
+        range=(0.5, 20.5),
+        bins=20,
+        alpha=0.3,
+        density=True,
+    )
     plt.yscale("log")
-    plt.xlim(0.5,10)
+    plt.xlim(0.5, 10)
     plt.xlabel("Multiplicity")
     plt.ylabel("Probability ")
 
@@ -482,9 +512,11 @@ anticoincidence but is not fully usable).
 
 .. code:: python
 
-    chans_off = ["det003","det007"]
-    chans_ac = ["det013","det016"]
-    chans_on = [chan for chan in chans if (chan not in chans_off) and (chan not in chans_ac) ]
+    chans_off = ["det003", "det007"]
+    chans_ac = ["det013", "det016"]
+    chans_on = [
+        chan for chan in chans if (chan not in chans_off) and (chan not in chans_ac)
+    ]
     chans_on
 
 
@@ -527,10 +559,7 @@ different possible aggregation modes.
 .. code:: python
 
     evt_config = {
-        "channels": {
-                "geds_on":chans_on,
-                "geds_ac":chans_ac
-        },
+        "channels": {"geds_on": chans_on, "geds_ac": chans_ac},
         "outputs": [
             "channel_id",
             "all_channel_id",
@@ -542,85 +571,87 @@ different possible aggregation modes.
             "is_all_above_threshold",
             "t0",
             "is_good_event",
-            "multiplicity"
+            "multiplicity",
         ],
         "operations": {
             "channel_id": {
-                "channels":["geds_on","geds_ac"],
+                "channels": ["geds_on", "geds_ac"],
                 "aggregation_mode": "gather",
                 "query": "hit.energy_sum > 25",
                 "expression": "tcm.array_id",
-                "sort":"descend_by:hit.energy_sum"
+                "sort": "descend_by:hit.energy_sum",
             },
             "all_channel_id": {
-                "channels":["geds_on","geds_ac"],
+                "channels": ["geds_on", "geds_ac"],
                 "aggregation_mode": "gather",
                 "expression": "tcm.array_id",
-                "sort":"descend_by:hit.energy_sum"
+                "sort": "descend_by:hit.energy_sum",
             },
             "tcm_index": {
-                "channels":["geds_on","geds_ac"],
+                "channels": ["geds_on", "geds_ac"],
                 "aggregation_mode": "gather",
                 "query": "hit.energy_sum > 25",
-                "expression": "tcm.index"
+                "expression": "tcm.index",
             },
             "energy_no_threshold": {
-                "channels":["geds_on"],
+                "channels": ["geds_on"],
                 "aggregation_mode": "keep_at_ch:evt.all_channel_id",
-                "expression": "hit.energy_sum"
+                "expression": "hit.energy_sum",
             },
             "energy_vector": {
-                "channels":["geds_on"],
+                "channels": ["geds_on"],
                 "aggregation_mode": "keep_at_ch:evt.channel_id",
-                "expression": "hit.energy_sum"
-            },
-            "is_good_channels":{
-                "channels":["geds_on","geds_ac"],
-                "aggregation_mode":"keep_at_idx:evt.tcm_index",
-                "expression":"True",
-                "initial":False,
-                "exclude_channels":"geds_ac"
-            },
-            "is_all_above_threshold" :{
-                "channels":["geds_on","geds_ac"],
-                "aggregation_mode":"all",
-                "expression":"hit.energy_sum>25",
-                "initial":True
-            },
-            "is_good_event" :{
-                "expression":"ak.all(evt.is_good_channels,axis=-1)"
-            },
-
-            "energy_sum": {
-                "channels":["geds_on"],
-                "aggregation_mode": "sum",
-                "query":"hit.energy_sum > 25",
                 "expression": "hit.energy_sum",
-                "initial":0
+            },
+            "is_good_channels": {
+                "channels": ["geds_on", "geds_ac"],
+                "aggregation_mode": "keep_at_idx:evt.tcm_index",
+                "expression": "True",
+                "initial": False,
+                "exclude_channels": "geds_ac",
+            },
+            "is_all_above_threshold": {
+                "channels": ["geds_on", "geds_ac"],
+                "aggregation_mode": "all",
+                "expression": "hit.energy_sum>25",
+                "initial": True,
+            },
+            "is_good_event": {"expression": "ak.all(evt.is_good_channels,axis=-1)"},
+            "energy_sum": {
+                "channels": ["geds_on"],
+                "aggregation_mode": "sum",
+                "query": "hit.energy_sum > 25",
+                "expression": "hit.energy_sum",
+                "initial": 0,
             },
             "t0": {
-                "channels":["geds_on"],
+                "channels": ["geds_on"],
                 "aggregation_mode": "first_at:hit.t0",
-                "expression": "hit.t0"
+                "expression": "hit.t0",
             },
             "multiplicity": {
                 "channels": ["geds_on"],
                 "aggregation_mode": "sum",
                 "expression": "hit.energy_sum > 25",
-                "initial": 0
-            }
-        }
+                "initial": 0,
+            },
+        },
     }
 
 .. code:: python
 
     from reboost.hpge import evt
+
     logger.setLevel(logging.INFO)
 
 .. code:: python
 
-    %%time
-    evt_ak = evt.build_evt(hit_file="output/hit/output.lh5",tcm_file = "output/tcm/test_tcm.lh5",evt_file=None,config = evt_config)
+    evt_ak = evt.build_evt(
+        hit_file="output/hit/output.lh5",
+        tcm_file="output/tcm/test_tcm.lh5",
+        evt_file=None,
+        config=evt_config,
+    )
 
 
 
@@ -646,10 +677,10 @@ other fields keeping the correspondence with channel or tcm index.
 
 .. code:: python
 
-    print("tcm.array_id       ",tcm_ak.array_id)
-    print("evt.all_channel_id ",evt_ak.all_channel_id)
-    print("evt.channel_id     ",evt_ak.channel_id)
-    print("evt.tcm_index      ",evt_ak.tcm_index)
+    print("tcm.array_id       ", tcm_ak.array_id)
+    print("evt.all_channel_id ", evt_ak.all_channel_id)
+    print("evt.channel_id     ", evt_ak.channel_id)
+    print("evt.tcm_index      ", evt_ak.tcm_index)
 
 
 .. parsed-literal::
@@ -673,8 +704,8 @@ by the energy threshold.
 
 .. code:: python
 
-    print("evt.energy_vector        ",evt_ak.energy_vector)
-    print("evt.energy_no_threshold  ",evt_ak.energy_no_threshold)
+    print("evt.energy_vector        ", evt_ak.energy_vector)
+    print("evt.energy_no_threshold  ", evt_ak.energy_no_threshold)
 
 
 .. parsed-literal::
@@ -687,7 +718,7 @@ Or we can check if each channel is in AC mode.
 
 .. code:: python
 
-    print("evt.is_good_channels ",evt_ak.is_good_channels)
+    print("evt.is_good_channels ", evt_ak.is_good_channels)
 
 
 .. parsed-literal::
@@ -708,10 +739,10 @@ channels above threshold (multiplicity).
 
 .. code:: python
 
-    print("evt_ak.is_all_above_threshold ",evt_ak.is_all_above_threshold)
-    print("evt_ak.energy_sum             ",evt_ak.energy_sum)
-    print("evt_ak.energy_sum             ",evt_ak.energy_sum)
-    print("evt_ak.multiplicity           ",evt_ak.multiplicity)
+    print("evt_ak.is_all_above_threshold ", evt_ak.is_all_above_threshold)
+    print("evt_ak.energy_sum             ", evt_ak.energy_sum)
+    print("evt_ak.energy_sum             ", evt_ak.energy_sum)
+    print("evt_ak.multiplicity           ", evt_ak.multiplicity)
 
 
 .. parsed-literal::
@@ -730,7 +761,7 @@ first checking if any above threshold channel is in AC mode.
 
 .. code:: python
 
-    print("evt_ak.is_good_event           ",evt_ak.is_good_event)
+    print("evt_ak.is_good_event           ", evt_ak.is_good_event)
 
 
 .. parsed-literal::
@@ -747,13 +778,12 @@ quantities.
 
 .. code:: python
 
-    def plot_energy(axes,energy,bins=400,xrange=None,label=" ",log_y=True,**kwargs):
-
-        h=hist.new.Reg(bins,*xrange, name="energy [keV]").Double()
+    def plot_energy(axes, energy, bins=400, xrange=None, label=" ", log_y=True, **kwargs):
+        h = hist.new.Reg(bins, *xrange, name="energy [keV]").Double()
         h.fill(energy)
-        h.plot(**kwargs,label=label)
+        h.plot(**kwargs, label=label)
         axes.legend()
-        if (log_y):
+        if log_y:
             axes.set_yscale("log")
         if xrange is not None:
             axes.set_xlim(*xrange)
@@ -761,8 +791,20 @@ quantities.
 .. code:: python
 
     fig, ax = plt.subplots()
-    plot_energy(ax,evt_ak.energy_sum[evt_ak.multiplicity>0],yerr=False,label="Summed energies",xrange=(0,4000))
-    plot_energy(ax,ak.flatten(evt_ak[evt_ak.multiplicity==1].energy_vector),yerr=False,label="M1 energies",xrange=(0,4000))
+    plot_energy(
+        ax,
+        evt_ak.energy_sum[evt_ak.multiplicity > 0],
+        yerr=False,
+        label="Summed energies",
+        xrange=(0, 4000),
+    )
+    plot_energy(
+        ax,
+        ak.flatten(evt_ak[evt_ak.multiplicity == 1].energy_vector),
+        yerr=False,
+        label="M1 energies",
+        xrange=(0, 4000),
+    )
 
     ax.set_title("summed event energy")
 
@@ -788,18 +830,18 @@ spectra.
 
 .. code:: python
 
-    def plot_energy_2D(axes,energy_1,energy_2,bins=400,xrange=None,yrange=None,label=" ",**kwargs):
-
+    def plot_energy_2D(
+        axes, energy_1, energy_2, bins=400, xrange=None, yrange=None, label=" ", **kwargs
+    ):
         x_axis = hist.axis.Regular(bins, *xrange, name="Energy 2 [keV]")
         y_axis = hist.axis.Regular(bins, *yrange, name="Energy 1 [keV]")
         h = hist.Hist(x_axis, y_axis)
-        h.fill(energy_2,energy_1)
+        h.fill(energy_2, energy_1)
         cmap = mpl.colormaps["BuPu"].copy()
         cmap.set_under(color="white")
 
-
         w, x, y = h.to_numpy()
-        mesh = ax.pcolormesh(x, y, w.T, cmap=cmap,vmin=0.5)
+        mesh = ax.pcolormesh(x, y, w.T, cmap=cmap, vmin=0.5)
         ax.set_xlabel("Energy 2 [keV]")
         ax.set_ylabel("Energy 1 [keV]")
         fig.colorbar(mesh)
@@ -811,9 +853,22 @@ spectra.
 
     fig, ax = plt.subplots()
 
-    energy_1 = np.array(evt_ak[(evt_ak.multiplicity==2)&(evt_ak.is_good_event)].energy_vector[:,1])
-    energy_2 = np.array(evt_ak[(evt_ak.multiplicity==2)&(evt_ak.is_good_event)].energy_vector[:,0])
-    plot_energy_2D(ax,energy_2,energy_1,label=None,xrange=(0,1000),yrange=(0,1600),bins=200,vmin=0.5)
+    energy_1 = np.array(
+        evt_ak[(evt_ak.multiplicity == 2) & (evt_ak.is_good_event)].energy_vector[:, 1]
+    )
+    energy_2 = np.array(
+        evt_ak[(evt_ak.multiplicity == 2) & (evt_ak.is_good_event)].energy_vector[:, 0]
+    )
+    plot_energy_2D(
+        ax,
+        energy_2,
+        energy_1,
+        label=None,
+        xrange=(0, 1000),
+        yrange=(0, 1600),
+        bins=200,
+        vmin=0.5,
+    )
     ax.set_title("summed event energy")
 
 
