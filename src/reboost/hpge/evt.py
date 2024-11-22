@@ -9,6 +9,8 @@ from lgdo.lh5 import LH5Iterator, write
 from pygama.evt.build_evt import evaluate_expression
 from pygama.evt.utils import TCMData
 
+from . import utils
+
 log = logging.getLogger(__name__)
 
 
@@ -29,42 +31,42 @@ def build_evt(
     config
         dictionary of the configuration. For example:
 
-    .. code-block:: json
+        .. code-block:: json
 
-        {
-            "channels": [ "det001", "det002"]
-            },
-            "outputs": [
-                "energy",
-                "multiplicity"
-            ],
-            "operations": {
-                "energy_id": {
-                    "channels": "geds_on",
-                    "aggregation_mode": "gather",
-                    "query": "hit.energy > 25",
-                    "expression": "tcm.channel_id"
+            {
+                "channels": {
+                    "geds_on":[ "det001", "det002"],
+                    "geds_ac":["det003"]
                 },
-                "energy": {
-                    "aggregation_mode": "keep_at_ch:evt.energy_id",
-                    "expression": "hit.energy > 25"
-                },
-                "multiplicity": {
-                    "channels": [
-                        "geds_on",
-                        "geds_ac"
-                    ],
-                    "aggregation_mode": "sum",
-                    "expression": "hit.energy > 25",
-                    "initial": 0
+                "outputs": [
+                    "energy",
+                    "multiplicity"
+                ],
+                "operations": {
+                    "energy_id": {
+                        "channels": "geds_on",
+                        "aggregation_mode": "gather",
+                        "query": "hit.energy > 25",
+                        "expression": "tcm.channel_id"
+                    },
+                    "energy": {
+                        "aggregation_mode": "keep_at_ch:evt.energy_id",
+                        "expression": "hit.energy > 25",
+                        "channels": "geds_on"
+                    },
+                    "multiplicity": {
+                        "channels": "geds_on",
+                        "aggregation_mode": "sum",
+                        "expression": "hit.energy > 25",
+                        "initial": 0
+                    }
                 }
             }
-        }
 
-    Must contain:
-     - "channels": list of channel groupings
-     - "outputs": fields for the output file
-     - "operations": operations to perform see :func:`pygama.evt.build_evt.evaluate_expression` for more details.
+        Must contain:
+        - "channels": dictionary of channel groupings
+        - "outputs": fields for the output file
+        - "operations": operations to perform see :func:`pygama.evt.build_evt.evaluate_expression` for more details.
 
     buffer
         number of events to process simultaneously
@@ -81,7 +83,6 @@ def build_evt(
 
     file_info = {
         "hit": (hit_file, "hit", "det{:03}"),
-        "tcm": (tcm_file, "tcm", "tcm"),
         "evt": (evt_file, "evt"),
     }
 
@@ -89,6 +90,15 @@ def build_evt(
 
     out_ak = ak.Array([])
     mode = "of"
+
+    # get channel groupings
+    channels = {}
+    for group, info in config["channels"].items():
+        if isinstance(info, str):
+            channels[group] = [info]
+
+        elif isinstance(info, list):
+            channels[group] = info
 
     for tcm_lh5, _, n_rows_read in LH5Iterator(tcm_file, "tcm", buffer_len=buffer):
         tcm_lh5_sel = tcm_lh5
@@ -111,27 +121,32 @@ def build_evt(
             if isinstance(defaultv, str) and (defaultv in ["np.nan", "np.inf", "-np.inf"]):
                 defaultv = eval(defaultv)
 
-            channels = info["channels"] if ("channels" in info) else config["channels"]
+            channels_use = utils.get_channels_from_groups(info.get("channels", []), channels)
+            channels_exclude = utils.get_channels_from_groups(
+                info.get("exclude_channels", []), channels
+            )
 
             if "aggregation_mode" not in info:
                 field = out_tab.eval(
                     info["expression"].replace("evt.", ""), info.get("parameters", {})
                 )
             else:
-
                 field = evaluate_expression(
                     file_info,
                     tcm,
-                    channels,
+                    channels_use,
                     table=out_tab,
                     mode=info["aggregation_mode"],
                     expr=info["expression"],
                     query=info.get("query", None),
                     sorter=info.get("sort", None),
-                    channels_skip=info.get("exclude_channels", []),
+                    channels_skip=channels_exclude,
                     default_value=defaultv,
                     n_rows=n_rows,
                 )
+
+            msg = f"field {field}"
+            log.debug(msg)
             out_tab.add_field(name, field)
 
         # remove fields if necessary

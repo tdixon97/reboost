@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import importlib
+import itertools
 import json
 import logging
 import re
@@ -41,6 +42,22 @@ class FileInfo(NamedTuple):
 
     last_global_evtid: int
     """Last global evtid to process."""
+
+
+def get_channels_from_groups(names: list | str | None, groupings: dict | None = None) -> list:
+    """Get a list of channels from a list of groups"""
+
+    if names is None:
+        channels_e = []
+    elif isinstance(names, str):
+        channels_e = groupings[names]
+    elif isinstance(names, list):
+        channels_e = list(itertools.chain.from_iterable([groupings[e] for e in names]))
+    else:
+        msg = f"names {names} must be list or str or `None`"
+        raise ValueError(msg)
+
+    return channels_e
 
 
 def get_selected_files(

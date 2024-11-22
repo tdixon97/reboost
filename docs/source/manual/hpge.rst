@@ -230,7 +230,7 @@ Adding new processors
 Any python function can be a ``reboost.hit`` processor. The only requirement is that it should return a:
 
 - :class:`VectorOfVectors`,
-- :class:`Array`` or
+- :class:`Array` or
 - :class:`ArrayOfEqualSizedArrays`
 
 with the same length as the hit table. This means processors can act on subarrays (``axis=-1`` in awkward syntax) but should not combine multiple rows of the hit table.
@@ -268,7 +268,7 @@ Before explaining how the TCM is constructed we make a detour to explain the dif
         global_evtid:
             description: global evtid of the hit.
             mode: eval
-            expression: 'ak.fill_none(,axis=-1),np.nan)'
+            expression: 'ak.fill_none(hit._global_evtid,axis=-1),np.nan)'
 
 
     This field is mandatory to generate the TCM, and the name of the field is an argument to "build_tcm".
@@ -281,16 +281,14 @@ Before explaining how the TCM is constructed we make a detour to explain the dif
     - This storage is slightly different to the TCM in data, but is chosen to allow easy iteration through the TCM.
     - We do not currently support merging multiple **hit** tier files, this is since then the TCM would need to know which file each hit corresponded to.
 
-Event tier processing (work in progress)
-----------------------------------------
-
-
+Event tier processing
+---------------------
 
 The event tier combines the information from various detector systems. Including in future the optical detector channels. This step is thus only necessary for experiments with
 many output channels.
 
-The processing is again based on a YAML or JSON configuration file. Most of the work to evaluate each expression is done by the :func:`pygama.evt.build_evt.evaluate_expression`.
-
+The processing is again based on a YAML or JSON configuration file. Most of the work to evaluate each expression is done by the :func:`pygama.evt.build_evt.evaluate_expression` and our conventions for processors
+follow those for pygama.
 The input configuration file is identical to a pygama evt tier configuration file (see an example in :func:`pygama.evt.build_evt.build_evt`).
 
 For example:
@@ -306,21 +304,101 @@ For example:
                 - det003
 
         outputs:
-        - energy
-        - multiplicity
+         - energy
+         - multiplicity
 
-        energy_id:
+        operations:
+            energy_id:
+                channels: geds_on
+                aggregation_mode: gather
+                query: hit.energy > 25
+                expression: tcm.channel_id
+            energy:
+                aggregation_mode: 'keep_at_ch:evt.energy_id'
+                channels: geds_on
+                expression: hit.energy
+            multiplicity:
+                channels:
+                    - geds_on
+                    - geds_ac
+                aggregation_mode: sum
+                expression: hit.energy > 25
+                initial: 0
+
+- **channels**  : defines a set of groups of channel names which the operations will be applied to.
+- **outputs**   : defines the fields to include in the output file.
+- **operations**: a list of operations to perform.
+
+The type of operations is based on the "evaluation modes of" :func:`pygama.evt.build_evt.build_evt`.
+Each operation is defined by a configuration block which can have the following keys:
+
+- **channels**: list of channels to perform the operation on,
+- **exlude_channels**: channels to set to the default value,
+- **initial**: initial value of the aggregator,
+- **aggregation_mode**: how to combine the channels (more information below),
+- **expression**: expression to evaluate,
+- **query**: logical statement to only select some channels,
+- **sort**: expression used for sorting the output, format of "ascend_by:field" or "descend_by:field".
+
+
+
+Aggregation modes
+^^^^^^^^^^^^^^^^^
+
+There are several different ways to aggregate the data from different detectors / channels.
+
+- *"no aggregator supplied"* : then the code will perform a simple evaluation of quantities in the ``evt`` tier data for example:
+
+    .. code-block:: yaml
+
+        energy_sum:
+            expression: ak.sum(evt.energies,axis=-1)
+
+- *"first_at:sorter"* picks the value corresponding to the channel (TCM ID) with the lowest value of the "sorter" field. For example:
+
+    .. code-block:: yaml
+
+        first_time:
+            channels: geds_on
+            aggregation_mode: first_at:hit.timestamp
+            expression: hit.timestamp
+
+- *"last_at:sorter"* similar for the highest value,
+- *"gather"*: combines the fields into a :class:`VectorOfVectors`, sorted by the "sort" keys. For example the the following processor is used to extract the channel id (`tcm.array_id`) for every hit above a 25 keV energy threshold.
+
+    .. code-block:: yaml
+
+        channel_id:
             channels: geds_on
             aggregation_mode: gather
             query: hit.energy > 25
-            expression: tcm.channel_id
+            expression: tcm.array_id
+            sort: descend_by:hit.energy
+
+- *"keep_at_channel:channel_id_field"*: similarly combines into a :class:`VectorOfVectors`, however uses only the ids from the "channel_id_field" and preserves the order of the subvectors.
+    For example we can make a processor to extract the energy of each hit from the previous part.
+
+    .. code-block:: yaml
+
         energy:
-            aggregation_mode: 'keep_at_ch:evt.energy_id'
-            expression: hit.energy > 25
-        multiplicity:
-            channels:
-                - geds_on
-                - geds_ac
-            aggregation_mode: sum
-            expression: hit.energy > 25
-            initial: 0
+            channels: geds_on
+            aggregation_mode: keep_at_channel:evt.array_id
+            expression: hit.energy
+
+- *"keep_at_idx:tcm_index_field"* similar but instead preserves the shape of the tcm, first we need to generate a tcm index field.
+
+     .. code-block:: yaml
+
+        tcm_idx:
+            channels: geds_on
+            aggregation_mode: gather
+            query: hit.energy > 25
+            expression: tcm.index
+            sort: descend_by:hit.energy
+
+    this says for every element in the :class:`VectorOfVectors` which index in the flattened data of the tcm to extract the value from. So to find the value to fill a row in the output the code will search for the
+    tcm `idx`` and `id` corresponding to the supplied index.
+
+- *"all"*, *"any"*, *"sum"* aggregates by the operation.
+
+There is also a function mode, but this is not currently used in reboost, and is not expected to be needed.

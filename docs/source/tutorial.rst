@@ -7,4 +7,4 @@ Basic Tutorial
    :caption: Contents:
 
    notebooks/reboost_hpge_tutorial_hit
-   notebooks/reboost_hpge_evt_tutorial
+   notebooks/reboost_hpge_tutorial_evt
