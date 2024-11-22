@@ -20,7 +20,6 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx_copybutton",
     "myst_parser",
-    "nbsphinx",
     "IPython.sphinxext.ipython_console_highlighting",
 ]
 
