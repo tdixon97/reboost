@@ -50,7 +50,7 @@ def evaluate_object(
 ) -> Any:
     """Evaluate an expression returning any object.
 
-    The expression can depend on any objects contained in the local dict.
+    The expression should be a function call. It can depend on any objects contained in the local dict.
     In addition, the expression can use packages which are then imported.
 
     Parameters
@@ -64,8 +64,8 @@ def evaluate_object(
     -------
         the evaluated object.
     """
-
-    raise NotImplementedError
+    func_call, globals_dict = utils.get_function_string(expression)
+    return eval(expression, local_dict, globals_dict)
 
 
 def get_global_objects(expressions: dict[str, str], *, local_dict: dict) -> dict:
@@ -165,4 +165,5 @@ def remove_columns(tab: Table, outputs: list) -> Table:
     for col in existing_cols:
         if col not in outputs:
             tab.remove_column(col, delete=True)
+
     return tab
