@@ -16,7 +16,7 @@ def evaluate_expression(
     expression: str,
     local_dict: dict,
     *,
-    table_name: str = "STEPS",
+    table_name: str = "HITS",
 ) -> LGDO:
     """Evaluate an expression returning an LGDO.
 
@@ -41,7 +41,18 @@ def evaluate_expression(
         an LGDO with the new field.
     """
 
-    raise NotImplementedError
+    if local_dict is None:
+        local_dict = {}
+
+    expr = expression.replace(f"{table_name}.", "")
+
+    # get func call and modules to import
+    func_call, globals_dict = utils.get_function_string(expr)
+
+    msg = f"evaluating table with command {expr} and local_dict {local_dict.keys()}"
+    log.debug(msg)
+
+    return hit_table.eval(func_call, local_dict, globals=globals_dict)
 
 
 def evaluate_object(
