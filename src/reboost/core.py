@@ -116,24 +116,34 @@ def get_detector_objects(output_detectors, proc_group, args, global_objects):
     return utils.dict2tuple(det_objects_dict)
 
 
-def evaluate_hit_table_layout(steps_ak: ak.Array, expression: str) -> Table:
+def evaluate_hit_table_layout(steps: ak.Array | Table, expression: str) -> Table:
     """Evaluate the hit_table_layout expression, producing the hit table.
 
-    This expression should perform a restructuring of the steps, i.e. it sets
-    the number of rows.
+    This expression should be a function call which performs a restructuring of the steps,
+    i.e. it sets the number of rows. The steps array should be referred to
+    by "STEPS" in the expression.
 
     Parameters
     ----------
-    steps_ak
-        awkward array of the steps.
+    steps
+        awkward array or Table of the steps.
     expression
         the expression to evaluate to produce the hit table.
 
     Returns
     -------
-    Table of the hits.
+    :class:`LGDO.Table` of the hits.
     """
-    raise NotImplementedError
+
+    group_func, globs = utils.get_function_string(
+        expression,
+    )
+    locs = {"STEPS": steps}
+
+    msg = f"running step grouping with {group_func} and globals {globs.keys()} and locals {locs.keys()}"
+    log.debug(msg)
+
+    return eval(group_func, globs, locs)
 
 
 def remove_columns(tab: Table, outputs: list) -> Table:

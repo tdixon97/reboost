@@ -132,4 +132,5 @@ def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, di
 
 
 def dict2tuple(dictionary: dict) -> namedtuple:
+    """Convert a dictionary into a namedtuple"""
     return namedtuple("parameters", dictionary.keys())(**dictionary)
