@@ -215,7 +215,7 @@ def build_hit(
         args = AttrsDict(args)
 
     # get the global objects
-    global_objects = utils.dict2tuple(
+    global_objects = AttrsDict(
         core.get_global_objects(
             expressions=config.get("objects", {}).items(), local_dict={"ARGS": args}
         )

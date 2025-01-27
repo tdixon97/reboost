@@ -4,7 +4,6 @@ import importlib
 import json
 import logging
 import re
-from collections import namedtuple
 from pathlib import Path
 
 import yaml
@@ -129,8 +128,3 @@ def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, di
         args_str = patterns.group(1) if patterns is not None else None
 
     return expr, globs
-
-
-def dict2tuple(dictionary: dict) -> namedtuple:
-    """Convert a dictionary into a namedtuple"""
-    return namedtuple("parameters", dictionary.keys())(**dictionary)

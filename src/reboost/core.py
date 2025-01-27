@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 import awkward as ak
+from dbetto import AttrsDict
 from lgdo.types import LGDO, Table
 
 from . import utils
@@ -94,10 +95,12 @@ def get_global_objects(expressions: dict[str, str], *, local_dict: dict) -> dict
     -------
     dictionary of objects with the same keys as the expressions.
     """
-    return {
-        obj_name: evaluate_object(expression, local_dict=local_dict)
-        for obj_name, expression in expressions.items()
-    }
+    return AttrsDict(
+        {
+            obj_name: evaluate_object(expression, local_dict=local_dict)
+            for obj_name, expression in expressions.items()
+        }
+    )
 
 
 def get_detectors_mapping(
@@ -107,11 +110,11 @@ def get_detectors_mapping(
     raise NotImplementedError
 
 
-def get_detector_objects(output_detectors, proc_group, args, global_objects):
+def get_detector_objects(output_detectors, proc_group, args, global_objects) -> AttrsDict:
     """Get the detector objects"""
     det_objects_dict = {}
     for output_detector in output_detectors:
-        det_objects_dict[output_detector] = utils.dict2tuple(
+        det_objects_dict[output_detector] = AttrsDict(
             {
                 obj_name: evaluate_object(
                     obj_expression,
@@ -124,7 +127,7 @@ def get_detector_objects(output_detectors, proc_group, args, global_objects):
                 for obj_name, obj_expression in proc_group.get("detector_objects", {}).items()
             }
         )
-    return utils.dict2tuple(det_objects_dict)
+    return AttrsDict(det_objects_dict)
 
 
 def evaluate_hit_table_layout(steps: ak.Array | Table, expression: str) -> Table:

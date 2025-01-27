@@ -18,7 +18,7 @@ def get_glm_rows(stp_evtids: ArrayLike, vert: ArrayLike, *, start_row: int = 0) 
     Parameters
     ----------
     stp_evtids
-        Array of evtids for the steps
+        Array of evtids for the steps   ``  ```
     vert
         Array of simulated evtid for the vertices.
     start_row
