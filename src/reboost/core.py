@@ -76,7 +76,7 @@ def evaluate_object(
         the evaluated object.
     """
     func_call, globals_dict = utils.get_function_string(expression)
-    return eval(expression, local_dict, globals_dict)
+    return eval(func_call, local_dict, globals_dict)
 
 
 def get_global_objects(expressions: dict[str, str], *, local_dict: dict) -> dict:

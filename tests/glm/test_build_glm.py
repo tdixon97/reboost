@@ -5,49 +5,49 @@ import numpy as np
 import pytest
 from lgdo import Table, lh5
 
-from reboost.build_elm import build_elm, get_elm_rows, get_stp_evtids
-from reboost.build_hit import ELMIterator
+from reboost.build_glm import build_glm, get_glm_rows, get_stp_evtids
+from reboost.build_hit import GLMIterator
 
 
-# test the basic (awkward operations) to get the elm rows
-def test_get_elm_rows():
+# test the basic (awkward operations) to get the glm rows
+def test_get_glm_rows():
     # some basic cases
     stp_evtids = [0, 0, 0, 1, 1, 1, 6, 6, 7]
     vert = [0, 1, 6, 7]
-    elm = get_elm_rows(stp_evtids, vert, start_row=0)
+    glm = get_glm_rows(stp_evtids, vert, start_row=0)
 
-    assert ak.all(elm.evtid == [0, 1, 6, 7])
-    assert ak.all(elm.n_rows == [3, 3, 2, 1])
-    assert ak.all(elm.start_row == [0, 3, 6, 8])
+    assert ak.all(glm.evtid == [0, 1, 6, 7])
+    assert ak.all(glm.n_rows == [3, 3, 2, 1])
+    assert ak.all(glm.start_row == [0, 3, 6, 8])
 
     # test with a different start row
 
-    elm = get_elm_rows(stp_evtids, vert, start_row=999)
-    assert ak.all(elm.evtid == [0, 1, 6, 7])
-    assert ak.all(elm.n_rows == [3, 3, 2, 1])
-    assert ak.all(elm.start_row == [999, 1002, 1005, 1007])
+    glm = get_glm_rows(stp_evtids, vert, start_row=999)
+    assert ak.all(glm.evtid == [0, 1, 6, 7])
+    assert ak.all(glm.n_rows == [3, 3, 2, 1])
+    assert ak.all(glm.start_row == [999, 1002, 1005, 1007])
 
     # test discard steps
 
     vert = [1, 6]
-    elm = get_elm_rows(stp_evtids, vert, start_row=0)
-    assert ak.all(elm.evtid == [1, 6])
-    assert ak.all(elm.n_rows == [3, 2])
-    assert ak.all(elm.start_row == [3, 6])
+    glm = get_glm_rows(stp_evtids, vert, start_row=0)
+    assert ak.all(glm.evtid == [1, 6])
+    assert ak.all(glm.n_rows == [3, 2])
+    assert ak.all(glm.start_row == [3, 6])
 
     # test gracefully fails
 
     # steps not in the vert table will cause it to fail
     with pytest.raises(ValueError):
-        get_elm_rows(stp_evtids=[1, 3], vert=[1, 2, 4])
+        get_glm_rows(stp_evtids=[1, 3], vert=[1, 2, 4])
 
     # steps must be sorted
     with pytest.raises(ValueError):
-        get_elm_rows(stp_evtids=[1, 3, 2], vert=[1, 2])
+        get_glm_rows(stp_evtids=[1, 3, 2], vert=[1, 2])
 
     # vertex evtids must be sorted
     with pytest.raises(ValueError):
-        get_elm_rows(stp_evtids=[1, 3, 2], vert=[1, 2, 0])
+        get_glm_rows(stp_evtids=[1, 3, 2], vert=[1, 2, 0])
 
 
 # create some example inputs
@@ -139,8 +139,8 @@ def test_read_stp_rows(test_data_files):
     assert start_row == 21050
 
 
-def test_build_elm(test_data_files):
-    # produce directly elm without iteration
+def test_build_glm(test_data_files):
+    # produce directly glm without iteration
     # try with different buffers
 
     for buffer in [71, 100, 1000, 2000, 40000]:
@@ -157,50 +157,50 @@ def test_build_elm(test_data_files):
                 "stp/det2/evtid", str(test_data_files / f"{test}_test.lh5"), "np"
             )
             # check both returning and saving
-            for elm_file in [str(test_data_files / f"{test}_elm.lh5"), None]:
-                elm = build_elm(
+            for glm_file in [str(test_data_files / f"{test}_glm.lh5"), None]:
+                glm = build_glm(
                     str(test_data_files / f"{test}_test.lh5"),
-                    elm_file,
+                    glm_file,
                     id_name="evtid",
                     evtid_buffer=1000,
                     stp_buffer=buffer,
                 )
 
-                if elm_file is not None:
-                    elm1 = lh5.read("elm/det1", elm_file).view_as("ak")
-                    elm2 = lh5.read("elm/det2", elm_file).view_as("ak")
-                    elm = ak.Array({"det1": elm1, "det2": elm2})
-                # elm should have the right evtid
+                if glm_file is not None:
+                    glm1 = lh5.read("glm/det1", glm_file).view_as("ak")
+                    glm2 = lh5.read("glm/det2", glm_file).view_as("ak")
+                    glm = ak.Array({"det1": glm1, "det2": glm2})
+                # glm should have the right evtid
 
-                assert ak.all(elm.det1.evtid.to_numpy() == evtids)
-                assert ak.all(elm.det2.evtid.to_numpy() == evtids)
+                assert ak.all(glm.det1.evtid.to_numpy() == evtids)
+                assert ak.all(glm.det2.evtid.to_numpy() == evtids)
 
                 # total number of rows should be correct
-                assert np.sum(elm.det1.n_rows) == len(evtids1_read)
-                assert np.sum(elm.det2.n_rows) == len(evtids2_read)
+                assert np.sum(glm.det1.n_rows) == len(evtids1_read)
+                assert np.sum(glm.det2.n_rows) == len(evtids2_read)
 
 
-def test_elm_iterator(test_data_files):
-    # make an elm
+def test_glm_iterator(test_data_files):
+    # make an glm
 
     # two files (no gaps and gaps)
     for test in ["simple", "gaps"]:
         stp_file = str(test_data_files / f"{test}_test.lh5")
-        elm_file = str(test_data_files / f"{test}_elm.lh5")
+        glm_file = str(test_data_files / f"{test}_glm.lh5")
 
-        build_elm(
+        build_glm(
             stp_file,
-            elm_file,
+            glm_file,
             id_name="evtid",
             evtid_buffer=1000,
             stp_buffer=100000,
         )
 
-        # iterate over the elm and the test file
+        # iterate over the glm and the test file
         for det in ["det1", "det2"]:
             evtids = None
-            elm_it = ELMIterator(
-                elm_file,
+            glm_it = GLMIterator(
+                glm_file,
                 stp_file,
                 lh5_group=det,
                 start_row=0,
@@ -210,7 +210,7 @@ def test_elm_iterator(test_data_files):
                 buffer=100,
             )
             # get the overall evtids
-            for stps, _, _, _ in elm_it:
+            for stps, _, _, _ in glm_it:
                 if stps is None:
                     continue
 

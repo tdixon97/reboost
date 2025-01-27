@@ -9,12 +9,12 @@ from lgdo.types import LGDO
 log = logging.getLogger(__name__)
 
 
-class ELMIterator:
+class GLMIterator:
     """A class to iterate over the rows of an event lookup map"""
 
     def __init__(
         self,
-        elm_file: str,
+        glm_file: str,
         stp_file: str,
         lh5_group: str,
         start_row: int,
@@ -24,11 +24,11 @@ class ELMIterator:
         read_vertices: bool = False,
         buffer: int = 10000,
     ):
-        """Constructor for the ELMIterator.
+        """Constructor for the glmIterator.
 
         Parameters
         ----------
-        elm_file
+        glm_file
             the file containing the event lookup map.
         stp_file
             the file containing the steps to read.
@@ -46,7 +46,7 @@ class ELMIterator:
         """
 
         # initialise
-        self.elm_file = elm_file
+        self.glm_file = glm_file
         self.stp_file = stp_file
         self.lh5_group = lh5_group
         self.start_row = start_row
@@ -72,9 +72,9 @@ class ELMIterator:
         rows_left = self.n_rows - self.n_rows_read
         n_rows = self.buffer if (self.buffer > rows_left) else rows_left
 
-        # read the elm rows
-        elm_rows, n_rows_read = self.sto.read(
-            f"elm/{self.lh5_group}", self.elm_file, start_row=self.start_row_tmp, n_rows=n_rows
+        # read the glm rows
+        glm_rows, n_rows_read = self.sto.read(
+            f"glm/{self.lh5_group}", self.glm_file, start_row=self.start_row_tmp, n_rows=n_rows
         )
 
         self.n_rows_read += n_rows_read
@@ -83,16 +83,16 @@ class ELMIterator:
         if n_rows_read == 0:
             raise StopIteration
 
-        # view our elm as an awkward array
-        elm_ak = elm_rows.view_as("ak")
+        # view our glm as an awkward array
+        glm_ak = glm_rows.view_as("ak")
 
         # remove empty rows
-        elm_ak = elm_ak[elm_ak.n_rows > 0]
+        glm_ak = glm_ak[glm_ak.n_rows > 0]
 
-        if len(elm_ak) > 0:
+        if len(glm_ak) > 0:
             # extract range of stp rows to read
-            start = elm_ak.start_row[0]
-            n = sum(elm_ak.n_rows)
+            start = glm_ak.start_row[0]
+            n = sum(glm_ak.n_rows)
 
             stp_rows, n_steps = self.sto.read(
                 f"{self.stp_field}/{self.lh5_group}", self.stp_file, start_row=start, n_rows=n
@@ -109,7 +109,7 @@ class ELMIterator:
                 )
             else:
                 vert_rows = None
-            # vertex table should have same structure as elm
+            # vertex table should have same structure as glm
 
             return (stp_rows, vert_rows, self.current_i_entry, n_steps)
         return (None, None, self.current_i_entry, 0)

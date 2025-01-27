@@ -12,8 +12,8 @@ from numpy.typing import ArrayLike
 log = logging.getLogger(__name__)
 
 
-def get_elm_rows(stp_evtids: ArrayLike, vert: ArrayLike, *, start_row: int = 0) -> ak.Array:
-    """Get the rows of the event lookup map (elm).
+def get_glm_rows(stp_evtids: ArrayLike, vert: ArrayLike, *, start_row: int = 0) -> ak.Array:
+    """Get the rows of the event lookup map (glm).
 
     Parameters
     ----------
@@ -26,7 +26,7 @@ def get_elm_rows(stp_evtids: ArrayLike, vert: ArrayLike, *, start_row: int = 0) 
 
     Returns
     -------
-    an awkward array of the `elm`.
+    an awkward array of the `glm`.
     """
     # convert inputs
     if not isinstance(stp_evtids, np.ndarray):
@@ -166,15 +166,16 @@ def get_stp_evtids(
     return start_row, chunk_start, evtids_proc
 
 
-def build_elm(
+def build_glm(
     stp_file: str,
-    elm_file: str | None,
+    glm_file: str | None,
     *,
+    out_table_name: str = "glm",
     id_name: str = "g4_evtid",
     evtid_buffer: int = 10000,
     stp_buffer: int = 1000,
 ) -> ak.Array | None:
-    """Builds a g4_evtid look up (elm) from the stp data.
+    """Builds a g4_evtid look up (glm) from the stp data.
 
     This object is used by `reboost` to efficiency iterate through the data.
     It consists of a :class:`LGDO.VectorOfVectors` for each lh5_table in the input files.
@@ -185,8 +186,10 @@ def build_elm(
     ----------
     stp_file
         path to the stp (input) file.
-    elm_file
-        path to the elm data, can also be `None` in which case an `ak.Array` is returned in memory.
+    glm_file
+        path to the glm data, can also be `None` in which case an `ak.Array` is returned in memory.
+    out_table_name
+        name for the output table.
     id_name
         name of the evtid file, default `g4_evtid`.
     stp_buffer
@@ -205,10 +208,10 @@ def build_elm(
     lh5_table_list = [table for table in lh5.ls(stp_file, "stp/") if table != "stp/vertices"]
 
     # get rows in the table
-    if elm_file is None:
-        elm_sum = {lh5_table.replace("stp/", ""): None for lh5_table in lh5_table_list}
+    if glm_file is None:
+        glm_sum = {lh5_table.replace("stp/", ""): None for lh5_table in lh5_table_list}
     else:
-        elm_sum = None
+        glm_sum = None
 
     # start row for each table
     start_row = {lh5_tab: 0 for lh5_tab in lh5_table_list}
@@ -238,27 +241,27 @@ def build_elm(
             # set the start row for the next chunk
             start_row[lh5_table] = start_row_tmp
 
-            # now get the elm rows
-            elm = get_elm_rows(evtids, vert_ak, start_row=chunk_row)
+            # now get the glm rows
+            glm = get_glm_rows(evtids, vert_ak, start_row=chunk_row)
 
             for field in ["evtid", "n_rows", "start_row"]:
-                out_tab.add_field(field, Array(elm[field].to_numpy()))
+                out_tab.add_field(field, Array(glm[field].to_numpy()))
 
             # write the output file
             mode = "of" if (vidx == 0 and idx == 0) else "append"
 
             lh5_subgroup = lh5_table.replace("stp/", "")
 
-            if elm_file is not None:
-                store.write(out_tab, f"elm/{lh5_subgroup}", elm_file, wo_mode=mode)
+            if glm_file is not None:
+                store.write(out_tab, f"{out_table_name}/{lh5_subgroup}", glm_file, wo_mode=mode)
             else:
-                elm_sum[lh5_subgroup] = (
-                    copy.deepcopy(elm)
-                    if elm_sum[lh5_subgroup] is None
-                    else ak.concatenate((elm_sum[lh5_subgroup], elm))
+                glm_sum[lh5_subgroup] = (
+                    copy.deepcopy(glm)
+                    if glm_sum[lh5_subgroup] is None
+                    else ak.concatenate((glm_sum[lh5_subgroup], glm))
                 )
 
-    # return if it was requested to keep elm in memory
-    if elm_sum is not None:
-        return ak.Array(elm_sum)
+    # return if it was requested to keep glm in memory
+    if glm_sum is not None:
+        return ak.Array(glm_sum)
     return None

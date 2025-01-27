@@ -8,7 +8,7 @@ import awkward as ak
 from dbetto import AttrsDict
 from lgdo import lh5
 
-from reboost.iterator import ELMIterator
+from reboost.iterator import GLMIterator
 
 from . import core, utils
 
@@ -19,7 +19,7 @@ def build_hit(
     config: Mapping | str,
     args: Mapping | AttrsDict,
     stp_files: list | str,
-    elm_files: list | str,
+    glm_files: list | str,
     hit_files: list | str | None,
     *,
     start_evtid: int = 0,
@@ -52,7 +52,7 @@ def build_hit(
                 - name: geds
 
                   # this is a list of included detectors (part of the processing group)
-                  output_detectors: OBJECTS.lmeta.channelmap(on=ARGS.timestamp)
+                  output_detectors: OBJECTS.lmeta.channglmap(on=ARGS.timestamp)
                     .group('system').geds
                     .group('analysis.status').on
                     .map('name').keys()
@@ -147,7 +147,7 @@ def build_hit(
 
                 - name: spms
 
-                  output_detectors: OBJECTS.lmeta.channelmap(on=ARGS.timestamp)
+                  output_detectors: OBJECTS.lmeta.channglmap(on=ARGS.timestamp)
                     .group("system").spms
                     .group("analysis.status").on
                     .map("name").keys()
@@ -192,8 +192,8 @@ def build_hit(
             number of evtid to read, if `None` read all.
         stp_files
             list of strings or string of the stp file path.
-        elm_files
-            list of strings or string of the elm file path.
+        glm_files
+            list of strings or string of the glm file path.
         hit_files
             list of strings or string of the hit file path. The `hit` file can also be `None` in which
             case the hits are returned as an `ak.Array` in memory.
@@ -223,14 +223,14 @@ def build_hit(
 
     # get the input files
     files = {}
-    for file_type, file_list in zip(["stp", "elm", "hit"], [stp_files, elm_files, hit_files]):
+    for file_type, file_list in zip(["stp", "glm", "hit"], [stp_files, glm_files, hit_files]):
         if isinstance(file_list, str):
             files[file_type] = list(file_list)
 
     output_table = None
 
     # iterate over files
-    for file_idx, (stp_file, elm_file) in enumerate(zip(files["stp"], files["elm"])):
+    for file_idx, (stp_file, glm_file) in enumerate(zip(files["stp"], files["glm"])):
         # loop over processing groups
         for group_idx, proc_group in enumerate(config["processing_groups"]):
             # extract the output detectors and the mapping to input detectors
@@ -251,11 +251,11 @@ def build_hit(
                     proc_group=proc_group,
                 )
 
-                # begin iterating over the elm
+                # begin iterating over the glm
                 for out_det_idx, out_detector in enumerate(out_detectors):
                     # loop over the rows
-                    elm_it = ELMIterator(
-                        elm_file,
+                    glm_it = GLMIterator(
+                        glm_file,
                         stp_file,
                         lh5_group=in_detector,
                         start_row=start_evtid,
@@ -264,7 +264,7 @@ def build_hit(
                         read_vertices=True,
                         buffer=buffer,
                     )
-                    for stps, _, chunk_idx, _ in elm_it:
+                    for stps, _, chunk_idx, _ in glm_it:
                         # converting to awwkard
                         if stps is None:
                             continue
