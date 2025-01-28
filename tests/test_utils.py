@@ -74,4 +74,5 @@ def test_get_function_string():
     )
 
     func_string, globals_dict = get_function_string(expression)
-    print(globals_dict)
+
+    assert list(globals_dict.keys()) == ["legendhpges", "pygeomtools"]
