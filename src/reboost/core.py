@@ -57,7 +57,7 @@ def evaluate_expression(
     globals_dict.pop("np", None)
     globals_dict.pop("ak", None)
 
-    if len(globals_dict.keys()) < 1:
+    if len(list(globals_dict.keys())) < 1:
         globals_dict = None
 
     return hit_table.eval(func_call, local_dict, modules=globals_dict)
@@ -77,7 +77,7 @@ def evaluate_object(
     expression
         the expression to evaluate.
     local_dict
-        local dictionary to pass to :func:`LGDO.Table.eval()`.
+        local dictionary to pass to `eval()`.
 
     Returns
     -------
@@ -111,13 +111,77 @@ def get_global_objects(expressions: dict[str, str], *, local_dict: dict) -> dict
 
 
 def get_detectors_mapping(
-    output_detector_expressions: str | list,
-    input_detector_map_expression: str | None,
-    objects: dict,
+    output_detector_expression: str,
+    objects: AttrsDict | None = None,
+    input_detector_name: str | None = None,
 ) -> dict:
-    """Extract the output detectors and the list of input to outputs."""
+    """Extract the output detectors and the list of input to outputs by parsing the expressions.
 
-    raise NotImplementedError
+    The output_detector_expression can be a name or a string evaluating to a list of names.
+    This expression can depend on any objects in the objects dictionary, referred to by the keyword
+    "OBJECTS".
+
+    The function produces a dictionary mapping input detectors to output detectors with the following
+    format:
+
+    .. code-block:: python
+
+        {
+            "input1": ["output1", "output2"],
+            "input2": ["ouput3", ...],
+        }
+
+    If only output_detector_expression is supplied the mapping is one-to-one (i.e. every
+    input detector maps to the same output detector). If instead a name for the input_detector_name
+    is also supplied this will be the only key with all output detectors being mapped to this.
+
+    Parameters
+    ----------
+    output_detector_expression
+        An output detector name or a string evaluating to a list of output tables.
+    input_detector_expression
+        Optional input detector name for all the outputs.
+
+
+    Returns
+    -------
+    a dictionary with the input detectors as key and a list of output detectors for each.
+
+    Examples
+    --------
+    For a direct one-to-one mapping:
+
+    >>> get_detectors_mapping("[str(i) for i in range(2)]")
+    {'0':['0'],'1':['1'],'2':['2']}
+
+    With an input detector name:
+
+    >>> get_detectors_mapping("[str(i) for i in range(2)])",input_detector_name = "dets")
+    {'dets':['0','1','2']}
+
+    With  objects:
+
+    >>> objs = AttrsDict({"format":"ch"})
+    >>> get_detectors_mapping("[f'{OBJECTS.format}{i}' for i in range(2)])",
+                                input_detector_name = "dets",objects=objs)
+    {'dets': ['ch0', 'ch1', 'ch2']}
+
+    """
+    func, globs = utils.get_function_string(output_detector_expression)
+    out_names = []
+
+    # if no package was imported its just a name
+    try:
+        out_names.extend(
+            evaluate_object(output_detector_expression, local_dict={"OBJECTS": objects})
+        )
+    except NameError:
+        out_names.append(output_detector_expression)
+
+    # simple one to one mapping
+    if input_detector_name is None:
+        return {name: [name] for name in out_names}
+    return {input_detector_name: out_names}
 
 
 def get_detector_objects(

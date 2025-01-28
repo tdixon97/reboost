@@ -5,7 +5,7 @@ import importlib
 import pytest
 
 import reboost
-from reboost.utils import get_function_string
+from reboost.utils import get_function_string, merge_dicts
 
 
 def test_search_string():
@@ -76,3 +76,11 @@ def test_get_function_string():
     func_string, globals_dict = get_function_string(expression)
 
     assert list(globals_dict.keys()) == ["legendhpges", "pygeomtools"]
+
+
+def test_merge_dicts():
+    assert merge_dicts([{"a": [1, 2, 3], "b": [2]}, {"a": [4, 5, 6], "c": [2]}]) == {
+        "a": [1, 2, 3, 4, 5, 6],
+        "b": [2],
+        "c": [2],
+    }

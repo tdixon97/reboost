@@ -130,3 +130,34 @@ def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, di
             continue
 
     return expr, globs
+
+
+def merge_dicts(dict_list: list) -> dict:
+    """Merge a list of dictionaries, concatenating the items where they exist.
+
+    Parameters
+    ----------
+    dict_list
+        list of dictionaries to merge
+
+    Returns
+    -------
+    a new dictionary after merging.
+
+    Examples
+    --------
+
+    >>> merge_dicts([{"a":[1,2,3],"b":[2]},{"a":[4,5,6],"c":[2]}])
+    {"a":[1,2,3,4,5,6],"b":[2],"c":[2]}
+
+    """
+    merged = {}
+
+    for tmp_dict in dict_list:
+        for key, item in tmp_dict.items():
+            if key in merged:
+                merged[key].extend(item)
+            else:
+                merged[key] = item
+
+    return merged

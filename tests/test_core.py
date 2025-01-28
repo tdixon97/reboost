@@ -139,7 +139,23 @@ def test_eval_expression():
 
 
 def test_detector_mapping():
-    pass
+    # basic
+    assert reboost.core.get_detectors_mapping("[str(i) for i in range(3)]") == {
+        "0": ["0"],
+        "1": ["1"],
+        "2": ["2"],
+    }
+
+    # with input name
+    assert reboost.core.get_detectors_mapping(
+        "[str(i) for i in range(3)]", input_detector_name="dets"
+    ) == {"dets": ["0", "1", "2"]}
+
+    # with  objects:
+    objs = AttrsDict({"format": "ch"})
+    assert reboost.core.get_detectors_mapping(
+        "[f'{OBJECTS.format}{i}' for i in range(3)]", input_detector_name="dets", objects=objs
+    ) == {"dets": ["ch0", "ch1", "ch2"]}
 
 
 def test_remove_columns():

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import io
 import logging
 from collections.abc import Mapping
@@ -52,10 +53,11 @@ def build_hit(
                 - name: geds
 
                   # this is a list of included detectors (part of the processing group)
-                  output_detectors: OBJECTS.lmeta.channglmap(on=ARGS.timestamp)
-                    .group('system').geds
-                    .group('analysis.status').on
-                    .map('name').keys()
+                  detector_mapping:
+                    - output: OBJECTS.lmeta.channglmap(on=ARGS.timestamp)
+                     .group('system').geds
+                     .group('analysis.status').on
+                     .map('name').keys()
 
                   # which columns we actually want to see in the output table
                   outputs:
@@ -137,7 +139,9 @@ def build_hit(
 
                 # example basic processing of steps in scintillators
                 - name: lar
-                  output_detectors: scintillators
+                  detector_mapping:
+                   - output: scintillators
+
                   outputs:
                     - evtid
                     - tot_edep_wlsr
@@ -147,15 +151,15 @@ def build_hit(
 
                 - name: spms
 
-                  output_detectors: OBJECTS.lmeta.channglmap(on=ARGS.timestamp)
+                  # by default, reboost looks in the steps input table for a table with the
+                  # same name as the current detector. This can be overridden for special processors
+
+                  detector_mapping:
+                   - output: OBJECTS.lmeta.channglmap(on=ARGS.timestamp)
                     .group("system").spms
                     .group("analysis.status").on
                     .map("name").keys()
-
-                  # by default, reboost looks in the steps input table for a table with the
-                  # same name as the current detector. This can be overridden for special processors
-                  input_detectors_mapping:
-                    scintillators: OUTPUT_DETECTORS
+                     input: scintillators
 
                   outputs:
                     - t0
@@ -234,11 +238,15 @@ def build_hit(
         # loop over processing groups
         for group_idx, proc_group in enumerate(config["processing_groups"]):
             # extract the output detectors and the mapping to input detectors
-
-            detectors_mapping = core.get_detector_mapping(
-                output_expression=proc_group.get("output_detectors"),
-                input_map_expression=proc_group.get("input_detector_mapping", None),
-                objects=global_objects,
+            detectors_mapping = utils.merge_dicts(
+                [
+                    core.get_detector_mapping(
+                        mapping["output"],
+                        input_detector_name=mapping.get("input", None),
+                        objects=global_objects,
+                    )
+                    for mapping in proc_group.get("output_detectors")
+                ]
             )
 
             # loop over detectors
@@ -252,27 +260,29 @@ def build_hit(
                 )
 
                 # begin iterating over the glm
-                for out_det_idx, out_detector in enumerate(out_detectors):
-                    # loop over the rows
-                    glm_it = GLMIterator(
-                        glm_file,
-                        stp_file,
-                        lh5_group=in_detector,
-                        start_row=start_evtid,
-                        stp_field=in_field,
-                        n_rows=n_evtid,
-                        read_vertices=True,
-                        buffer=buffer,
-                    )
-                    for stps, _, chunk_idx, _ in glm_it:
-                        # converting to awwkard
-                        if stps is None:
-                            continue
+                glm_it = GLMIterator(
+                    glm_file,
+                    stp_file,
+                    lh5_group=in_detector,
+                    start_row=start_evtid,
+                    stp_field=in_field,
+                    n_rows=n_evtid,
+                    read_vertices=True,
+                    buffer=buffer,
+                )
+                for stps, _, chunk_idx, _ in glm_it:
+                    # converting to awwkard
+                    if stps is None:
+                        continue
 
-                        # produce the hit table
-                        ak_obj = stps.view_as("ak")
+                    # produce the hit table
+                    ak_obj = stps.view_as("ak")
+
+                    for out_det_idx, out_detector in enumerate(out_detectors):
+                        # loop over the rows
+
                         hit_table = core.evaluate_hit_table_layout(
-                            ak_obj, expression=proc_group["hit_table_layout"]
+                            copy.deepcopy(ak_obj), expression=proc_group["hit_table_layout"]
                         )
 
                         local_dict = {
