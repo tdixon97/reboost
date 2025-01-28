@@ -69,6 +69,10 @@ test = [
     "pre-commit",
     "pytest>=6.0",
     "pytest-cov",
+    "legendhpges",
+    "pygeomtools",
+    "pyg4ometry",
+
 ]
 
 [project.scripts]
