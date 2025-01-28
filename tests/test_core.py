@@ -39,7 +39,7 @@ def make_gdml(test_data_configs):
     with Path(meta).open() as file:
         metadata = json.load(file)
 
-    hpge_p.pygeom_active_dector = pygeomtools.RemageDetectorInfo(
+    hpge_p.pygeom_active_detector = pygeomtools.RemageDetectorInfo(
         "germanium",
         1,
         metadata,
