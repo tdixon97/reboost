@@ -72,6 +72,7 @@ test = [
     "legend-pygeom-hpges",
     "legend-pygeom-tools",
     "pyg4ometry",
+    "pylegendtestdata",
 
 ]
 
