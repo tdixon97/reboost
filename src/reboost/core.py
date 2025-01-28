@@ -57,6 +57,9 @@ def evaluate_expression(
     globals_dict.pop("np", None)
     globals_dict.pop("ak", None)
 
+    if len(globals_dict.keys()) < 1:
+        globals_dict = None
+
     return hit_table.eval(func_call, local_dict, modules=globals_dict)
 
 
