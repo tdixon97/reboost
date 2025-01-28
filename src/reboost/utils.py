@@ -47,14 +47,17 @@ def get_wo_mode(
     raise NotImplementedError
 
 
+def _search_string(string: str):
+    """Capture the characters matching the pattern for a function call."""
+
+    pattern = r"\b([a-zA-Z_][a-zA-Z0-9_\.]*)\s*\("
+    return re.findall(pattern, string)
+
+
 def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, dict]:
     """Get a function call to evaluate.
 
-    Based on the expression to evaluate we search for any
-    regular expression matching the pattern for a function call,
-    i.e. parentheses. The module is captured and imported.
-    The function returns a dictionary of modules.
-
+    Search for any patterns matching the pattern for a function call.
     We also detect any cases of aliases being used, by default
     just for `numpy` as `np` and `awkward` as `ak`. In this
     case, the full name is replaces with the alias in the expression
@@ -66,7 +69,7 @@ def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, di
 
         ak.num(np.array([1, 2]))
 
-    and all packages will be imported. No other operations are supported.
+    and all packages will be imported.
 
     Parameters
     ---------
@@ -95,13 +98,13 @@ def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, di
 
     globs = {}
     # search on the whole expression
-    args_str = re.search(r"\((.*)\)$", expr.strip()).group(1)
-    expr_tmp = expr
 
-    # recursively search through
-    while args_str is not None:
-        # get module and function names
-        func_call = expr_tmp.strip().split("(")[0]
+    funcs = _search_string(expr.strip())
+    for func_call in funcs:
+        # no "." then can't be a module
+        if "." not in func_call:
+            continue
+
         subpackage, func = func_call.rsplit(".", 1)
         package = subpackage.split(".")[0]
 
@@ -117,14 +120,13 @@ def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, di
                 package_import = name
 
         # build globals
-        globs = globs | {
-            package: importlib.import_module(package_import),
-        }
-        # search for a function pattern with the arguments
-
-        patterns = re.search(r"\((.*)\)$", args_str.strip())
-        expr_tmp = args_str
-
-        args_str = patterns.group(1) if patterns is not None else None
+        try:
+            globs = globs | {
+                package: importlib.import_module(package_import),
+            }
+        except Exception:
+            msg = f"Function {package_import} cannot be imported"
+            log.debug(msg)
+            continue
 
     return expr, globs

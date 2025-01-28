@@ -53,7 +53,11 @@ def evaluate_expression(
     msg = f"evaluating table with command {expr} and local_dict {local_dict.keys()}"
     log.debug(msg)
 
-    return hit_table.eval(func_call, local_dict, globals=globals_dict)
+    # remove np and ak
+    globals_dict.pop("np", None)
+    globals_dict.pop("ak", None)
+
+    return hit_table.eval(func_call, local_dict, modules=globals_dict)
 
 
 def evaluate_object(
@@ -104,14 +108,52 @@ def get_global_objects(expressions: dict[str, str], *, local_dict: dict) -> dict
 
 
 def get_detectors_mapping(
-    output_detector_expression: str, input_detector_map_expression: str | None, objects: dict
+    output_detector_expressions: str | list,
+    input_detector_map_expression: str | None,
+    objects: dict,
 ) -> dict:
     """Extract the output detectors and the list of input to outputs."""
+
     raise NotImplementedError
 
 
-def get_detector_objects(output_detectors, proc_group, args, global_objects) -> AttrsDict:
-    """Get the detector objects"""
+def get_detector_objects(
+    output_detectors: list, expressions: dict, args: AttrsDict, global_objects: AttrsDict
+) -> AttrsDict:
+    """Get the detector objects for each detector
+
+    This computes a set of objects per output detector. These should be the
+    expressions (defined in the `expressions` input). They can depend
+    on the keywords:
+
+    - `ARGS` : in which case values of from the args parameter AttrsDict can be references,
+    - `DETECTOR`: referring to the detector name (key of the detector mapping)
+    - `OBJECTS` : The global objects.
+
+    For example expressions like:
+
+    .. code-block:: python
+
+        compute_object(arg=ARGS.first_arg, detector=DETECTOR, obj=OBJECTS.meta)
+
+    are supported.
+
+    Parameters
+    ----------
+    output_detectors
+        list of output detectors,
+    expressions
+        dictionary of expressions to evaluate.
+    args
+        any arguments the expression can depend on, is passed as `locals` to `eval()`.
+    global_objects
+        a dictionary of objects the expression can depend on.
+
+    Returns
+    -------
+    An AttrsDict of the objects for each detector.
+
+    """
     det_objects_dict = {}
     for output_detector in output_detectors:
         det_objects_dict[output_detector] = AttrsDict(
@@ -124,7 +166,7 @@ def get_detector_objects(output_detectors, proc_group, args, global_objects) -> 
                         "OBJECTS": global_objects,
                     },
                 )
-                for obj_name, obj_expression in proc_group.get("detector_objects", {}).items()
+                for obj_name, obj_expression in expressions.items()
             }
         )
     return AttrsDict(det_objects_dict)
@@ -181,3 +223,12 @@ def remove_columns(tab: Table, outputs: list) -> Table:
             tab.remove_column(col, delete=True)
 
     return tab
+
+
+def merge(hit_table: Table, output_table: ak.Array | None):
+    """Merge the table with the array"""
+    return (
+        hit_table.view_as("ak")
+        if output_table is None
+        else ak.concatenate((output_table, hit_table.view_as("ak")))
+    )

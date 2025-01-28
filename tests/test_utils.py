@@ -4,8 +4,15 @@ import importlib
 
 import pytest
 
-import reboost  # noqa: F401
+import reboost
 from reboost.utils import get_function_string
+
+
+def test_search_string():
+    assert reboost.utils._search_string("func.module(abc)") == ["func.module"]
+    assert reboost.utils._search_string("f.c.a(abc())") == ["f.c.a", "abc"]
+    assert reboost.utils._search_string("f.c.a(a(),abc)") == ["f.c.a", "a"]
+    assert reboost.utils._search_string("f.c.a(a(),abc).method()") == ["f.c.a", "a", "method"]
 
 
 def test_get_function_string():
@@ -59,3 +66,12 @@ def test_get_function_string():
     assert eval(func_string, {"distances": distances}, globals_dict).view_as("ak")[2][
         0
     ] == pytest.approx(0.2)
+
+    # try a more compliated expression
+    expression = (
+        "legendhpges.make_hpge(pygeomtools.get_sensvol"
+        "_metadata(OBJECTS.geometry, DETECTOR),registry = OBJECT.reg,name=ARGS.name)"
+    )
+
+    func_string, globals_dict = get_function_string(expression)
+    print(globals_dict)

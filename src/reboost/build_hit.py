@@ -42,8 +42,8 @@ def build_hit(
             objects:
              lmeta: LegendMetadata(ARGS.legendmetadata)
              geometry: pyg4ometry.load(ARGS.gdml)
-             user_pars: legendmeta.TextDB(ARGS.par)
-             dataprod_pars: legendmeta.TextDB(ARGS.dataprod_cycle)
+             user_pars: dbetto.TextDB(ARGS.par)
+             dataprod_pars: dbetto.TextDB(ARGS.dataprod_cycle)
 
             # processing chain is defined to act on a group of detectors
             processing_groups:
@@ -248,7 +248,7 @@ def build_hit(
                     output_detectors=out_detectors,
                     args=args,
                     global_objects=global_objects,
-                    proc_group=proc_group,
+                    expressions=proc_group.get("detector_objects", {}),
                 )
 
                 # begin iterating over the glm
@@ -310,13 +310,8 @@ def build_hit(
                                 files["hit"][file_idx],
                                 wo_mode=wo_mode,
                             )
-
                         else:
-                            output_table = (
-                                hit_table.view_as("ak")
-                                if output_table is None
-                                else ak.concatenate((output_table, hit_table.view_as("ak")))
-                            )
+                            output_table = core.merge(hit_table, output_table)
 
     # return output table or nothing
     return output_table
