@@ -14,27 +14,6 @@ from numpy.typing import NDArray
 log = logging.getLogger(__name__)
 
 
-def _fill_histogram(h: NDArray, binning: NDArray, xyz: NDArray) -> None:
-    assert xyz.shape[1] == 3
-    xyz = xyz.T
-
-    idx = np.zeros(xyz.shape[1], np.int64)  # bin indices for flattened array
-    oor_mask = np.ones(xyz.shape[1], np.bool_)  # mask to remove out of range values
-    stride = [s // h.dtype.itemsize for s in h.strides]
-    dims = range(xyz.shape[0])
-    for col, ax, s, dim in zip(xyz, binning, stride, dims):
-        assert ax.is_range
-        assert ax.closedleft
-        oor_mask &= (ax.first <= col) & (col < ax.last)
-        idx_s = np.floor((col - ax.first).astype(np.float64) / ax.step).astype(np.int64)
-        assert np.all(idx_s[oor_mask] < h.shape[dim])
-        idx += s * idx_s
-
-    # increment bin contents
-    idx = idx[oor_mask]
-    np.add.at(h.reshape(-1), idx, 1)
-
-
 class OpticalMap:
     def __init__(self, name: str, settings: Mapping[str, str], use_shmem: bool = False):
         self.settings = settings
@@ -48,8 +27,11 @@ class OpticalMap:
 
         self.binning = None
 
+        self.__fill_hits_buf = None
+
         if settings is not None:
             self._single_shape = tuple(self.settings["bins"])
+            self._single_stride = None
 
             binedge_attrs = {"units": "m"}
             bins = self.settings["bins"]
@@ -94,38 +76,112 @@ class OpticalMap:
         if self.use_shmem:
             assert mp.current_process().name == "MainProcess"
             a = self._mp_man.Array(ctypes.c_double, math.prod(self._single_shape))
-            self._nda(a).fill(0)
-            return a
-        return np.zeros(shape=self._single_shape, dtype=np.float64)
+            nda = self._nda(a)
+            nda.fill(0)
+        else:
+            a = np.zeros(shape=self._single_shape, dtype=np.float64)
+            nda = a
+        stride = [s // nda.dtype.itemsize for s in nda.strides]
+        if self._single_stride is None:
+            self._single_stride = stride
+        assert self._single_stride == stride
+        return a
 
-    def _nda(self, h) -> NDArray:
+    def _fill_histogram(
+        self,
+        h: NDArray | mp.sharedctypes.SynchronizedArray,
+        xyz: NDArray,
+        for_hits: bool = False,
+    ) -> None:
+        assert xyz.shape[1] == 3
+        xyz = xyz.T
+
+        # use as much pre-allocated memory as possible.
+        if self.__fill_hits_buf is None:
+            self.__fill_hits_buf = np.empty(5000, np.int64)
+            self.__fill_hits_pos = 0
+
+        idx = np.zeros(xyz.shape[1], np.int64)  # bin indices for flattened array
+        oor_mask = np.ones(xyz.shape[1], np.bool_)  # mask to remove out of range values
+        dims = range(xyz.shape[0])
+        for col, ax, s, dim in zip(xyz, self.binning, self._single_stride, dims):
+            assert ax.is_range
+            assert ax.closedleft
+            oor_mask &= (ax.first <= col) & (col < ax.last)
+            idx_s = np.floor((col - ax.first).astype(np.float64) / ax.step).astype(np.int64)
+            assert np.all(idx_s[oor_mask] < self._single_shape[dim])
+            idx += s * idx_s
+
+        idx = idx[oor_mask]
+        if idx.shape[0] == 0:
+            return
+
+        if for_hits and idx.shape[0] < self.__fill_hits_buf.shape[0]:
+            # special path for the typically small number of hits.
+            # this circumvents a memory leak in _fill_histogram_buf when called with varying and
+            # small shapes of the idx array.
+            end = self.__fill_hits_pos + idx.shape[0]
+            if end >= self.__fill_hits_buf.shape[0]:
+                # flush the old buffer to the map, as the new data does not fit.
+                self._fill_histogram_buf(h, self.__fill_hits_buf[0 : self.__fill_hits_pos])
+                self.__fill_hits_pos = 0
+                end = idx.shape[0]
+            self.__fill_hits_buf[self.__fill_hits_pos : end] = idx
+            self.__fill_hits_pos = end
+        else:
+            # here we assume a uniform size of idx, so that we do not hit the memory leak.
+            self._fill_histogram_buf(h, idx)
+
+    def _fill_histogram_buf(
+        self,
+        h: NDArray | mp.sharedctypes.SynchronizedArray,
+        idx: NDArray,
+    ) -> None:
+        # increment bin contents
+        with self._lock_nda(h)():
+            np.add.at(self._nda(h).reshape(-1), idx, 1)
+
+    def _nda(self, h: NDArray | mp.sharedctypes.SynchronizedArray) -> NDArray:
         if not self.use_shmem:
             return h
         return np.ndarray(self._single_shape, dtype=np.float64, buffer=h.get_obj())
 
-    def _lock_nda(self, h):
+    def _lock_nda(self, h: NDArray | mp.sharedctypes.SynchronizedArray):
         if not self.use_shmem:
             return contextlib.nullcontext
         return h.get_lock
 
-    def _mp_preinit(self, mp_man, vertex: bool) -> None:
+    def _mp_preinit(self, mp_man: mp.context.BaseContext, vertex: bool) -> None:
         self._mp_man = mp_man
         if self.h_vertex is None and vertex:
             self.h_vertex = self._prepare_hist()
         if self.h_hits is None:
             self.h_hits = self._prepare_hist()
 
-    def fill_vertex(self, loc) -> None:
+    def fill_vertex(self, loc: NDArray) -> None:
+        """Fill map with a chunk of hit coordinates."""
         if self.h_vertex is None:
             self.h_vertex = self._prepare_hist()
-        with self._lock_nda(self.h_vertex)():
-            _fill_histogram(self._nda(self.h_vertex), self.binning, loc)
+        self._fill_histogram(self.h_vertex, loc)
 
-    def fill_hits(self, loc) -> None:
+    def fill_hits(self, loc: NDArray) -> None:
+        """Fill map with a chunk of hit coordinates.
+
+        .. note ::
+            For performance reasons, this function is buffered and does not directly write
+            to the map array. Use :meth:`.fill_hits_flush` to flush the remaining hits in
+            the buffer to this map.
+        """
         if self.h_hits is None:
             self.h_hits = self._prepare_hist()
-        with self._lock_nda(self.h_hits)():
-            _fill_histogram(self._nda(self.h_hits), self.binning, loc)
+        self._fill_histogram(self.h_hits, loc, for_hits=True)
+
+    def fill_hits_flush(self) -> None:
+        """Commit all remaining hit coordinates in the buffer."""
+        if self.h_hits is None or self.__fill_hits_pos <= 0:
+            return
+        self._fill_histogram_buf(self.h_hits, self.__fill_hits_buf[0 : self.__fill_hits_pos])
+        self.__fill_hits_buf = None
 
     def _divide_hist(self, h1: NDArray, h2: NDArray) -> tuple[NDArray, NDArray]:
         """Calculate the ratio (and its standard error) from two histograms."""
@@ -154,20 +210,25 @@ class OpticalMap:
     def create_probability(self) -> None:
         self.h_prob, self.h_prob_uncert = self._divide_hist(self.h_hits, self.h_vertex)
 
-    def write_lh5(self, lh5_file: str, group: str = "all") -> None:
-        def write_hist(h: NDArray, name: str, fn: str, group: str = "all"):
+    def write_lh5(self, lh5_file: str, group: str = "all", wo_mode: str = "write_safe") -> None:
+        if wo_mode not in ("write_safe", "overwrite_file"):
+            msg = f"invalid wo_mode {wo_mode} for optical map"
+            raise ValueError(msg)
+
+        def write_hist(h: NDArray, name: str, fn: str, group: str, wo_mode: str):
             lh5.write(
                 Histogram(self._nda(h), self.binning),
                 name,
                 fn,
                 group=group,
-                wo_mode="write_safe",
+                wo_mode=wo_mode,
             )
 
-        write_hist(self.h_vertex, "nr_gen", lh5_file, group=group)
-        write_hist(self.h_hits, "nr_det", lh5_file, group=group)
-        write_hist(self.h_prob, "p_det", lh5_file, group=group)
-        write_hist(self.h_prob_uncert, "p_det_err", lh5_file, group=group)
+        # only use the passed wo_mode for the first file.
+        write_hist(self.h_vertex, "nr_gen", lh5_file, group, wo_mode)
+        write_hist(self.h_hits, "nr_det", lh5_file, group, "write_safe")
+        write_hist(self.h_prob, "p_det", lh5_file, group, "write_safe")
+        write_hist(self.h_prob_uncert, "p_det_err", lh5_file, group, "write_safe")
 
     def check_histograms(self, include_prefix: bool = False) -> None:
         log_prefix = "" if not include_prefix else self.name + " - "

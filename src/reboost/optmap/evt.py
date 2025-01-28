@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterable
+from pathlib import Path
 
 import numpy as np
 from lgdo import lh5
@@ -18,6 +19,12 @@ def build_optmap_evt(
 ) -> None:
     """Create a faster map for lookup of the hits in each detector, for each primary event."""
     log.info("reading file %s", lh5_in_file)
+
+    lh5_out_file = Path(lh5_out_file)
+    lh5_out_file_tmp = lh5_out_file.with_stem(".evt-tmp." + lh5_out_file.stem)
+    if lh5_out_file_tmp.exists():
+        msg = f"temporary output file {lh5_out_file_tmp} already exists"
+        raise RuntimeError(msg)
 
     vert_it = LH5Iterator(lh5_in_file, "stp/vertices", buffer_len=buffer_len)
     opti_it = LH5Iterator(lh5_in_file, "stp/optical", buffer_len=buffer_len)
@@ -43,8 +50,8 @@ def build_optmap_evt(
             hits_sum += np.sum(vert_df[d])
         assert hits_sum == hits_expected
 
-        log.info("store evt file %s (%d)", lh5_out_file, vert_it_count - 1)
-        lh5.write(Table(vert_df), name=EVT_TABLE_NAME, lh5_file=lh5_out_file, wo_mode="append")
+        log.info("store evt file %s (%d)", lh5_out_file_tmp, vert_it_count - 1)
+        lh5.write(Table(vert_df), name=EVT_TABLE_NAME, lh5_file=lh5_out_file_tmp, wo_mode="append")
         vert_df = None
 
     # helper function for "windowed join". while iterating the optical hits, we have to
@@ -96,6 +103,12 @@ def build_optmap_evt(
             hits_expected += 1
 
     _store_vert_df()  # store the last chunk.
+
+    # after finishing the output file, rename to the actual output file name.
+    if lh5_out_file.exists():
+        msg = f"output file {lh5_out_file_tmp} already exists after writing tmp output file"
+        raise RuntimeError(msg)
+    lh5_out_file_tmp.rename(lh5_out_file)
 
 
 def read_optmap_evt(lh5_file: str, buffer_len: int = int(5e6)) -> LH5Iterator:

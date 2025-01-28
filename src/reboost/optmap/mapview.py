@@ -7,14 +7,16 @@ from typing import Literal
 import matplotlib.pyplot as plt
 import numpy as np
 from lgdo import lh5
-from matplotlib import colors
+from matplotlib import colors, widgets
 from numpy.typing import NDArray
+
+from .create import list_optical_maps
 
 log = logging.getLogger(__name__)
 
 
 def _get_weights(viewdata: dict):
-    rolled = np.roll([0, 1, 2], -viewdata["axis"])
+    rolled = np.array([viewdata["axis"]] + [i for i in [2, 1, 0] if i != viewdata["axis"]])
     weights = viewdata["weights"].transpose(*rolled)
 
     extent_axes = [i for i in np.flip(rolled) if i != viewdata["axis"]]
@@ -45,6 +47,8 @@ def _process_key(event) -> None:
         viewdata["idx"] += 1
     elif event.key == "left":
         viewdata["idx"] -= 1
+    elif event.key == "c":
+        _channel_selector(fig)
 
     max_idx = viewdata["weights"].shape[viewdata["axis"]] - 1
     viewdata["idx"] = max(min(viewdata["idx"], max_idx), 0)
@@ -62,6 +66,26 @@ def _update_figure(fig) -> None:
     ax.images[0].set_extent(extent)
     ax.set_xlabel(labels[0])
     ax.set_ylabel(labels[1])
+    ax.set_anchor("C")
+    fig.canvas.draw()
+
+
+def _channel_selector(fig) -> None:
+    axbox = fig.add_axes([0.01, 0.01, 0.98, 0.98])
+    channels = fig.__reboost["available_dets"]
+    tb = widgets.RadioButtons(axbox, channels, active=channels.index(fig.__reboost["detid"]))
+
+    def change_detector(label: str | None) -> None:
+        if fig.__reboost["detid"] != label:
+            fig.__reboost["detid"] = label
+            edges, weights, _, _ = _prepare_data(*fig.__reboost["prepare_args"], label)
+            fig.__reboost["weights"] = weights
+            fig.__reboost["edges"] = edges
+        tb.disconnect_events()
+        axbox.remove()
+        _update_figure(fig)
+
+    tb.on_clicked(change_detector)
     fig.canvas.draw()
 
 
@@ -84,11 +108,11 @@ def _read_data(
 
 def _prepare_data(
     optmap_fn: str,
-    detid: str = "all",
     divide_fn: str | None = None,
     cmap_min: float | Literal["auto"] = 1e-4,
     cmap_max: float | Literal["auto"] = 1e-2,
     show_error: bool = False,
+    detid: str = "all",
 ) -> tuple[tuple[NDArray], NDArray]:
     optmap_edges, optmap_weights = _read_data(optmap_fn, detid, show_error)
 
@@ -136,11 +160,12 @@ def view_optmap(
     show_error: bool = False,
     title: str | None = None,
 ) -> None:
-    edges, weights, cmap_min, cmap_max = _prepare_data(
-        optmap_fn, detid, divide_fn, cmap_min, cmap_max, show_error
-    )
+    available_dets = list_optical_maps(optmap_fn)
 
-    fig = plt.figure()
+    prepare_args = (optmap_fn, divide_fn, cmap_min, cmap_max, show_error)
+    edges, weights, cmap_min, cmap_max = _prepare_data(*prepare_args, detid)
+
+    fig = plt.figure(figsize=(10, 10))
     fig.canvas.mpl_connect("key_press_event", _process_key)
     start_axis_len = edges[start_axis].shape[0] - 1
     fig.__reboost = {
@@ -149,6 +174,8 @@ def view_optmap(
         "detid": detid,
         "edges": edges,
         "idx": min(int(start_axis_len / 2), start_axis_len - 1),
+        "available_dets": available_dets,
+        "prepare_args": prepare_args,
     }
 
     cmap = plt.cm.plasma.with_extremes(bad="w", under="gray", over="red")
@@ -160,6 +187,7 @@ def view_optmap(
         interpolation="none",
         cmap=cmap,
         extent=extent,
+        origin="lower",
     )
 
     if title is None:
