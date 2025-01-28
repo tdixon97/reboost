@@ -146,6 +146,8 @@ def test_detector_mapping():
         "2": ["2"],
     }
 
+    assert reboost.core.get_detectors_mapping("0") == {"0": ["0"]}
+
     # with input name
     assert reboost.core.get_detectors_mapping(
         "[str(i) for i in range(3)]", input_detector_name="dets"
@@ -159,4 +161,8 @@ def test_detector_mapping():
 
 
 def test_remove_columns():
-    pass
+    tab = Table({"a": Array([1, 2, 3]), "b": Array([1, 2, 3])})
+
+    tab = reboost.core.remove_columns(tab, ["a"])
+
+    assert next(iter(tab.keys())) == "a"

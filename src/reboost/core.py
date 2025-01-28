@@ -172,10 +172,9 @@ def get_detectors_mapping(
 
     # if no package was imported its just a name
     try:
-        out_names.extend(
-            evaluate_object(output_detector_expression, local_dict={"OBJECTS": objects})
-        )
-    except NameError:
+        objs = evaluate_object(output_detector_expression, local_dict={"OBJECTS": objects})
+        out_names.extend(objs)
+    except Exception:
         out_names.append(output_detector_expression)
 
     # simple one to one mapping
