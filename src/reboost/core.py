@@ -12,7 +12,7 @@ from . import utils
 log = logging.getLogger(__name__)
 
 
-def evaluate_expression(
+def evaluate_output_column(
     hit_table: Table,
     expression: str,
     local_dict: dict,

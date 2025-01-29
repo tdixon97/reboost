@@ -291,7 +291,7 @@ def build_hit(
                         # add fields
                         for field, expression in proc_group["operations"].items():
                             # evaluate the expression
-                            col = core.evaluate_expression(
+                            col = core.evaluate_output_column(
                                 hit_table,
                                 table_name="HITS",
                                 expression=expression,

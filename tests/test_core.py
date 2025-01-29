@@ -111,7 +111,9 @@ def test_eval_expression():
     # evaluate basic
     expression = "HITS.field + HITS.other"
     assert np.all(
-        reboost.core.evaluate_expression(hit_table, expression, {}, table_name="HITS").view_as("np")
+        reboost.core.evaluate_output_column(hit_table, expression, {}, table_name="HITS").view_as(
+            "np"
+        )
         == [3, 6, 8]
     )
 
@@ -119,9 +121,9 @@ def test_eval_expression():
     expression = "HITS.field*args.val"
     local = {"args": AttrsDict({"val": 2})}
     assert np.all(
-        reboost.core.evaluate_expression(hit_table, expression, local, table_name="HITS").view_as(
-            "np"
-        )
+        reboost.core.evaluate_output_column(
+            hit_table, expression, local, table_name="HITS"
+        ).view_as("np")
         == [2, 4, 6]
     )
 
@@ -132,9 +134,9 @@ def test_eval_expression():
     local = {"args": AttrsDict({"fccd": 1, "tl": 0.5})}
 
     assert np.allclose(
-        reboost.core.evaluate_expression(hit_table, expression, local, table_name="HITS").view_as(
-            "np"
-        ),
+        reboost.core.evaluate_output_column(
+            hit_table, expression, local, table_name="HITS"
+        ).view_as("np"),
         [0, 0.2, 1],
     )
 
