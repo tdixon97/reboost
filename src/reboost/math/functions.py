@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 import awkward as ak
+import numpy as np
 from lgdo import Array, VectorOfVectors
 from lgdo.types import LGDO
 
@@ -29,6 +30,9 @@ def piecewise_linear_activeness(
     - `d`: Distance to surface,
     - `l`: Depth of transition layer start
     - `f`: Full charge collection depth (FCCD).
+
+    In addition, any distance of `np.nan` (for example if the calculation
+    was not performed for some steps) is assigned an activeness of one.
 
     Parameters
     ----------
@@ -58,6 +62,8 @@ def piecewise_linear_activeness(
 
     # compute the linear piecewise
     results = ak.where(
-        distances_ak > fccd, 1, ak.where(distances_ak <= tl, 0, (distances_ak - tl) / (fccd - tl))
+        (distances_ak > fccd) | np.isnan(distances_ak),
+        1,
+        ak.where(distances_ak <= tl, 0, (distances_ak - tl) / (fccd - tl)),
     )
     return VectorOfVectors(results) if results.ndim > 1 else Array(results.to_numpy())

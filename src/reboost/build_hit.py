@@ -287,6 +287,7 @@ def build_hit(
                         local_dict = {
                             "DETECTOR_OBJECTS": det_objects[out_detector],
                             "OBJECTS": global_objects,
+                            "DETECTOR": out_detector,
                         }
                         # add fields
                         for field, expression in proc_group["operations"].items():
