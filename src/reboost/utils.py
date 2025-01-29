@@ -4,6 +4,7 @@ import importlib
 import json
 import logging
 import re
+from contextlib import contextmanager
 from pathlib import Path
 
 import yaml
@@ -108,7 +109,6 @@ def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, di
         # import the subpackage
         for name, short_name in aliases.items():
             subpackage = subpackage.replace(short_name, name)
-        importlib.import_module(subpackage, package=__package__)
 
         # handle the aliases
         package_import = package
@@ -118,6 +118,8 @@ def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, di
 
         # build globals
         try:
+            importlib.import_module(subpackage, package=__package__)
+
             globs = globs | {
                 package: importlib.import_module(package_import),
             }
@@ -158,3 +160,14 @@ def merge_dicts(dict_list: list) -> dict:
                 merged[key] = item
 
     return merged
+
+
+@contextmanager
+def filter_logging(level):
+    logger = logging.getLogger("root")
+    old_level = logger.getEffectiveLevel()
+    logger.setLevel(level)
+    try:
+        yield
+    finally:
+        logger.setLevel(old_level)

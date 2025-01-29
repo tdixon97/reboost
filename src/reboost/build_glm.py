@@ -172,8 +172,8 @@ def build_glm(
     *,
     out_table_name: str = "glm",
     id_name: str = "g4_evtid",
-    evtid_buffer: int = 10000,
-    stp_buffer: int = 1000,
+    evtid_buffer: int = int(1e7),
+    stp_buffer: int = int(1e7),
 ) -> ak.Array | None:
     """Builds a g4_evtid look up (glm) from the stp data.
 
@@ -201,7 +201,8 @@ def build_glm(
     -------
     either `None` or an `ak.Array`
     """
-
+    msg = f"Start generating glm for {stp_file} to {glm_file}"
+    log.info(msg)
     store = LH5Store()
 
     # loop over the lh5_tables
@@ -222,6 +223,9 @@ def build_glm(
     for vert_obj, vidx, n_evtid in LH5Iterator(stp_file, vfield, buffer_len=evtid_buffer):
         # range of vertices
         vert_ak = vert_obj.view_as("ak")[:n_evtid]
+
+        msg = f"... read chunk {vidx}"
+        log.debug(msg)
 
         for idx, lh5_table in enumerate(lh5_table_list):
             # create the output table
@@ -260,7 +264,8 @@ def build_glm(
                     if glm_sum[lh5_subgroup] is None
                     else ak.concatenate((glm_sum[lh5_subgroup], glm))
                 )
-
+    msg = f"Finished generating glm for {stp_file} to {glm_file}"
+    log.info(msg)
     # return if it was requested to keep glm in memory
     if glm_sum is not None:
         return ak.Array(glm_sum)

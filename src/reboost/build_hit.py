@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import logging
+import time
 from collections.abc import Mapping
 
 import awkward as ak
@@ -208,7 +209,6 @@ def build_hit(
             buffer size for use in the `LH5Iterator`.
 
     """
-
     # extract the config file
     if isinstance(config, str):
         config = utils.load_dict(config)
@@ -216,10 +216,20 @@ def build_hit(
     # get the arguments
     if not isinstance(args, AttrsDict):
         args = AttrsDict(args)
+    time_dict = {
+        "global_objects": 0,
+        "read": {},
+        "write": 0,
+        "hit_layout": 0,
+        "detector_objects": 0,
+        "expressions": {},
+    }
 
     # get the global objects
     global_objects = AttrsDict(
-        core.get_global_objects(expressions=config.get("objects", {}), local_dict={"ARGS": args})
+        core.get_global_objects(
+            expressions=config.get("objects", {}), local_dict={"ARGS": args}, time_dict=time_dict
+        )
     )
 
     # get the input files
@@ -234,6 +244,9 @@ def build_hit(
 
     # iterate over files
     for file_idx, (stp_file, glm_file) in enumerate(zip(files["stp"], files["glm"])):
+        msg = f"... starting post processing of {stp_file} to {files['hit'][file_idx]} "
+        log.info(msg)
+
         # loop over processing groups
         for group_idx, proc_group in enumerate(config["processing_groups"]):
             # extract the output detectors and the mapping to input detectors
@@ -256,6 +269,7 @@ def build_hit(
                     args=args,
                     global_objects=global_objects,
                     expressions=proc_group.get("detector_objects", {}),
+                    time_dict=time_dict,
                 )
 
                 # begin iterating over the glm
@@ -268,6 +282,7 @@ def build_hit(
                     n_rows=n_evtid,
                     read_vertices=True,
                     buffer=buffer,
+                    time_dict=time_dict,
                 )
                 for stps, _, chunk_idx, _ in glm_it:
                     # converting to awwkard
@@ -281,7 +296,9 @@ def build_hit(
                         # loop over the rows
 
                         hit_table = core.evaluate_hit_table_layout(
-                            copy.deepcopy(ak_obj), expression=proc_group["hit_table_layout"]
+                            copy.deepcopy(ak_obj),
+                            expression=proc_group["hit_table_layout"],
+                            time_dict=time_dict,
                         )
 
                         local_dict = {
@@ -297,6 +314,8 @@ def build_hit(
                                 table_name="HITS",
                                 expression=expression,
                                 local_dict=local_dict,
+                                time_dict=time_dict,
+                                name=field,
                             )
                             hit_table.add_field(field, col)
 
@@ -318,14 +337,21 @@ def build_hit(
 
                         # now write
                         if files["hit"] is not None:
+                            if time_dict is not None:
+                                start_time = time.time()
+
                             lh5.write(
                                 hit_table,
                                 f"{out_detector}/{out_field}",
                                 files["hit"][file_idx],
                                 wo_mode=wo_mode,
                             )
+                            if time_dict is not None:
+                                time_dict["write"] += time.time() - start_time
+
                         else:
                             output_table = core.merge(hit_table, output_table)
 
     # return output table or nothing
-    return output_table
+
+    return output_table, time_dict

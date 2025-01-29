@@ -6,6 +6,7 @@ import awkward as ak
 import legendhpges
 import numpy as np
 from lgdo import Array, VectorOfVectors
+from lgdo.types import LGDO
 from numpy.typing import ArrayLike
 
 log = logging.getLogger(__name__)
@@ -90,7 +91,10 @@ def distance_to_surface(
         distances = hpge.distance_to_surface(local_positions, surface_indices=surface_indices)
     else:
         # decide when the calculation needs to be run
-        distances_precompute_flat = ak.flatten(distances_precompute.view_as("ak"))
+        if isinstance(distances_precompute, LGDO):
+            distances_precompute = distances_precompute.view_as("ak")
+
+        distances_precompute_flat = ak.flatten(distances_precompute)
         distances = np.full_like(distances_precompute_flat.to_numpy(), np.nan, dtype=float)
 
         # values to compute

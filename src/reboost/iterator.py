@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import typing
 
 from lgdo.lh5 import LH5Store
@@ -23,6 +24,7 @@ class GLMIterator:
         stp_field: str = "stp",
         read_vertices: bool = False,
         buffer: int = 10000,
+        time_dict: dict | None = None,
     ):
         """Constructor for the glmIterator.
 
@@ -60,6 +62,7 @@ class GLMIterator:
         # would be good to replace with an iterator
         self.sto = LH5Store()
         self.n_rows_read = 0
+        self.time_dict = time_dict
 
     def __iter__(self) -> typing.Iterator:
         self.current_i_entry = 0
@@ -75,10 +78,18 @@ class GLMIterator:
         else:
             n_rows = self.buffer
 
+        if self.time_dict is not None:
+            time_start = time.time()
+
         # read the glm rows
         glm_rows, n_rows_read = self.sto.read(
             f"glm/{self.lh5_group}", self.glm_file, start_row=self.start_row_tmp, n_rows=n_rows
         )
+        if self.time_dict is not None:
+            if "glm" in self.time_dict["read"]:
+                self.time_dict["read"]["glm"] += time.time() - time_start
+            else:
+                self.time_dict["read"]["glm"] = time.time() - time_start
 
         self.n_rows_read += n_rows_read
         self.start_row_tmp += n_rows_read
@@ -97,9 +108,19 @@ class GLMIterator:
             start = glm_ak.start_row[0]
             n = sum(glm_ak.n_rows)
 
+            if self.time_dict is not None:
+                time_start = time.time()
+
             stp_rows, n_steps = self.sto.read(
                 f"{self.stp_field}/{self.lh5_group}", self.stp_file, start_row=start, n_rows=n
             )
+
+            # save time
+            if self.time_dict is not None:
+                if "stp" in self.time_dict["read"]:
+                    self.time_dict["read"]["stp"] += time.time() - time_start
+                else:
+                    self.time_dict["read"]["stp"] = time.time() - time_start
 
             self.current_i_entry += 1
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 import awkward as ak
@@ -18,6 +19,8 @@ def evaluate_output_column(
     local_dict: dict,
     *,
     table_name: str = "HITS",
+    time_dict: dict | None = None,
+    name: str = " ",
 ) -> LGDO:
     """Evaluate an expression returning an LGDO.
 
@@ -41,6 +44,8 @@ def evaluate_output_column(
     -------
         an LGDO with the new field.
     """
+    if time_dict is not None:
+        time_start = time.time()
 
     if local_dict is None:
         local_dict = {}
@@ -60,7 +65,20 @@ def evaluate_output_column(
     if globals_dict == {}:
         globals_dict = None
 
-    return hit_table.eval(func_call, local_dict, modules=globals_dict)
+    if globals_dict is not None and "pyg4ometry" in globals_dict:
+        with utils.filter_logging(logging.CRITICAL):
+            res = hit_table.eval(func_call, local_dict, modules=globals_dict)
+    else:
+        res = hit_table.eval(func_call, local_dict, modules=globals_dict)
+
+    # how long did it take
+    if time_dict is not None:
+        if name in time_dict["expressions"]:
+            time_dict["expressions"][name] += time.time() - time_start
+        else:
+            time_dict["expressions"][name] = time.time() - time_start
+
+    return res
 
 
 def evaluate_object(
@@ -84,10 +102,17 @@ def evaluate_object(
         the evaluated object.
     """
     func_call, globals_dict = utils.get_function_string(expression)
-    return eval(func_call, local_dict, globals_dict)
+
+    if "pyg4ometry" in globals_dict:
+        with utils.filter_logging(logging.CRITICAL):
+            return eval(func_call, local_dict, globals_dict)
+    else:
+        return eval(func_call, local_dict, globals_dict)
 
 
-def get_global_objects(expressions: dict[str, str], *, local_dict: dict) -> dict:
+def get_global_objects(
+    expressions: dict[str, str], *, local_dict: dict, time_dict: dict | None = None
+) -> dict:
     """Extract global objects used in the processing.
 
     Parameters
@@ -102,12 +127,20 @@ def get_global_objects(expressions: dict[str, str], *, local_dict: dict) -> dict
     -------
     dictionary of objects with the same keys as the expressions.
     """
-    return AttrsDict(
+    if time_dict is not None:
+        time_start = time.time()
+    msg = f"Getting global objects with {expressions.keys()} and {local_dict}"
+    log.info(msg)
+
+    res = AttrsDict(
         {
             obj_name: evaluate_object(expression, local_dict=local_dict)
             for obj_name, expression in expressions.items()
         }
     )
+    if time_dict is not None:
+        time_dict["global_objects"] += -time_start + time.time()
+    return res
 
 
 def get_detectors_mapping(
@@ -184,7 +217,11 @@ def get_detectors_mapping(
 
 
 def get_detector_objects(
-    output_detectors: list, expressions: dict, args: AttrsDict, global_objects: AttrsDict
+    output_detectors: list,
+    expressions: dict,
+    args: AttrsDict,
+    global_objects: AttrsDict,
+    time_dict: dict | None = None,
 ) -> AttrsDict:
     """Get the detector objects for each detector
 
@@ -220,6 +257,9 @@ def get_detector_objects(
     An AttrsDict of the objects for each detector.
 
     """
+    if time_dict is not None:
+        time_start = time.time()
+
     det_objects_dict = {}
     for output_detector in output_detectors:
         det_objects_dict[output_detector] = AttrsDict(
@@ -235,10 +275,16 @@ def get_detector_objects(
                 for obj_name, obj_expression in expressions.items()
             }
         )
-    return AttrsDict(det_objects_dict)
+    res = AttrsDict(det_objects_dict)
+    if time_dict is not None:
+        time_dict["detector_objects"] += time.time() - time_start
+
+    return res
 
 
-def evaluate_hit_table_layout(steps: ak.Array | Table, expression: str) -> Table:
+def evaluate_hit_table_layout(
+    steps: ak.Array | Table, expression: str, time_dict: dict | None = None
+) -> Table:
     """Evaluate the hit_table_layout expression, producing the hit table.
 
     This expression should be a function call which performs a restructuring of the steps,
@@ -256,6 +302,8 @@ def evaluate_hit_table_layout(steps: ak.Array | Table, expression: str) -> Table
     -------
     :class:`LGDO.Table` of the hits.
     """
+    if time_dict is not None:
+        time_start = time.time()
 
     group_func, globs = utils.get_function_string(
         expression,
@@ -265,7 +313,10 @@ def evaluate_hit_table_layout(steps: ak.Array | Table, expression: str) -> Table
     msg = f"running step grouping with {group_func} and globals {globs.keys()} and locals {locs.keys()}"
     log.debug(msg)
 
-    return eval(group_func, globs, locs)
+    res = eval(group_func, globs, locs)
+    if time_dict is not None:
+        time_dict["hit_layout"] += time.time() - time_start
+    return res
 
 
 def remove_columns(tab: Table, outputs: list) -> Table:
