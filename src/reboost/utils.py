@@ -12,7 +12,15 @@ log = logging.getLogger(__name__)
 
 
 def load_dict(fname: str, ftype: str | None = None) -> dict:
-    """Load a text file as a Python dict."""
+    """Load a text file as a Python dict.
+
+    Parameters
+    ----------
+    fname
+        path to the file
+    ftype
+        type of file, can be either json or yaml.
+    """
     __file_extensions__ = {"json": [".json"], "yaml": [".yaml", ".yml"]}
 
     fname = Path(fname)
@@ -34,17 +42,6 @@ def load_dict(fname: str, ftype: str | None = None) -> dict:
 
         msg = f"unsupported file format {ftype}"
         raise NotImplementedError(msg)
-
-
-def get_wo_mode(
-    file_idx: int,
-    group_idx: int,
-    in_det_idx: int,
-    out_det_idx: int,
-    chunk_idx: int,
-    max_chunk_idx: int,
-) -> str:
-    raise NotImplementedError
 
 
 def _search_string(string: str):

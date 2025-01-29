@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import importlib
+import json
+from pathlib import Path
 
 import pytest
+import yaml
 
 import reboost
 from reboost.utils import get_function_string, merge_dicts
@@ -84,3 +87,33 @@ def test_merge_dicts():
         "b": [2],
         "c": [2],
     }
+
+
+@pytest.fixture
+def test_save_dict(tmp_path):
+    data = {"a": 1, "b": {"c": 1}}
+
+    # Dumping JSON
+    with Path(tmp_path / "data.json").open("w") as json_file:
+        json.dump(data, json_file, indent=2)
+
+    # Dumping YAML
+    with Path(tmp_path / "data.yaml").open("w") as yaml_file:
+        yaml.dump(data, yaml_file, default_flow_style=False)
+
+    # make a csv too
+    with Path(tmp_path / "data.csv").open("w") as yaml_file:
+        yaml.dump(data, yaml_file, default_flow_style=False)
+
+    return tmp_path
+
+
+def test_load_dict(test_save_dict):
+    dict_json = reboost.utils.load_dict(str(test_save_dict / "data.json"), None)
+    assert dict_json == {"a": 1, "b": {"c": 1}}
+
+    dict_yaml = reboost.utils.load_dict(str(test_save_dict / "data.yaml"), None)
+    assert dict_yaml == {"a": 1, "b": {"c": 1}}
+
+    with pytest.raises(NotImplementedError):
+        reboost.utils.load_dict(str(test_save_dict / "data.csv"))

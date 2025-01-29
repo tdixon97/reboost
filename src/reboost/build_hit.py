@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import io
 import logging
 from collections.abc import Mapping
 
@@ -212,7 +211,7 @@ def build_hit(
 
     # extract the config file
     if isinstance(config, str):
-        config = io.load_dict(config)
+        config = utils.load_dict(config)
 
     # get the arguments
     if not isinstance(args, AttrsDict):
@@ -220,16 +219,16 @@ def build_hit(
 
     # get the global objects
     global_objects = AttrsDict(
-        core.get_global_objects(
-            expressions=config.get("objects", {}).items(), local_dict={"ARGS": args}
-        )
+        core.get_global_objects(expressions=config.get("objects", {}), local_dict={"ARGS": args})
     )
 
     # get the input files
     files = {}
     for file_type, file_list in zip(["stp", "glm", "hit"], [stp_files, glm_files, hit_files]):
         if isinstance(file_list, str):
-            files[file_type] = list(file_list)
+            files[file_type] = [file_list]
+        else:
+            files[file_type] = file_list
 
     output_table = None
 
@@ -240,12 +239,12 @@ def build_hit(
             # extract the output detectors and the mapping to input detectors
             detectors_mapping = utils.merge_dicts(
                 [
-                    core.get_detector_mapping(
+                    core.get_detectors_mapping(
                         mapping["output"],
                         input_detector_name=mapping.get("input", None),
                         objects=global_objects,
                     )
-                    for mapping in proc_group.get("output_detectors")
+                    for mapping in proc_group.get("detector_mapping")
                 ]
             )
 
@@ -294,7 +293,7 @@ def build_hit(
                             # evaluate the expression
                             col = core.evaluate_expression(
                                 hit_table,
-                                table_name="STEPS",
+                                table_name="HITS",
                                 expression=expression,
                                 local_dict=local_dict,
                             )
@@ -304,12 +303,16 @@ def build_hit(
                         hit_table = core.remove_columns(hit_table, outputs=proc_group["outputs"])
 
                         # get the IO mode
-                        wo_mode = utils.get_wo_mode(
-                            file_idx=file_idx,
-                            group_idx=group_idx,
-                            in_det_idx=in_det_idx,
-                            out_det_idx=out_det_idx,
-                            chunk_idx=chunk_idx,
+
+                        wo_mode = (
+                            "of"
+                            if (
+                                group_idx == 0
+                                and out_det_idx == 0
+                                and in_det_idx == 0
+                                and chunk_idx == 0
+                            )
+                            else "append"
                         )
 
                         # now write

@@ -197,31 +197,33 @@ def test_glm_iterator(test_data_files):
         )
 
         # iterate over the glm and the test file
-        for det in ["det1", "det2"]:
-            evtids = None
-            glm_it = GLMIterator(
-                glm_file,
-                stp_file,
-                lh5_group=det,
-                start_row=0,
-                stp_field="stp",
-                n_rows=5000,
-                read_vertices=True,
-                buffer=100,
-            )
-            # get the overall evtids
-            for stps, _, _, _ in glm_it:
-                if stps is None:
-                    continue
+        # consider both a chunked and a full read
+        for n_rows in [5000, None]:
+            for det in ["det1", "det2"]:
+                evtids = None
+                glm_it = GLMIterator(
+                    glm_file,
+                    stp_file,
+                    lh5_group=det,
+                    start_row=0,
+                    stp_field="stp",
+                    n_rows=n_rows,
+                    read_vertices=True,
+                    buffer=100,
+                )
+                # get the overall evtids
+                for stps, _, _, _ in glm_it:
+                    if stps is None:
+                        continue
 
-                evtids = (
-                    stps.view_as("ak").evtid
-                    if evtids is None
-                    else ak.concatenate((evtids, stps.view_as("ak").evtid))
+                    evtids = (
+                        stps.view_as("ak").evtid
+                        if evtids is None
+                        else ak.concatenate((evtids, stps.view_as("ak").evtid))
+                    )
+
+                evtids_read = lh5.read_as(
+                    f"stp/{det}/evtid", str(test_data_files / f"{test}_test.lh5"), "np"
                 )
 
-            evtids_read = lh5.read_as(
-                f"stp/{det}/evtid", str(test_data_files / f"{test}_test.lh5"), "np"
-            )
-
-            assert ak.all(evtids == evtids_read)
+                assert ak.all(evtids == evtids_read)

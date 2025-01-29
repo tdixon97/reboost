@@ -1,0 +1,17 @@
+processing_groups:
+  - name: geds
+
+    detector_mapping:
+      - output: det1
+
+    outputs:
+      - t0
+      - evtid
+      - energy
+
+    hit_table_layout: reboost.shape.group.group_by_time(STEPS, window=10)
+
+    operations:
+      t0: ak.fill_none(ak.firsts(HITS.time, axis=-1), np.nan)
+      first_evtid: ak.fill_none(ak.firsts(HITS.evtid, axis=-1), np.nan)
+      energy: ak.sum(HITS.edep, axis=-1)

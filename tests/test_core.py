@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import awkward as ak
 import legendhpges
 import numpy as np
 import pyg4ometry as pg4
@@ -166,3 +167,15 @@ def test_remove_columns():
     tab = reboost.core.remove_columns(tab, ["a"])
 
     assert next(iter(tab.keys())) == "a"
+
+
+def test_merge():
+    tab = Table({"a": Array([2, 3])})
+    output_tab = ak.Array({"a": [0, 1]})
+
+    orig = reboost.core.merge(tab, None)
+    assert np.all(orig.a == [2, 3])
+
+    merged = reboost.core.merge(tab, output_tab)
+
+    assert np.all(merged.a == [0, 1, 2, 3])

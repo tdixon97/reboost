@@ -69,8 +69,11 @@ class GLMIterator:
 
     def __next__(self) -> tuple[LGDO, LGDO | None, int, int]:
         # get the number of rows to read
-        rows_left = self.n_rows - self.n_rows_read
-        n_rows = self.buffer if (self.buffer > rows_left) else rows_left
+        if self.n_rows is not None:
+            rows_left = self.n_rows - self.n_rows_read
+            n_rows = self.buffer if (self.buffer > rows_left) else rows_left
+        else:
+            n_rows = self.buffer
 
         # read the glm rows
         glm_rows, n_rows_read = self.sto.read(
