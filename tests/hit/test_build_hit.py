@@ -34,7 +34,7 @@ def test_gen_lh5(tmp_path):
 
 def test_basic(test_gen_lh5):
     reboost.build_hit.build_hit(
-        f"{Path.parent(__file__)}/configs/basic.yaml",
+        f"{Path(__file__).parent}/configs/basic.yaml",
         args={},
         stp_files=f"{test_gen_lh5}/basic.lh5",
         glm_files=f"{test_gen_lh5}/basic_glm.lh5",
