@@ -50,7 +50,7 @@ def gaussian_sample(mu: ArrayLike, sigma: ArrayLike | float, *, seed: int = 999)
         sigma = sigma.view_as("ak")
     elif isinstance(sigma, ak.Array):
         sigma = sigma.to_numpy()
-    elif not isinstance(sigma, float | int | np.ndarray):
+    elif not isinstance(sigma, (float, int, np.ndarray)):
         sigma = np.array(sigma)
 
     rng = np.random.default_rng(seed=seed)  # Create a random number generator
