@@ -39,7 +39,7 @@ def gaussian_sample(mu: ArrayLike, sigma: ArrayLike | float, *, seed: int = 999)
     # convert inputs
 
     if isinstance(mu, Array):
-        mu = mu.view_as("ak")
+        mu = mu.view_as("np")
     elif isinstance(mu, ak.Array):
         mu = mu.to_numpy()
     elif not isinstance(mu, np.ndarray):
@@ -47,7 +47,7 @@ def gaussian_sample(mu: ArrayLike, sigma: ArrayLike | float, *, seed: int = 999)
 
     # similar for sigma
     if isinstance(sigma, Array):
-        sigma = sigma.view_as("ak")
+        sigma = sigma.view_as("np")
     elif isinstance(sigma, ak.Array):
         sigma = sigma.to_numpy()
     elif not isinstance(sigma, (float, int, np.ndarray)):
