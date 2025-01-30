@@ -50,9 +50,6 @@ def group_by_evtid(data: Table | ak.Array, *, evtid_name: str = "evtid") -> Tabl
     # convert to awkward
     obj_ak = data.view_as("ak") if isinstance(data, Table) else data
 
-    # sort input
-    obj_ak = _sort_data(obj_ak)
-
     # extract cumulative lengths
     counts = ak.run_lengths(obj_ak[evtid_name])
     cumulative_length = np.cumsum(counts)
