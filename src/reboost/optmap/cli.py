@@ -168,6 +168,12 @@ def optical_cli() -> None:
     )
     convolve_parser.add_argument("--output", help="output hit LH5 file", metavar="OUTPUT_HIT")
 
+    # STEP X: rebin maps
+    rebin_parser = subparsers.add_parser("rebin", help="rebin optical maps")
+    rebin_parser.add_argument("input", help="input map LH5 files", metavar="INPUT_MAP")
+    rebin_parser.add_argument("output", help="output map LH5 file", metavar="OUTPUT_MAP")
+    rebin_parser.add_argument("--factor", type=int, help="integer scale-down factor")
+
     args = parser.parse_args()
 
     log_level = (None, logging.INFO, logging.DEBUG)[min(args.verbose, 2)]
@@ -261,3 +267,11 @@ def optical_cli() -> None:
         _check_input_file(parser, [args.map, args.edep])
         _check_output_file(parser, args.output)
         convolve(args.map, args.edep, args.edep_lgdo, args.material, args.output, args.bufsize)
+
+    # STEP X: rebin maps
+    if args.command == "rebin":
+        from reboost.optmap.create import rebin_optical_maps
+
+        _check_input_file(parser, args.input)
+        _check_output_file(parser, args.output)
+        rebin_optical_maps(args.input, args.output, args.factor)
