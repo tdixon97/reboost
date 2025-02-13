@@ -104,6 +104,9 @@ def evaluate_object(
     -------
     the evaluated object.
     """
+    msg = f"Evaluating object with expression {expression} and {local_dict}"
+    log.debug(msg)
+
     func_call, globals_dict = utils.get_function_string(expression)
 
     if "pyg4ometry" in globals_dict:

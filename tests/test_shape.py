@@ -104,6 +104,7 @@ def test_cluster_basic():
 
 
 def test_cluster_by_step_length():
+    # test wrapped function
     trackid = ak.Array([[1, 1, 1, 2, 2, 2, 2, 2], [2, 2, 2, 3, 3, 3], [1]])
     x = ak.Array([[0, 0, 0.5, 1, 2, 2.01, 2.02, 4], [0, 1, 4, 5, 5, 6], [0]])
     y = ak.Array([[0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0]])
