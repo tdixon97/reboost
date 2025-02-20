@@ -195,7 +195,7 @@ def build_hit(
     config
         dictionary or path to YAML file containing the processing chain.
     args
-        dictionary or :class:`legendmeta.AttrsDict` of the global arguments.
+        dictionary or :class:`dbetto.AttrsDict` of the global arguments.
     stp_files
         list of strings or string of the stp file path.
     glm_files

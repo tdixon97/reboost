@@ -10,6 +10,7 @@ from reboost.optmap.create import (
     create_optical_maps,
     list_optical_maps,
     merge_optical_maps,
+    rebin_optical_maps,
 )
 from reboost.optmap.evt import build_optmap_evt
 from reboost.optmap.optmap import OpticalMap
@@ -154,6 +155,25 @@ def test_optmap_merge(tbl_evt_fns, tmptestdir):
     # also test on multiple cores.
     map_merged_fn = str(tmptestdir / "map-merged-mp.lh5")
     merge_optical_maps([map1_fn, map2_fn], map_merged_fn, settings, n_procs=2)
+
+
+@pytest.mark.filterwarnings("ignore::scipy.optimize._optimize.OptimizeWarning")
+def test_optmap_rebin(tbl_evt_fns, tmptestdir):
+    settings = {
+        "range_in_m": [[0, 1], [0, 1], [0, 1]],
+        "bins": [10, 10, 10],
+    }
+
+    map1_fn = str(tmptestdir / "map-to-rebin.lh5")
+    create_optical_maps(
+        tbl_evt_fns,
+        settings,
+        chfilter=("001", "002", "003"),
+        output_lh5_fn=map1_fn,
+    )
+
+    map_rebinned_fn = str(tmptestdir / "map-rebinned.lh5")
+    rebin_optical_maps(map1_fn, map_rebinned_fn, factor=2)
 
 
 @pytest.fixture
