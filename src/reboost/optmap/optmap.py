@@ -116,7 +116,7 @@ class OpticalMap:
             assert ax.is_range
             assert ax.closedleft
             oor_mask &= (ax.first <= col) & (col < ax.last)
-            idx_s = np.floor((col - ax.first).astype(np.float64) / ax.step).astype(np.int64)
+            idx_s = np.floor((col.astype(np.float64) - ax.first) / ax.step).astype(np.int64)
             assert np.all(idx_s[oor_mask] < self._single_shape[dim])
             idx += s * idx_s
 
