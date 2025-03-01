@@ -281,7 +281,7 @@ def build_hit(
                     start_row=start_evtid,
                     stp_field=in_field,
                     n_rows=n_evtid,
-                    read_vertices=True,
+                    read_vertices=False,
                     buffer=buffer,
                     time_dict=time_dict[proc_name],
                 )
