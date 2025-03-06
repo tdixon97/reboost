@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import gc
 import logging
 import multiprocessing as mp
@@ -430,7 +431,7 @@ def check_optical_map(map_l5_file: str):
     for submap in list_optical_maps(map_l5_file):
         try:
             om = OpticalMap.load_from_file(map_l5_file, submap)
-        except BaseException:
+        except Exception:
             log.exception("error while loading optical map %s", submap)
             continue
         om.check_histograms(include_prefix=True)
@@ -439,3 +440,42 @@ def check_optical_map(map_l5_file: str):
             log.error("edges of optical map %s differ", submap)
         else:
             all_binning = om.binning
+
+
+def rebin_optical_maps(map_l5_file: str, output_lh5_file: str, factor: int):
+    """Rebin the optical map by an integral factor.
+
+    .. note ::
+
+        the factor has to divide the bincounts on all axes.
+    """
+    if not isinstance(factor, int) or factor <= 1:
+        msg = f"invalid rebin factor {factor}"
+        raise ValueError(msg)
+
+    def _rebin_map(large: NDArray, factor: int) -> NDArray:
+        factor = np.full(3, factor, dtype=int)
+        sh = np.column_stack([np.array(large.shape) // factor, factor]).ravel()
+        return large.reshape(sh).sum(axis=(1, 3, 5))
+
+    for submap in list_optical_maps(map_l5_file):
+        log.info("rebinning optical map group: %s", submap)
+
+        om = OpticalMap.load_from_file(map_l5_file, submap)
+
+        settings = om.get_settings()
+        if not all(b % factor == 0 for b in settings["bins"]):
+            msg = f"invalid factor {factor}, not a divisor"
+            raise ValueError(msg)
+        settings = copy.copy(settings)
+        settings["bins"] = [b // factor for b in settings["bins"]]
+
+        om_new = OpticalMap.create_empty(om.name, settings)
+        om_new.h_vertex = _rebin_map(om.h_vertex, factor)
+        om_new.h_hits = _rebin_map(om.h_hits, factor)
+        om_new.create_probability()
+        om_new.write_lh5(lh5_file=output_lh5_file, group=submap, wo_mode="write_safe")
+
+    # just copy hitcounts exponent.
+    for dset in ("_hitcounts_exp", "_hitcounts"):
+        lh5.write(lh5.read(dset, lh5_file=map_l5_file), dset, lh5_file=output_lh5_file)
