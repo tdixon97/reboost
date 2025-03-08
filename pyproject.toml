@@ -43,6 +43,7 @@ dependencies = [
     "particle",
     "pandas",
     "matplotlib",
+    "pygama",
 ]
 dynamic = [
     "version",
