@@ -60,38 +60,40 @@ def build_optmap_evt(
     # This function follows the assumption, that the output event ids are at least "somewhat"
     # monotonic, i.e. later chunks do not contain lower evtids than the previous chunk(s).
     # Going back is not implemented.
-    def _ensure_vert_df(vert_it: LH5Iterator, evtid: int):
+    def _ensure_vert_df(vert_it: LH5Iterator, evtid: int) -> None:
         nonlocal vert_df, vert_df_bounds, vert_it_count, hits_expected
 
-        if vert_df_bounds is not None and vert_df is not None:
-            if evtid < vert_df_bounds[0]:
-                msg = "non-monotonic evtid encountered, but cannot go back"
-                raise KeyError(msg)
-            if evtid >= vert_df_bounds[0] and evtid <= vert_df_bounds[1]:
-                return  # vert_df already contains the given evtid.
+        # skipping multiple chunks is possible in sparsely populated simulations.
+        while vert_df_bounds is None or evtid > vert_df_bounds[1] or evtid < vert_df_bounds[0]:
+            if vert_df_bounds is not None and vert_df is not None:
+                if evtid < vert_df_bounds[0]:
+                    msg = "non-monotonic evtid encountered, but cannot go back"
+                    raise KeyError(msg)
+                if evtid >= vert_df_bounds[0] and evtid <= vert_df_bounds[1]:
+                    return  # vert_df already contains the given evtid.
 
-        # here, evtid > vert_df_bounds[1] (or vert_df_bounds is still None). We need to fetch
-        # the next event table chunk.
+            # here, evtid > vert_df_bounds[1] (or vert_df_bounds is still None). We need to fetch
+            # the next event table chunk.
 
-        vert_it_count += 1
-        # we might have filled a dataframe, save it to disk.
-        _store_vert_df()
+            vert_it_count += 1
+            # we might have filled a dataframe, save it to disk.
+            _store_vert_df()
 
-        # read the next vertex chunk into memory.
-        (vert_lgdo, vert_entry, vert_n_rows) = next(vert_it)
-        vert_df = vert_lgdo.view_as("pd").iloc[0:vert_n_rows]
+            # read the next vertex chunk into memory.
+            (vert_lgdo, vert_entry, vert_n_rows) = next(vert_it)
+            vert_df = vert_lgdo.view_as("pd").iloc[0:vert_n_rows]
 
-        # prepare vertex coordinates.
-        vert_df = vert_df.set_index("evtid", drop=True).drop(["n_part", "time"], axis=1)
-        vert_df_bounds = [vert_df.index.min(), vert_df.index.max()]
-        hits_expected = 0
-        # add columns for all detectors.
-        for d in detectors:
-            vert_df[d] = hit_count_type(0)
+            # prepare vertex coordinates.
+            vert_df = vert_df.set_index("evtid", drop=True).drop(["n_part", "time"], axis=1)
+            vert_df_bounds = [vert_df.index.min(), vert_df.index.max()]
+            hits_expected = 0
+            # add columns for all detectors.
+            for d in detectors:
+                vert_df[d] = hit_count_type(0)
 
     log.info("prepare evt table")
-    # use smaller integer type uint16 to spare RAM when storing types.
-    hit_count_type = np.uint16
+    # use smaller integer type uint8 to spare RAM when storing types.
+    hit_count_type = np.uint8
     for opti_it_count, (opti_lgdo, opti_entry, opti_n_rows) in enumerate(opti_it):
         assert (opti_it_count == 0) == (opti_entry == 0)
         opti_df = opti_lgdo.view_as("pd").iloc[0:opti_n_rows]
