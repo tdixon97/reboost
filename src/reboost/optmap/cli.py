@@ -82,9 +82,11 @@ def optical_cli() -> None:
         help="default: %(default)s",
     )
     mapview_parser.add_argument(
-        "--display-error",
-        action="store_true",
-        help="display error instead of magnitude. default: %(default)s",
+        "--hist",
+        choices=("nr_gen", "nr_det", "p_det", "p_det_err", "p_det_err_rel"),
+        action="store",
+        default="p_det",
+        help="select optical map histogram to show. default: %(default)s",
     )
     mapview_parser.add_argument(
         "--divide",
@@ -235,7 +237,7 @@ def optical_cli() -> None:
             cmap_min=args.min,
             cmap_max=args.max,
             title=args.title,
-            show_error=args.display_error,
+            histogram_choice=args.hist,
         )
 
     # STEP 2c: merge maps
