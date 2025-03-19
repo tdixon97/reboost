@@ -30,8 +30,6 @@ For this example we simulate $^{228}$Th in the source. We use the following macr
 /run/beamOn 1000000
 ```
 
-We can follow the instructions from the remage tutorial to obtain the GDML file description of the experimental geometry (saved as `geometry.gdml`).
-
 And run the remage (from inside the remage container / after installation [[instructions]](https://remage.readthedocs.io/en/stable/manual/install.html)) simulation with:
 
 ```console
@@ -113,7 +111,11 @@ We use the second option and a time window of 10 us.
 hits = reboost.shape.group.group_by_time(stp, window=10).view_as("ak")
 ```
 
-The data now has a jagged structure. Now each row corresponds to a particular hit in the HPGe detector in analogy to [[pygama-hit-tier-data]](https://pygama.readthedocs.io/en/stable/api/pygama.hit.html) used in the pygama data processing software.
+Printing the data we can see it now has a jagged structure. Now each row corresponds to a particular hit in the HPGe detector in analogy to [[pygama-hit-tier-data]](https://pygama.readthedocs.io/en/stable/api/pygama.hit.html) used in the pygama data processing software.
+
+```python
+lh5.write(Table(hits), name="stp/germanium", lh5_file="new_format.lh5")
+```
 
 ## Processors
 
@@ -125,7 +127,7 @@ The only requirements are:
 - the function should return an `LGDO.VectorOfVectors`, `LGDO.Array` or `LGDO.ArrayOfEqualSizedArrays` [[docs]](https://legend-pydataobj.readthedocs.io/en/latest/api/lgdo.types.html) object, or something able to be converted to this (awkward arrays for example),
 - the returned object should have the same length as the original hits table, i.e. the processors act on every row but they cannot add, remove or merge rows.
 
-### Surface response
+### Active energy
 
 One of the main steps in the post-processing of HPGe simulations consists of correction for the inactive regions at the surface of the detector.
 
@@ -190,15 +192,15 @@ We can compute for every step the "activeness" or the charge collection efficien
 This function is:
 
 $$
-f(d) = \begin{cases} 0 & d< t \\
-\frac{d-l}{f-l} & t<d<f \\
+f(d) = \begin{cases} 0 & d< f*l \\
+\frac{d-f*l}{f-f*l} & t<d<f \\
 1 & d> f \end{cases}
 $$
 
 where:
 
 - f: is the full-charge-collection depth (FCCD),
-- t: is the width of the transition layer region.
+- l: is the fraction fully dead
 
 We first plot this function for nominal values of $f = 1$ mm and $t = 0.5$ mm.
 
@@ -208,7 +210,7 @@ fig, ax = plt.subplots(figsize=(8, 4))
 ax.plot(
     np.linspace(0, 2, 1000),
     reboost.math.functions.piecewise_linear_activeness(
-        np.linspace(0, 2, 1000), fccd=1, tl=0.5
+        np.linspace(0, 2, 1000), fccd=1, dlf=0.2
     ),
 )
 ax.set_xlabel("Distance to n-plus surface [mm]")
@@ -227,7 +229,7 @@ We then plot the energy spectra:
 
 ```python
 activeness = reboost.math.functions.piecewise_linear_activeness(
-    dist_all, fccd=1, tl=0.5
+    dist_all, fccd=1, dlf=0.4
 )
 
 # compute the energy

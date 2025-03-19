@@ -40,7 +40,7 @@ processing_groups:
       activeness:
         reboost.math.functions.piecewise_linear_activeness(HITS.distance_to_nplus,
         fccd=DETECTOR_OBJECTS.det_pars.fccd_in_mm,
-        tl=DETECTOR_OBJECTS.det_pars.tl_in_mm)
+        dlf=DETECTOR_OBJECTS.det_pars.dlf)
 
       active_energy: ak.sum(HITS.edep*HITS.activeness, axis=-1)
       smeared_energy: reboost.math.stats.gaussian_sample(HITS.active_energy,DETECTOR_OBJECTS.det_pars.reso_in_sigma)

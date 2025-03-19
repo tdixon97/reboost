@@ -128,10 +128,8 @@ def test_eval_expression():
     )
 
     # test with a reboost function
-    expression = (
-        "reboost.math.functions.piecewise_linear_activeness(distances, fccd=args.fccd, tl=args.tl)"
-    )
-    local = {"args": AttrsDict({"fccd": 1, "tl": 0.5})}
+    expression = "reboost.math.functions.piecewise_linear_activeness(distances, fccd=args.fccd, dlf=args.dlf)"
+    local = {"args": AttrsDict({"fccd": 1, "dlf": 0.5})}
 
     assert np.allclose(
         reboost.core.evaluate_output_column(

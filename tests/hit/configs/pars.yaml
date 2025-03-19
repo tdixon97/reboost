@@ -1,10 +1,10 @@
 det001:
   fccd_in_mm: 0.71
-  tl_in_mm: 0.30
+  dlf: 0.7
   reso_in_sigma: 1.1
   name: BEGe
 det002:
   fccd_in_mm: 2.2
-  tl_in_mm: 1.04
+  dlf: 0.4
   reso_in_sigma: 2.32
   name: Coax

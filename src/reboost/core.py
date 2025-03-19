@@ -153,7 +153,7 @@ def get_global_objects(
 
 
 def get_detectors_mapping(
-    output_detector_expression: str,
+    output_detector_expression: str | list,
     objects: AttrsDict | None = None,
     input_detector_name: str | None = None,
 ) -> dict:
@@ -210,15 +210,21 @@ def get_detectors_mapping(
                                 input_detector_name = "dets",objects=objs)
     {'dets': ['ch0', 'ch1', 'ch2']}
     """
-    func, globs = utils.get_function_string(output_detector_expression)
     out_names = []
+    if isinstance(output_detector_expression, str):
+        out_list = [output_detector_expression]
+    else:
+        out_list = list(output_detector_expression)
 
-    # if no package was imported its just a name
-    try:
-        objs = evaluate_object(output_detector_expression, local_dict={"OBJECTS": objects})
-        out_names.extend(objs)
-    except Exception:
-        out_names.append(output_detector_expression)
+    for expression_tmp in out_list:
+        func, globs = utils.get_function_string(expression_tmp)
+
+        # if no package was imported its just a name
+        try:
+            objs = evaluate_object(expression_tmp, local_dict={"OBJECTS": objects})
+            out_names.extend(objs)
+        except Exception:
+            out_names.append(expression_tmp)
 
     # simple one to one mapping
     if input_detector_name is None:
@@ -273,19 +279,19 @@ def get_detector_objects(
 
     det_objects_dict = {}
     for output_detector in output_detectors:
-        det_objects_dict[output_detector] = AttrsDict(
-            {
-                obj_name: evaluate_object(
-                    obj_expression,
-                    local_dict={
-                        "ARGS": args,
-                        "DETECTOR": output_detector,
-                        "OBJECTS": global_objects,
-                    },
-                )
-                for obj_name, obj_expression in expressions.items()
-            }
-        )
+        obj_dict = {}
+        for obj_name, obj_expression in expressions.items():
+            obj_dict[obj_name] = evaluate_object(
+                obj_expression,
+                local_dict={
+                    "ARGS": args,
+                    "DETECTOR": output_detector,
+                    "OBJECTS": global_objects,
+                    "DETECTOR_OBJECTS": AttrsDict(obj_dict),
+                },
+            )
+
+        det_objects_dict[output_detector] = AttrsDict(obj_dict)
     res = AttrsDict(det_objects_dict)
 
     if time_dict is not None:
