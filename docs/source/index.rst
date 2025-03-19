@@ -17,9 +17,14 @@ Next steps
 ----------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    User Manual <manual/index>
+
+.. toctree::
+   :maxdepth: 1
+
+   developers
 
 .. toctree::
    :maxdepth: 1
