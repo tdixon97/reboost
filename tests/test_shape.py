@@ -106,15 +106,20 @@ def test_cluster_basic():
 def test_cluster_by_step_length():
     # test wrapped function
     trackid = ak.Array([[1, 1, 1, 2, 2, 2, 2, 2], [2, 2, 2, 3, 3, 3], [1]])
-    x = ak.Array([[0, 0, 0.5, 1, 2, 2.01, 2.02, 4], [0, 1, 4, 5, 5, 6], [0]])
+    x = ak.Array([[0, 0.1, 0.5, 1, 2, 2.01, 2.02, 4], [0, 1, 4, 5, 5, 6], [0]])
     y = ak.Array([[0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0]])
     z = ak.Array([[0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0]])
-    dist = ak.Array([[0.1, 0.1, 0.1, 0.1, 2, 2, 2, 2], [2, 2, 2, 2, 2, 2], [0.1]])
+    dist = ak.Array([[0.1, 0.1, 0.1, 0.1, 2, 2, 2, 2], [2, 2, 2, 2, 2, 2], [0.3]])
 
     clusters = cluster.cluster_by_step_length(
-        trackid, x, y, z, dist, threshold=0.2, threshold_surf=0.2, surf_cut=0.05
+        trackid, x, y, z, dist, threshold=0.2, threshold_surf=0.02, surf_cut=0.15
     )
 
+    assert ak.all(clusters.view_as("ak") == ak.Array([[1, 1, 1, 1, 3, 1], [1, 1, 1, 2, 1], [1]]))
+
+    # test without surface region
+
+    clusters = cluster.cluster_by_step_length(trackid, x, y, z, threshold=0.2)
     assert ak.all(clusters.view_as("ak") == ak.Array([[2, 1, 1, 3, 1], [1, 1, 1, 2, 1], [1]]))
 
 

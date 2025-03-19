@@ -40,17 +40,17 @@ def cluster_by_step_length(
     pos_x: ak.Array | VectorOfVectors,
     pos_y: ak.Array | VectorOfVectors,
     pos_z: ak.Array | VectorOfVectors,
-    dist: ak.Array | VectorOfVectors,
-    surf_cut: float = 2,
+    dist: ak.Array | VectorOfVectors | None = None,
+    surf_cut: float | None = None,
     threshold: float = 0.1,
-    threshold_surf: float = 0.0,
+    threshold_surf: float | None = None,
 ) -> VectorOfVectors:
     """Perform clustering based on the step length.
 
     Steps are clustered based on distance, if either:
      - a step is in a new track,
      - a step moves from surface to bulk region (or visa versa),
-     - the distance between the first step and the cluster and the current is above a threshold.
+     - the distance between the current step and the first step of the current cluster is above a threshold.
 
     Then a new cluster is started. The surface region is defined as the volume
     less than surf_cut distance to the surface. This allows for a fine tuning of the
@@ -67,9 +67,9 @@ def cluster_by_step_length(
     pos_z
         z position of the step.
     dist
-        distance to the detector surface.
+        distance to the detector surface. Can be `None` in which case all steps are treated as being in the "bulk".
     surf_cut
-        Size of the surface region (in mm)
+        Size of the surface region (in mm), if `None` no selection is applied (default).
     threshold
         Distance threshold in mm to combine steps in the bulk.
     threshold_surf
@@ -107,7 +107,7 @@ def cluster_by_step_length(
         ak.flatten(ak.local_index(trackid)).to_numpy(),
         ak.flatten(trackid).to_numpy(),
         pos,
-        ak.flatten(dist).to_numpy(),
+        dist_to_surf=ak.flatten(dist).to_numpy() if dist is not None else dist,
         surf_cut=surf_cut,
         threshold=threshold,
         threshold_surf=threshold_surf,
@@ -127,10 +127,10 @@ def cluster_by_distance_numba(
     local_index: np.ndarray,
     trackid: np.ndarray,
     pos: np.ndarray,
-    dist_to_surf: np.ndarray,
-    surf_cut: float = 2,
+    dist_to_surf: np.ndarray | None,
+    surf_cut: float | None = None,
     threshold: float = 0.1,
-    threshold_surf: float = 0.0,
+    threshold_surf: float | None = None,
 ) -> np.ndarray:
     """Cluster steps by the distance between points in the same track.
 
@@ -146,9 +146,9 @@ def cluster_by_distance_numba(
     pos
         `(n,3)` size array of the positions
     dist_to_surf
-        1D array of the distance to the detector surface.
+        1D array of the distance to the detector surface. Can be `None` in which case all steps are treated as being in the bulk.
     surf_cut
-        Size of the surface region (in mm)
+        Size of the surface region (in mm), if `None` no selection is applied.
     threshold
         Distance threshold in mm to combine steps in the bulk.
     threshold_surf
@@ -172,14 +172,20 @@ def cluster_by_distance_numba(
     is_surf_prev = False
 
     for idx in range(n):
-        thr = threshold if dist_to_surf[idx] > surf_cut else threshold_surf
+        # consider a surface and a bulk region
+        if dist_to_surf is not None:
+            thr = threshold if dist_to_surf[idx] > surf_cut else threshold_surf
 
-        new_cluster = (
-            (trackid[idx] != trackid_prev)
-            or (is_surf_prev and (dist_to_surf[idx] > surf_cut))
-            or ((not is_surf_prev) and (dist_to_surf[idx] < surf_cut))
-            or (_dist(pos[idx, :], pos_prev) > thr)
-        )
+            new_cluster = (
+                (trackid[idx] != trackid_prev)
+                or (is_surf_prev and (dist_to_surf[idx] > surf_cut))
+                or ((not is_surf_prev) and (dist_to_surf[idx] < surf_cut))
+                or (_dist(pos[idx, :], pos_prev) > thr)
+            )
+        # basic clustering without split into surface / bulk
+        else:
+            thr = threshold
+            new_cluster = (trackid[idx] != trackid_prev) or (_dist(pos[idx, :], pos_prev) > thr)
 
         # New hit, reset cluster index
         if idx == 0 or local_index[idx] == 0:
@@ -197,7 +203,8 @@ def cluster_by_distance_numba(
 
         # Update previous values
         trackid_prev = trackid[idx]
-        is_surf_prev = dist_to_surf[idx] < surf_cut
+        if dist_to_surf is not None:
+            is_surf_prev = dist_to_surf[idx] < surf_cut
 
     return out
 
