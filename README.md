@@ -10,9 +10,10 @@
 ![License](https://img.shields.io/github/license/legend-exp/reboost)
 [![Read the Docs](https://img.shields.io/readthedocs/reboost?logo=readthedocs)](https://reboost.readthedocs.io)
 
-_reboost_ is a package to post-process remage simulations. Post processing is
-the step of applying a detector response model to the (idealised) remage /
-Geant4 simulations to ''boost" them allowing comparison to data.
+_reboost_ is a package to post-process
+[remage](https://remage.readthedocs.io/en/stable/) simulations. Post processing
+is the step of applying a detector response model to the (idealised) _remage_ /
+_Geant4_ simulations to ''boost" them allowing comparison to data.
 
 _reboost_ provides tools to:
 
