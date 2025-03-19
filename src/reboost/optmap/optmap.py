@@ -48,6 +48,7 @@ class OpticalMap:
                 for i in range(3)
             ]
 
+    @staticmethod
     def create_empty(name: str, settings: Mapping[str, str]) -> OpticalMap:
         om = OpticalMap(name, settings)
         om.h_vertex = om._prepare_hist()
@@ -115,7 +116,7 @@ class OpticalMap:
             assert ax.is_range
             assert ax.closedleft
             oor_mask &= (ax.first <= col) & (col < ax.last)
-            idx_s = np.floor((col - ax.first).astype(np.float64) / ax.step).astype(np.int64)
+            idx_s = np.floor((col.astype(np.float64) - ax.first) / ax.step).astype(np.int64)
             assert np.all(idx_s[oor_mask] < self._single_shape[dim])
             idx += s * idx_s
 
@@ -215,9 +216,11 @@ class OpticalMap:
         return ratio_0, ratio_err_0
 
     def create_probability(self) -> None:
+        """Compute probability map (and map uncertainty) from vertex and hit map."""
         self.h_prob, self.h_prob_uncert = self._divide_hist(self.h_hits, self.h_vertex)
 
     def write_lh5(self, lh5_file: str, group: str = "all", wo_mode: str = "write_safe") -> None:
+        """Write this map to a LH5 file."""
         if wo_mode not in ("write_safe", "overwrite_file"):
             msg = f"invalid wo_mode {wo_mode} for optical map"
             raise ValueError(msg)
@@ -236,6 +239,25 @@ class OpticalMap:
         write_hist(self.h_hits, "nr_det", lh5_file, group, "write_safe")
         write_hist(self.h_prob, "p_det", lh5_file, group, "write_safe")
         write_hist(self.h_prob_uncert, "p_det_err", lh5_file, group, "write_safe")
+
+    def get_settings(self) -> dict:
+        """Get the binning settings that were used to create this optical map instance."""
+        if self.settings is not None:
+            return self.settings
+
+        range_in_m = []
+        bins = []
+        for b in self.binning:
+            if not b.is_range:
+                msg = "cannot get binning settings for variable binning map"
+                raise RuntimeError(msg)
+            if b.get_binedgeattrs().get("units") != "m":
+                msg = "invalid units. can only work with optical maps in meter"
+                raise RuntimeError(msg)
+            range_in_m.append([b.first, b.last])
+            bins.append(b.nbins)
+
+        return {"range_in_m": np.array(range_in_m), "bins": np.array(bins)}
 
     def check_histograms(self, include_prefix: bool = False) -> None:
         log_prefix = "" if not include_prefix else self.name + " - "

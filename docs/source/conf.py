@@ -61,6 +61,7 @@ intersphinx_mapping = {
     "pyg4ometry": ("https://pyg4ometry.readthedocs.io/en/stable", None),
     "legendmeta": ("https://pylegendmeta.readthedocs.io/en/stable/", None),
     "lgdo": ("https://legend-pydataobj.readthedocs.io/en/stable/", None),
+    "dbetto": ("https://dbetto.readthedocs.io/en/stable/", None),
 }  # add new intersphinx mappings here
 
 # sphinx-autodoc
