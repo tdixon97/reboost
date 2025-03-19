@@ -21,3 +21,6 @@ _reboost_ provides tools to:
 - dedicated tools to generate optical maps,
 - functionality to control the full post-processing chain with configuration
   files.
+
+For more information see our dedicated
+[documentation](https://reboost.readthedocs.io/en/stable/)!
