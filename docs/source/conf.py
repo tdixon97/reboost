@@ -41,6 +41,8 @@ html_title = f"{project} {version}"
 
 autodoc_default_options = {"ignore-module-all": True}
 
+myst_enable_extensions = ["colon_fence", "substitution", "dollarmath"]
+
 # sphinx-napoleon
 # enforce consistent usage of NumPy-style docstrings
 napoleon_numpy_docstring = True
