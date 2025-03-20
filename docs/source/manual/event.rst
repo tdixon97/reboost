@@ -1,2 +1,4 @@
+.. _event:
+
 Building events
 ===============

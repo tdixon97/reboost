@@ -53,6 +53,7 @@ NumpyDocstring._consume_returns_section = GoogleDocstring._consume_returns_secti
 # intersphinx
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
+    "pygama": ("https://pygama.readthedocs.io/en/stable/", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/reference", None),
     "pandas": ("https://pandas.pydata.org/docs", None),
