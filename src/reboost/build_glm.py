@@ -221,7 +221,7 @@ def build_glm(
         log.info(msg)
 
         # loop over the lh5_tables
-        lh5_table_list = [table for table in lh5.ls(stp_file, "stp/") if table != "stp/vertices"]
+        lh5_table_list = list(lh5.ls(stp_file, "stp/"))
 
         # get rows in the table
         if files.glm is None:

@@ -10,4 +10,17 @@
 ![License](https://img.shields.io/github/license/legend-exp/reboost)
 [![Read the Docs](https://img.shields.io/readthedocs/reboost?logo=readthedocs)](https://reboost.readthedocs.io)
 
-New LEGEND Monte-Carlo simulation post-processing [WIP]
+_reboost_ is a package to post-process
+[remage](https://remage.readthedocs.io/en/stable/) simulations. Post processing
+is the step of applying a detector response model to the (idealised) _remage_ /
+_Geant4_ simulations to ''boost" them allowing comparison to data.
+
+_reboost_ provides tools to:
+
+- apply a HPGe detector response model to the simulations,
+- dedicated tools to generate optical maps,
+- functionality to control the full post-processing chain with configuration
+  files.
+
+For more information see our dedicated
+[documentation](https://reboost.readthedocs.io/en/stable/)!
