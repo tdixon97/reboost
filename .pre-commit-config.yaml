@@ -39,7 +39,6 @@ repos:
     hooks:
       - id: prettier
         types_or: [yaml, markdown, json]
-        args: [--prose-wrap=always]
 
   - repo: https://github.com/PyCQA/docformatter
     rev: eb1df34 # use eb1df34 until https://github.com/PyCQA/docformatter/issues/293 is fixed
