@@ -68,8 +68,7 @@ syntax allows the user to include any arbitrary input parameters or objects.
 
 ```yaml
 detector_objects:
-  meta:
-    dbetto.AttrsDict(pygeomtools.get_sensvol_metadata(OBJECTS.geometry,
+  meta: dbetto.AttrsDict(pygeomtools.get_sensvol_metadata(OBJECTS.geometry,
     OBJECTS.user_pars[DETECTOR].name ))
   pyobj:
     legendhpges.make_hpge(pygeomtools.get_sensvol_metadata(OBJECTS.geometry,OBJECTS.user_pars[DETECTOR].name),
