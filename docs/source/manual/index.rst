@@ -5,6 +5,7 @@ User Manual
     :maxdepth: 2
 
     intro
+    iteration
     processors
     config
     optical
