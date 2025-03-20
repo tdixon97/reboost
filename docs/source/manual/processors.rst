@@ -39,7 +39,12 @@ Other processors
 Additional *reboost* processors compute further quantities of interesting, this can consist of:
 
 - reduction (e.g. summing over steps),
+- clustering (e.g. grouping steps within one hit into various clusters thus adding a dimension),
+- computing other quantities (eg. PSD heuristics etc.).
 
 The only prescriptiion for a *reboost* processor is that the function should return either an :class:`lgdo.LGDO` object,
 or an :class:`awkward.Array`. These processors should not change the length of the object, i.e. they should only act on axes
-more than 1. Documentation describing the various processors is contained in the API documentation.
+more than 1.
+
+Documentation describing the various processors is contained in the API documentation. You can then import these functions
+and use them in your python scripts for simple post-processing!
