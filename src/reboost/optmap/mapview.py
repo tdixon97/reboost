@@ -92,12 +92,13 @@ def _channel_selector(fig) -> None:
 def _read_data(
     optmap_fn: str,
     detid: str = "all",
-    show_error: bool = False,
+    histogram_choice: str = "p_det",
 ) -> tuple[tuple[NDArray], NDArray]:
-    optmap_all = lh5.read(f"/{detid}/p_det", optmap_fn)
+    histogram = histogram_choice if histogram_choice != "p_det_err_rel" else "p_det"
+    optmap_all = lh5.read(f"/{detid}/{histogram}", optmap_fn)
     optmap_edges = tuple([b.edges for b in optmap_all.binning])
     optmap_weights = optmap_all.weights.nda.copy()
-    if show_error:
+    if histogram_choice == "p_det_err_rel":
         optmap_err = lh5.read(f"/{detid}/p_det_err", optmap_fn)
         divmask = optmap_weights > 0
         optmap_weights[divmask] = optmap_err.weights.nda[divmask] / optmap_weights[divmask]
@@ -111,13 +112,13 @@ def _prepare_data(
     divide_fn: str | None = None,
     cmap_min: float | Literal["auto"] = 1e-4,
     cmap_max: float | Literal["auto"] = 1e-2,
-    show_error: bool = False,
+    histogram_choice: str = "p_det",
     detid: str = "all",
 ) -> tuple[tuple[NDArray], NDArray]:
-    optmap_edges, optmap_weights = _read_data(optmap_fn, detid, show_error)
+    optmap_edges, optmap_weights = _read_data(optmap_fn, detid, histogram_choice)
 
     if divide_fn is not None:
-        divide_edges, divide_map = _read_data(divide_fn, detid, show_error)
+        divide_edges, divide_map = _read_data(divide_fn, detid, histogram_choice)
         divmask = divide_map > 0
         optmap_weights[divmask] = optmap_weights[divmask] / divide_map[divmask]
         optmap_weights[~divmask] = -1
@@ -157,12 +158,12 @@ def view_optmap(
     start_axis: int = 2,
     cmap_min: float | Literal["auto"] = 1e-4,
     cmap_max: float | Literal["auto"] = 1e-2,
-    show_error: bool = False,
+    histogram_choice: str = "p_det",
     title: str | None = None,
 ) -> None:
     available_dets = list_optical_maps(optmap_fn)
 
-    prepare_args = (optmap_fn, divide_fn, cmap_min, cmap_max, show_error)
+    prepare_args = (optmap_fn, divide_fn, cmap_min, cmap_max, histogram_choice)
     edges, weights, cmap_min, cmap_max = _prepare_data(*prepare_args, detid)
 
     fig = plt.figure(figsize=(10, 10))
