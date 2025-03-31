@@ -131,5 +131,5 @@ class GLMIterator:
                 vert_rows = None
             # vertex table should have same structure as glm
 
-            return (stp_rows, vert_rows, self.current_i_entry, n_steps)
+            return (stp_rows, vert_rows, self.current_i_entry - 1, n_steps)
         return (None, None, self.current_i_entry, 0)
