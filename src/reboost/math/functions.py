@@ -83,8 +83,8 @@ def vectorised_active_energy(
     dead layer fraction. Either fccd or dlf can be a list. This adds an extra dimension to the
     output.
 
-    > *Warning*
-    > It is not currently implemented to vary both dlf and fccd.
+    .. warning:
+        It is not currently implemented to vary both dlf and fccd.
 
     Parameters
     ----------
