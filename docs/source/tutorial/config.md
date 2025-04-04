@@ -385,6 +385,7 @@ You can look at the file structure with:
 lh5.show("hit_out.lh5")
 ```
 
+``python
 hits_det001 = lh5.read("det001/hit","hit_out.lh5")
 hits_det002 = lh5.read("det002/hit","hit_out.lh5")
 
