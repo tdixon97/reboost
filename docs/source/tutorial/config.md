@@ -176,10 +176,9 @@ For example, this functionality can be used to apply a different processing to S
 
 "processing_groups": [
     {
-      "name": "geds", # processing for Germanium detectors,
-        ....
+      "name": "geds",
     }
-]
+  ]
 ```
 
 ### Detector mapping
@@ -227,7 +226,7 @@ For example:
 
 ```json
 
-"detector_objects": { # define objects useful for post-processing
+"detector_objects": {
     "name": "pygeomtools.detectors.get_sensvol_by_uid(OBJECTS.geometry,int(DETECTOR[3:]))[0]",
     "meta": "dbetto.AttrsDict(pygeomtools.get_sensvol_metadata(OBJECTS.geometry, DETECTOR_OBJECTS.name))",
     "pyobj": "legendhpges.make_hpge(pygeomtools.get_sensvol_metadata(OBJECTS.geometry,DETECTOR_OBJECTS.name), registry = None)",

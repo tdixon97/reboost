@@ -127,7 +127,7 @@ The only requirements are:
 - the function should return an `LGDO.VectorOfVectors`, `LGDO.Array` or `LGDO.ArrayOfEqualSizedArrays` [[docs]](https://legend-pydataobj.readthedocs.io/en/latest/api/lgdo.types.html) object, or something able to be converted to this (awkward arrays for example),
 - the returned object should have the same length as the original hits table, i.e. the processors act on every row but they cannot add, remove or merge rows.
 
-#### Active energy
+### Active energy
 
 One of the main steps in the post-processing of HPGe simulations consists of correction for the inactive regions at the surface of the detector.
 
