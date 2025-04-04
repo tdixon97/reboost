@@ -59,6 +59,7 @@ def evaluate_output_column(
     expr = expression.replace(f"{table_name}.", "")
 
     # get func call and modules to import
+
     func_call, globals_dict = utils.get_function_string(expr)
 
     msg = f"evaluating table with command {expr} and local_dict {local_dict.keys()}"

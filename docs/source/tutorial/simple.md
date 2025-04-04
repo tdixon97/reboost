@@ -202,7 +202,7 @@ where:
 - f: is the full-charge-collection depth (FCCD),
 - l: is the fraction fully dead
 
-We first plot this function for nominal values of $f = 1$ mm and $t = 0.5$ mm.
+We first plot this function for nominal values of $f = 1$ mm and $l = 0.2$.
 
 ```python
 fig, ax = plt.subplots(figsize=(8, 4))
@@ -296,7 +296,7 @@ This introduces a Gaussian spread to the energy spectrum.
 Another area of HPGe post-processing involves the calculation of PSD heuristics. These are quantities which help estimate
 if an event would have a single or multi-site event topology.
 
-One simple example if the `r90` or the radius of a sphere (centered on the event energy weighted center of mass), containing at-least 90% of the energy.
+One simple example is the `r90`, or the radius of a sphere (centered on the event energy weighted center of mass), containing at-least 90% of the energy.
 
 This can be computed with a simple `reboost` processor [[reboost.hpge.psd.r90]](https://reboost.readthedocs.io/en/stable/api/reboost.hpge.html#module-reboost.hpge.psd).
 

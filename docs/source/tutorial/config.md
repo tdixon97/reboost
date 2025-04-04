@@ -200,7 +200,7 @@ Here we specified a list of output detector names, since we did not define the "
 Other options:
 
 - specify a single detector, for example: ` "output": ["det001"]`
-- provide an expression evaluating to a list of detectors, for example: `"output":[f"det00{i}" for i in range(99)]`
+- provide an expression evaluating to a list of detectors, for example: `"output":[f"det{i:03d}" for i in range(99)]`
 - specify also an input table (if different), for example:
 
 ```json
@@ -366,14 +366,6 @@ build_hit(
          - energy            :     0.3 s
        - write               :     0.7 s
 
-
-
-
-
-
-    (None,
-     ProfileDict({'global_objects': 3.6364240646362305, 'geds': ProfileDict({'detector_objects': 0.4401373863220215, 'read': {'glm': 0.12508273124694824, 'stp': 2.3546550273895264}, 'hit_layout': 0.5874965190887451, 'expressions': {'t0': 0.043096065521240234, 'first_evtid': 0.03963160514831543, 'truth_energy': 0.035671234130859375, 'distance_to_nplus': 3.7600719928741455, 'activeness': 0.2788965702056885, 'active_energy': 0.06115889549255371, 'smeared_energy': 0.01658153533935547, 'r90': 2.4316043853759766}, 'write': 0.3331592082977295}), 'LAr': ProfileDict({'detector_objects': 7.867813110351562e-06, 'read': {'glm': 0.0704946517944336, 'stp': 34.60681986808777}, 'hit_layout': 7.667698383331299, 'expressions': {'t0': 0.1749567985534668, 'first_evtid': 0.17266511917114258, 'energy': 0.2585761547088623}, 'write': 0.6967995166778564})}))
-
 We see `build_hit` also gives us information on the speed of the various steps of the processing!
 
 Now we have generated a "hit" tier file that can be used for further analysis. You can read this data with LGDO and then try making the plots from the previous section (or others).
@@ -385,26 +377,29 @@ You can look at the file structure with:
 lh5.show("hit_out.lh5")
 ```
 
-``python
-hits_det001 = lh5.read("det001/hit","hit_out.lh5")
-hits_det002 = lh5.read("det002/hit","hit_out.lh5")
+```python
+hits_det001 = lh5.read("det001/hit", "hit_out.lh5")
+hits_det002 = lh5.read("det002/hit", "hit_out.lh5")
 
-fig,ax = plt.subplots(figsize=(12,4))
-h1 = hist.new.Reg(300,0,3000,name="energy [keV]").Double().fill(hits_det001.smeared_energy)
-h2 = hist.new.Reg(300,0,3000,name="energy [keV]").Double().fill(hits_det002.smeared_energy)
+fig, ax = plt.subplots(figsize=(12, 4))
+h1 = (
+    hist.new.Reg(300, 0, 3000, name="energy [keV]")
+    .Double()
+    .fill(hits_det001.smeared_energy)
+)
+h2 = (
+    hist.new.Reg(300, 0, 3000, name="energy [keV]")
+    .Double()
+    .fill(hits_det002.smeared_energy)
+)
 
 ax.set_title("$^{228}$-Th simulation")
-h2.plot(yerr=False,fill=False,alpha=1,label="Coax")
-h1.plot(yerr=False,fill=False,alpha=1,label="BEGe")
+h2.plot(yerr=False, fill=False, alpha=1, label="Coax")
+h1.plot(yerr=False, fill=False, alpha=1, label="BEGe")
 
-ax.set_xlim(0,3000)
+ax.set_xlim(0, 3000)
 ax.legend()
 ax.set_yscale("log")
-
-````
+```
 
 ![png](config_files/config_22_0.png)
-
-```python
-
-````
