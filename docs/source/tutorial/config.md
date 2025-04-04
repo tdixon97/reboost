@@ -385,26 +385,29 @@ You can look at the file structure with:
 lh5.show("hit_out.lh5")
 ```
 
-``python
-hits_det001 = lh5.read("det001/hit","hit_out.lh5")
-hits_det002 = lh5.read("det002/hit","hit_out.lh5")
+```python
+hits_det001 = lh5.read("det001/hit", "hit_out.lh5")
+hits_det002 = lh5.read("det002/hit", "hit_out.lh5")
 
-fig,ax = plt.subplots(figsize=(12,4))
-h1 = hist.new.Reg(300,0,3000,name="energy [keV]").Double().fill(hits_det001.smeared_energy)
-h2 = hist.new.Reg(300,0,3000,name="energy [keV]").Double().fill(hits_det002.smeared_energy)
+fig, ax = plt.subplots(figsize=(12, 4))
+h1 = (
+    hist.new.Reg(300, 0, 3000, name="energy [keV]")
+    .Double()
+    .fill(hits_det001.smeared_energy)
+)
+h2 = (
+    hist.new.Reg(300, 0, 3000, name="energy [keV]")
+    .Double()
+    .fill(hits_det002.smeared_energy)
+)
 
 ax.set_title("$^{228}$-Th simulation")
-h2.plot(yerr=False,fill=False,alpha=1,label="Coax")
-h1.plot(yerr=False,fill=False,alpha=1,label="BEGe")
+h2.plot(yerr=False, fill=False, alpha=1, label="Coax")
+h1.plot(yerr=False, fill=False, alpha=1, label="BEGe")
 
-ax.set_xlim(0,3000)
+ax.set_xlim(0, 3000)
 ax.legend()
 ax.set_yscale("log")
-
-````
+```
 
 ![png](config_files/config_22_0.png)
-
-```python
-
-````

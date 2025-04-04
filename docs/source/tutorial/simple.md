@@ -202,7 +202,7 @@ where:
 - f: is the full-charge-collection depth (FCCD),
 - l: is the fraction fully dead
 
-We first plot this function for nominal values of $f = 1$ mm and $t = 0.5$ mm.
+We first plot this function for nominal values of $f = 1$ mm and $l = 0.2$.
 
 ```python
 fig, ax = plt.subplots(figsize=(8, 4))
