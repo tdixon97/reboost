@@ -245,10 +245,9 @@ def build_hit(
 
         # loop over processing groups
         for group_idx, proc_group in enumerate(config["processing_groups"]):
-            msg = f"... starting group {proc_group.get('name', 'default')}"
-            log.info(msg)
-
             proc_name = proc_group.get("name", "default")
+            msg = f"... starting group {proc_name}"
+            log.info(msg)
 
             if proc_name not in time_dict:
                 time_dict[proc_name] = ProfileDict()
