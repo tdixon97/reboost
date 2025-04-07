@@ -232,7 +232,7 @@ def build_glm(
             glm_sum = None
 
         # start row for each table
-        start_row = {lh5_tab: 0 for lh5_tab in lh5_table_list}
+        start_row = dict.fromkeys(lh5_table_list, 0)
 
         vfield = f"stp/vertices/{id_name}"
 
