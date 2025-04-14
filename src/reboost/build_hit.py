@@ -314,7 +314,7 @@ def build_hit(
                             "DETECTOR": out_detector,
                         }
                         # add fields
-                        for field, expression in proc_group["operations"].items():
+                        for field, expression in proc_group.get("operations", {}).items():
                             # evaluate the expression
                             col = core.evaluate_output_column(
                                 hit_table,
@@ -327,7 +327,10 @@ def build_hit(
                             hit_table.add_field(field, col)
 
                         # remove unwanted fields
-                        hit_table = core.remove_columns(hit_table, outputs=proc_group["outputs"])
+                        if "outputs" in proc_group:
+                            hit_table = core.remove_columns(
+                                hit_table, outputs=proc_group["outputs"]
+                            )
 
                         # get the IO mode
 
