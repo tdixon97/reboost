@@ -311,7 +311,6 @@ def build_hit(
                                 expression=proc_group["hit_table_layout"],
                                 time_dict=time_dict[proc_name],
                             )
-
                         else:
                             hit_table = copy.deepcopy(stps)
 
