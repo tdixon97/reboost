@@ -295,18 +295,21 @@ def build_hit(
                         continue
 
                     # produce the hit table
-                    ak_obj = stps.view_as("ak")
 
                     for out_det_idx, out_detector in enumerate(out_detectors):
                         # loop over the rows
                         if out_detector not in output_tables and files.hit is None:
                             output_tables[out_detector] = None
 
-                        hit_table = core.evaluate_hit_table_layout(
-                            copy.deepcopy(ak_obj),
-                            expression=proc_group["hit_table_layout"],
-                            time_dict=time_dict[proc_name],
-                        )
+                        if "hit_table_layout" in proc_group:
+                            ak_obj = stps.view_as("ak")
+                            hit_table = core.evaluate_hit_table_layout(
+                                copy.deepcopy(ak_obj),
+                                expression=proc_group["hit_table_layout"],
+                                time_dict=time_dict[proc_name],
+                            )
+                        else:
+                            hit_table = copy.deepcopy(stps)
 
                         local_dict = {
                             "DETECTOR_OBJECTS": det_objects[out_detector],
