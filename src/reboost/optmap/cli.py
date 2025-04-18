@@ -166,7 +166,7 @@ def optical_cli() -> None:
         action="store",
         required=True,
         metavar="LGDO_PATH",
-        help="path to LGDO inside non-optical LH5 hit file (e.g. /hit/detXX)",
+        help="path to LGDO inside non-optical LH5 hit file (e.g. /stp/detXX)",
     )
     convolve_parser.add_argument("--output", help="output hit LH5 file", metavar="OUTPUT_HIT")
 

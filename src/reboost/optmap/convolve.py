@@ -319,4 +319,4 @@ def convolve(
             "output photons: %d energy depositions -> %d photons", len(output_map), ph_count_o
         )
         if output_file is not None:
-            lh5.write(tbl, "optical", lh5_file=output_file, group="hit", wo_mode="append")
+            lh5.write(tbl, "optical", lh5_file=output_file, group="stp", wo_mode="append")
