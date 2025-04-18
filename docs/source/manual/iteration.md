@@ -2,8 +2,10 @@
 
 # Efficient iteration over remage files
 
-:::{note} This step is only relevant for applications involving large simulation
-files, or where the reboost configuration file option is used. :::
+:::{note}
+This step is only relevant for applications involving large simulation
+files, or where the reboost configuration file option is used.
+:::
 
 Simulation files are often very large. This poses a challenge in processing the
 data, since it may not always be feasible to read the full simulated file into

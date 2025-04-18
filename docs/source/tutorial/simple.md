@@ -1,13 +1,17 @@
 # Basic reboost post-processing in a python script
 
-Simple post-processing of _remage_ simulations can be done in a python script or notebook.
-This has some limitations but is very useful for simple tasks. For more complicated tasks we have created a config file interface (see the next tutorial).
-This tutorial builds on the _remage_ tutorial ([[link]](https://remage.readthedocs.io/en/stable/tutorial.html)) of two Germanium detectors in a LAr orb with a source. It describes how to run
+Simple post-processing of _remage_ simulations can be done in a python script
+or notebook. This has some limitations but is very useful for simple tasks.
+For more complicated tasks we have created a config file interface (see the
+next tutorial). This tutorial builds on the [_remage_
+tutorial](https://remage.readthedocs.io/en/stable/tutorial.html)) of two
+Germanium detectors in a LAr orb with a source. It describes how to run
 a simple post-processing with reboost tools, and explains the usual steps.
 
-For this example we simulate $^{228}$Th in the source. We use the following macro file (saved as `th228.mac`):
+For this example we simulate $^{228}$Th in the source. We use the following
+macro file (saved as `th228.mac`):
 
-```console
+```
 /RMG/Geometry/RegisterDetector Germanium BEGe 001
 /RMG/Geometry/RegisterDetector Germanium Coax 002
 /RMG/Geometry/RegisterDetector Scintillator LAr 003
@@ -30,15 +34,17 @@ For this example we simulate $^{228}$Th in the source. We use the following macr
 /run/beamOn 1000000
 ```
 
-And run the remage (from inside the remage container / after installation [[instructions]](https://remage.readthedocs.io/en/stable/manual/install.html)) simulation with:
+And run the _remage_ (from inside the remage container / after installation
+[[instructions]](https://remage.readthedocs.io/en/stable/manual/install.html))
+simulation with:
 
 ```console
-remage --threads 1 --gdml-files geometry.gdml --output stp_out.lh5 -- th228.mac
+$ remage --threads 1 --gdml-files geometry.gdml --output stp_out.lh5 -- th228.mac
 ```
 
 This should take about 10 minutes to run.
 
-We should now have a remage output file to use for our post-processing!
+We should now have a _remage_ output file to use for our post-processing!
 
 ## Setup the environment
 
@@ -49,30 +55,38 @@ import numpy as np
 from pygeomtools.detectors import get_sensvol_metadata
 from legendhpges import make_hpge, draw
 import legendhpges
-import reboost
 import pyg4ometry
 import awkward as ak
 from reboost.math.stats import gaussian_sample
 import hist
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+
+import reboost
 from reboost import hpge
 from reboost.hpge import surface, psd
 from reboost.shape import group
 from reboost.math import functions
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 
 plt.rcParams.update({"font.size": 12})
 ```
 
 ## Extract useful objects
 
-Additional information is needed (for example details of the detector geometry) to perform our post-processing. Fortunately for us integration
-with the detector geometry GDML file makes this easy! Similarly to how [[pyg4ometry]](https://pyg4ometry.readthedocs.io/en/stable/) was used to write the
-detector geometry GDML file it can also be used to read this back into python. This GDML file can also contain additional metadata useful for us, which can be extracted using
-the [[pygeom-tools]](https://legend-pygeom-tools.readthedocs.io/) package.
+Additional information is needed (for example details of the detector geometry)
+to perform our post-processing. Fortunately for us integration with the
+detector geometry GDML file makes this easy! Similarly to how
+[pyg4ometry](https://pyg4ometry.readthedocs.io) was used to write the detector
+geometry GDML file it can also be used to read this back into python. This GDML
+file can also contain additional metadata useful for us, which can be extracted
+using the [legend-pygeom-tools](https://legend-pygeom-tools.readthedocs.io) package.
 
-This metadata can be used to create a python object describing the HPGe detectors using the [[pygeom-hpges]](https://legend-pygeom-hpges.readthedocs.io/en/stable/) package. Among other things them HPGe object
-from this package has methods to compute detector properties (mass, surface area etc.) and to compute the distance of points from the detector surface.
+This metadata can be used to create a python object describing the HPGe
+detectors using the
+[legend-pygeom-hpges](https://legend-pygeom-hpges.readthedocs.io) package.
+Among other things them HPGe object from this package has methods to compute
+detector properties (mass, surface area etc.) and to compute the distance of
+points from the detector surface.
 
 In this example we extract the _pyg4ometry.geant4.Registry_ object describing the geometry (see [[docs]](https://pyg4ometry.readthedocs.io/en/stable/autoapi/pyg4ometry/geant4/Registry/index.html#pyg4ometry.geant4.Registry.Registry), the _legend-pygeom-hpges_ HPGe python object [[docs]](https://legend-pygeom-hpges.readthedocs.io/en/stable/api/legendhpges.html#legendhpges.base.HPGe) and finally we extract the position of the BEGe detector (which we focus on for this analysis).
 
@@ -84,23 +98,34 @@ position = reg.physicalVolumeDict["BEGe"].position.eval()
 
 ## Read the data
 
-Next we can read the data using the [[lgdo]](https://legend-pydataobj.readthedocs.io/en/stable/) package.
+Next we can read the data using the
+[[lgdo]](https://legend-pydataobj.readthedocs.io/en/stable/) package.
 
-> **Warning**: If the simulations files are large this approach can cause memory issues, in that case it is possible to iterate over the files instead using the GLMIterator (see the next tutorial).
+:::{warning}
+If the simulations files are large this approach can cause memory issues, in
+that case it is possible to iterate over the files instead using the
+GLMIterator (see the next tutorial).
+:::
 
-We use the [[awkward]](https://awkward-array.org/doc/main/) package to view the data, ideal for working with data with a "jagged" structure, i.e. many vectors of different lengths.
+We use the [[awkward]](https://awkward-array.org/doc/main/) package to view the
+data, ideal for working with data with a "jagged" structure, i.e. many vectors
+of different lengths.
 
 ```python
 stp = lh5.read_as("stp/det001", "stp_out.lh5", "ak")
 ```
 
-## Reshape : group by time
+## Reshape: group by time
 
-The _remage_ output file consists of a "flat" table of the Geant4 steps in the sensitive detector. However, given the small time differences between energy depositions
-from the same particle compared to the time resolution of a HPGe detector the individual steps will not be experimentally resolvable.
+The _remage_ output file consists of a "flat" table of the Geant4 steps in the
+sensitive detector. However, given the small time differences between energy
+depositions from the same particle compared to the time resolution of a HPGe
+detector the individual steps will not be experimentally resolvable.
 
-The first step of our post-processing chain consists of grouping together steps within the same simulated Geant4 event and with similar times.
-This is performed by the [[reboost.shape.group]](https://reboost.readthedocs.io/en/latest/api/reboost.shape.html#module-reboost.shape.group) module, which defines "hits" in the Germanium detector. Currently two options are implemented:
+The first step of our post-processing chain consists of grouping together steps
+within the same simulated Geant4 event and with similar times.
+This is performed by the {mod}`.shape.group` module, which defines "hits" in
+the Germanium detector. Currently two options are implemented:
 
 - _group_by_evtid_: simply group together steps with the same geant4 event id,
 - _group_by_time_: also group together steps with similar times (based on the user supplied time-window).
@@ -111,7 +136,10 @@ We use the second option and a time window of 10 us.
 hits = reboost.shape.group.group_by_time(stp, window=10).view_as("ak")
 ```
 
-Printing the data we can see it now has a jagged structure. Now each row corresponds to a particular hit in the HPGe detector in analogy to [[pygama-hit-tier-data]](https://pygama.readthedocs.io/en/stable/api/pygama.hit.html) used in the pygama data processing software.
+Printing the data we can see it now has a jagged structure. Now each row
+corresponds to a particular hit in the HPGe detector in analogy to [pygama hit
+tier data](https://pygama.readthedocs.io/en/stable/api/pygama.hit.html) used in
+the pygama data processing software.
 
 ```python
 lh5.write(Table(hits), name="stp/germanium", lh5_file="new_format.lh5")
@@ -119,27 +147,41 @@ lh5.write(Table(hits), name="stp/germanium", lh5_file="new_format.lh5")
 
 ## Processors
 
-Now we can compute some quantities based on our simulation. This is based on "processors" (see the User manual for more details).
-This is just any (generic) python function computing a new (post-processed) quantity (i.e. a new row of the output table).
+Now we can compute some quantities based on our simulation. This is based on
+"processors" (see the User manual for more details). This is just any
+(generic) python function computing a new (post-processed) quantity (i.e. a new
+row of the output table).
 
 The only requirements are:
 
-- the function should return an `LGDO.VectorOfVectors`, `LGDO.Array` or `LGDO.ArrayOfEqualSizedArrays` [[docs]](https://legend-pydataobj.readthedocs.io/en/latest/api/lgdo.types.html) object, or something able to be converted to this (awkward arrays for example),
-- the returned object should have the same length as the original hits table, i.e. the processors act on every row but they cannot add, remove or merge rows.
+- the function should return an `LGDO.VectorOfVectors`, `LGDO.Array` or
+  `LGDO.ArrayOfEqualSizedArrays`
+  [[docs]](https://legend-pydataobj.readthedocs.io/en/latest/api/lgdo.types.html)
+  object, or something able to be converted to this (awkward arrays for example),
+- the returned object should have the same length as the original hits table,
+  i.e. the processors act on every row but they cannot add, remove or merge
+  rows.
 
 ### Active energy
 
-One of the main steps in the post-processing of HPGe simulations consists of correction for the inactive regions at the surface of the detector.
+One of the main steps in the post-processing of HPGe simulations consists of
+correction for the inactive regions at the surface of the detector.
 
-A common heuristic approach consists of computing the distance of each energy deposition from the detector surface and then weighting the deposited energy by an "activeness" function.
-One complication of this approach is that the various surfaces (electrodes) of a Germanium detector do not have the same thickness of inactive (commonly called "dead" layer).
+A common heuristic approach consists of computing the distance of each energy
+deposition from the detector surface and then weighting the deposited energy by
+an "activeness" function. One complication of this approach is that the
+various surfaces (electrodes) of a Germanium detector do not have the same
+thickness of inactive (commonly called "dead" layer).
 
-_reboost_ contains a function to compute the distance of points to the surface of the HPGe detector [[docs]](https://reboost.readthedocs.io/en/stable/api/reboost.hpge.html#reboost-hpge-surface-module).
+_reboost_ contains a function to compute the distance of points to the surface
+of the HPGe detector
+[[docs]](https://reboost.readthedocs.io/en/stable/api/reboost.hpge.html#reboost-hpge-surface-module).
 
 ```python
 dist_all = reboost.hpge.surface.distance_to_surface(
     hits.xloc * 1000, hits.yloc * 1000, hits.zloc * 1000, hpge_pyobj, position
 ).view_as("ak")
+
 dist_nplus = reboost.hpge.surface.distance_to_surface(
     hits.xloc * 1000,
     hits.yloc * 1000,
@@ -150,7 +192,7 @@ dist_nplus = reboost.hpge.surface.distance_to_surface(
 ).view_as("ak")
 ```
 
-We make a plot of the distance of the steps to the nplus electrode compared to the r,z coordinates.
+We make a plot of the distance of the steps to the n+ electrode compared to the `r,z` coordinates.
 
 ```python
 # extract r and z
@@ -188,8 +230,8 @@ ax.set_ylabel("height [mm]")
 
 ![png](simple_files/simple_16_1.png)
 
-We can compute for every step the "activeness" or the charge collection efficiency based on a simple piecewise linear model.
-This function is:
+We can compute for every step the "activeness" or the charge collection
+efficiency based on a simple piecewise linear model. This function is:
 
 $$
 f(d) = \begin{cases} 0 & d< f*l \\
@@ -223,7 +265,8 @@ ax.set_ylim(0, 1.1)
 
 ![png](simple_files/simple_18_1.png)
 
-Finally, we compute the activeness for every step and extract the activeness corrected energies, summing over the steps.
+Finally, we compute the activeness for every step and extract the activeness
+corrected energies, summing over the steps.
 
 We then plot the energy spectra:
 
@@ -263,11 +306,15 @@ _make_plot(total_energy, corr_energy, xrange=(0, 200), bins=100)
 
 ![png](simple_files/simple_20_2.png)
 
-The HPGe activeness correction shifts events out of the 2615 keV full energy peak into the continuum. It also increases the number of hits with very low energy (due to interactions in the dead-layer).
+The HPGe activeness correction shifts events out of the 2615 keV full energy
+peak into the continuum. It also increases the number of hits with very low
+energy (due to interactions in the dead-layer).
 
 ### Energy resolution smearing
 
-The remage simulations do not include the effect of the energy resolution. To do this there is a reboost processor to sample from a Gaussian distribution [[docs]](https://reboost.readthedocs.io/en/stable/api/reboost.math.html#module-reboost.math.stats).
+The remage simulations do not include the effect of the energy resolution. To
+do this there is a reboost processor to sample from a Gaussian distribution
+[[docs]](https://reboost.readthedocs.io/en/stable/api/reboost.math.html#module-reboost.math.stats).
 
 We demonstrate this with a sigma of 0.5 keV.
 
@@ -293,12 +340,14 @@ This introduces a Gaussian spread to the energy spectrum.
 
 ### PSD heuristics - r90
 
-Another area of HPGe post-processing involves the calculation of PSD heuristics. These are quantities which help estimate
-if an event would have a single or multi-site event topology.
+Another area of HPGe post-processing involves the calculation of PSD
+heuristics. These are quantities which help estimate if an event would have a
+single or multi-site event topology.
 
-One simple example is the `r90`, or the radius of a sphere (centered on the event energy weighted center of mass), containing at-least 90% of the energy.
+One simple example is the `r90`, or the radius of a sphere (centered on the
+event energy weighted center of mass), containing at-least 90% of the energy.
 
-This can be computed with a simple `reboost` processor [[reboost.hpge.psd.r90]](https://reboost.readthedocs.io/en/stable/api/reboost.hpge.html#module-reboost.hpge.psd).
+This can be computed with a simple `reboost` processor: {func}`.hpge.psd.r90`.
 
 ```python
 r90 = reboost.hpge.psd.r90(
@@ -325,7 +374,8 @@ ax.set_ylabel("r90 [mm]")
 ![png](simple_files/simple_27_1.png)
 
 The average `r90` generally increases through the energy spectra, as we expect.
-Cutting on events with `r90` < 2 mm we can obtain a rough estimate of the spectrum after the PSD cut.
+Cutting on events with `r90` < 2 mm we can obtain a rough estimate of the
+spectrum after the PSD cut.
 
 ```python
 def _make_plot(energy, cut, xrange, bins, scale="log"):
@@ -362,8 +412,10 @@ _make_plot(
 
 ![png](simple_files/simple_29_3.png)
 
-We see that this basic cut removes most of the 2615 keV events, and the events in the 2104 keV single escape peak, while keeping the 1588 keV double escape peak almost unaffected.
-This is what we would expect. More sophisticated heuristics are able to reproduce better the features of experimental data!
+We see that this basic cut removes most of the 2615 keV events, and the events
+in the 2104 keV single escape peak, while keeping the 1588 keV double escape
+peak almost unaffected. This is what we would expect. More sophisticated
+heuristics are able to reproduce better the features of experimental data!
 
 ### Saving to disk
 
@@ -387,7 +439,3 @@ lh5.write(hits_tbl, "hit/det001", "hit_out.lh5")
 ```
 
 Now we have a hit tier file for further analysis!
-
-```python
-
-```
