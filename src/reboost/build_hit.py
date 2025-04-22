@@ -294,6 +294,8 @@ def build_hit(
                     if stps is None:
                         continue
 
+                    ak_obj = stps.view_as("ak")
+
                     # produce the hit table
 
                     for out_det_idx, out_detector in enumerate(out_detectors):
@@ -302,7 +304,6 @@ def build_hit(
                             output_tables[out_detector] = None
 
                         if "hit_table_layout" in proc_group:
-                            ak_obj = stps.view_as("ak")
                             hit_table = core.evaluate_hit_table_layout(
                                 copy.deepcopy(ak_obj),
                                 expression=proc_group["hit_table_layout"],
