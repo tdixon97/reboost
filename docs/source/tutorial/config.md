@@ -372,6 +372,7 @@ Now (at last) we are ready to run the post-processing. This is done with
 There are many options to this function, for example selecting just some
 events, changing the buffers etc. For now we just process the full file.
 Our config file should have been saved in a YAML file called `config.yaml`.
+
 ```python
 build_hit(
     "config.yaml",
