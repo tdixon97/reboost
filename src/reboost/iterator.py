@@ -7,6 +7,8 @@ import typing
 from lgdo.lh5 import LH5Store
 from lgdo.types import LGDO
 
+from reboost.build_glm import build_glm
+
 log = logging.getLogger(__name__)
 
 
@@ -15,7 +17,7 @@ class GLMIterator:
 
     def __init__(
         self,
-        glm_file: str,
+        glm_file: str | None,
         stp_file: str,
         lh5_group: str,
         start_row: int,
@@ -31,7 +33,8 @@ class GLMIterator:
         Parameters
         ----------
         glm_file
-            the file containing the event lookup map.
+            the file containing the event lookup map, if `None` the glm will
+            be created in memory.
         stp_file
             the file containing the steps to read.
         lh5_group
@@ -65,6 +68,11 @@ class GLMIterator:
         self.sto = LH5Store()
         self.n_rows_read = 0
         self.time_dict = time_dict
+        self.glm = None
+
+        # build the glm in memory
+        if self.glm_file is None:
+            self.glm = build_glm.build_glm(stp_file, None, out_table_name="glm", id_name="evtid")
 
     def __iter__(self) -> typing.Iterator:
         self.current_i_entry = 0
@@ -83,10 +91,20 @@ class GLMIterator:
         if self.time_dict is not None:
             time_start = time.time()
 
-        # read the glm rows
-        glm_rows, n_rows_read = self.sto.read(
-            f"glm/{self.lh5_group}", self.glm_file, start_row=self.start_row_tmp, n_rows=n_rows
-        )
+        # read the glm rows]
+        if self.glm_file is not None:
+            glm_rows, n_rows_read = self.sto.read(
+                f"glm/{self.lh5_group}", self.glm_file, start_row=self.start_row_tmp, n_rows=n_rows
+            )
+        else:
+            # get the maximum row to read
+            max_row = self.start_row_tmp + n_rows
+            if max_row > len(self.glm):
+                max_row = len(self.glm) - 1
+
+            glm_rows = self.glm[self.start_row_tmp : max_row]
+            n_rows_read = max_row - self.start_row_tmp
+
         if self.time_dict is not None:
             self.time_dict.update_field("read/glm", time_start)
 
