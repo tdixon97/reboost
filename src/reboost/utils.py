@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import itertools
 import logging
 import re
 from collections.abc import Iterable
@@ -117,6 +118,21 @@ def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, di
             continue
 
     return expr, globs
+
+
+def get_channels_from_groups(names: list | str | None, groupings: dict | None = None) -> list:
+    """Get a list of channels from a list of groups."""
+    if names is None:
+        channels_e = []
+    elif isinstance(names, str):
+        channels_e = groupings[names]
+    elif isinstance(names, list):
+        channels_e = list(itertools.chain.from_iterable([groupings[e] for e in names]))
+    else:
+        msg = f"names {names} must be list or str or `None`"
+        raise ValueError(msg)
+
+    return channels_e
 
 
 def merge_dicts(dict_list: list) -> dict:

@@ -6,7 +6,7 @@ import re
 import awkward as ak
 from lgdo import Table, lh5
 
-from reboost import shape
+from reboost.shape import group
 
 log = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ def get_tcm_from_ak(
 
     obj_tot = ak.concatenate(sort_objs)
 
-    return shape.group.group_by_time(
+    return group.group_by_time(
         obj_tot,
         time_name=time_name,
         evtid_name=idx_name,

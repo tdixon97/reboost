@@ -71,7 +71,6 @@ def build_evt(
         path to the evt tier (output) file, if `None` the :class:`Table` is returned in memory
     config
         dictionary of the configuration.
-
     buffer
         number of events to process simultaneously
 

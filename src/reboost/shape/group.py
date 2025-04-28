@@ -25,7 +25,9 @@ def _sort_data(obj: ak.Array, *, time_name: str = "time", evtid_name: str = "evt
     -------
     sorted awkward array
     """
+    obj = obj[ak.argsort(obj[evtid_name])]
     obj_unflat = ak.unflatten(obj, ak.run_lengths(obj[evtid_name]))
+
     indices = ak.argsort(obj_unflat[time_name], axis=-1)
     sorted_obj = obj_unflat[indices]
 
@@ -120,9 +122,9 @@ def group_by_time(
 
     # get difference
     time_diffs = np.diff(obj[time_name])
-    index_diffs = np.diff(obj[evtid_name])
+    index_diffs = np.array(np.diff(obj[evtid_name]), dtype=np.int32)
 
-    # index of thhe last element in each run
+    # index of the last element in each run
     time_change = (time_diffs > window * 1000) & (index_diffs == 0)
     index_change = index_diffs > 0
 

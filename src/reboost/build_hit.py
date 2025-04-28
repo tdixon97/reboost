@@ -179,7 +179,7 @@ def build_hit(
     config: Mapping | str,
     args: Mapping | AttrsDict,
     stp_files: str | list[str],
-    glm_files: str | list[str],
+    glm_files: str | list[str] | None,
     hit_files: str | list[str] | None,
     *,
     start_evtid: int = 0,
@@ -199,7 +199,7 @@ def build_hit(
     stp_files
         list of strings or string of the stp file path.
     glm_files
-        list of strings or string of the glm file path.
+        list of strings or string of the glm file path, if `None` will be build in memory.
     hit_files
         list of strings or string of the hit file path. The `hit` file can also be `None` in which
         case the hits are returned as an `ak.Array` in memory.
