@@ -224,7 +224,7 @@ def build_glm(
         lh5_table_list = list(lh5.ls(stp_file, "stp/"))
 
         # get rows in the table
-        if files.glm is None:
+        if files.glm[file_idx] is None:
             for lh5_table in lh5_table_list:
                 if lh5_table.replace("stp/", "") not in glm_sum:
                     glm_sum[lh5_table.replace("stp/", "")] = None
@@ -274,7 +274,7 @@ def build_glm(
 
                 lh5_subgroup = lh5_table.replace("stp/", "")
 
-                if files.glm is not None:
+                if files.glm[file_idx] is not None:
                     store.write(
                         out_tab,
                         f"{out_table_name}/{lh5_subgroup}",

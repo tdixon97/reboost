@@ -338,6 +338,10 @@ def build_hit(
 
                         # get the IO mode
 
+                        new_hit_file = (file_idx == 0) or (
+                            files.hit[file_idx] != files.hit[file_idx - 1]
+                        )
+
                         wo_mode = (
                             "of"
                             if (
@@ -345,6 +349,7 @@ def build_hit(
                                 and out_det_idx == 0
                                 and in_det_idx == 0
                                 and chunk_idx == 0
+                                and new_hit_file
                             )
                             else "append"
                         )

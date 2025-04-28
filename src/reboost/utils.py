@@ -15,12 +15,40 @@ log = logging.getLogger(__name__)
 
 def get_file_dict(
     stp_files: list[str] | str,
-    glm_files: list[str] | str,
+    glm_files: list[str] | str | None,
     hit_files: list[str] | str | None = None,
 ) -> AttrsDict:
-    """Get the file info as a AttrsDict."""
+    """Get the file info as a AttrsDict.
+
+    Creates an :class:`dbetto.AttrsDict` with keys `stp_files`,
+    `glm_files` and `hit_files`. Each key contains a list of
+    file-paths (or `None`).
+
+    Parameters
+    ----------
+    stp_files
+        string or list of strings of the stp files.
+    glm_files
+        string or list of strings of the glm files, or None in which
+        case the glm will be created in memory.
+    hit_files
+        string or list of strings of the hit files, if None the output
+        files will be created in memory.
+    """
+    # make a list of the right length
+    glm_files_list = [None] * len(stp_files) if glm_files is None else glm_files
+
+    hit_files_list = (
+        [hit_files] * len(stp_files)
+        if (isinstance(hit_files, str | None) and not isinstance(stp_files, str))
+        else hit_files
+    )
+
     files = {}
-    for file_type, file_list in zip(["stp", "glm", "hit"], [stp_files, glm_files, hit_files]):
+
+    for file_type, file_list in zip(
+        ["stp", "glm", "hit"], [stp_files, glm_files_list, hit_files_list]
+    ):
         if isinstance(file_list, str):
             files[file_type] = [file_list]
         else:
