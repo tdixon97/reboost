@@ -5,9 +5,9 @@ import time
 import typing
 
 from lgdo.lh5 import LH5Store
-from lgdo.types import LGDO
+from lgdo.types import LGDO, Table
 
-from reboost.build_glm import build_glm
+from reboost import build_glm
 
 log = logging.getLogger(__name__)
 
@@ -99,10 +99,11 @@ class GLMIterator:
         else:
             # get the maximum row to read
             max_row = self.start_row_tmp + n_rows
-            if max_row > len(self.glm):
-                max_row = len(self.glm) - 1
+            max_row = min(len(self.glm[self.lh5_group]), max_row)
 
-            glm_rows = self.glm[self.start_row_tmp : max_row]
+            if max_row != self.start_row_tmp:
+                glm_rows = Table(self.glm[self.lh5_group][self.start_row_tmp : max_row])
+
             n_rows_read = max_row - self.start_row_tmp
 
         if self.time_dict is not None:
@@ -124,7 +125,6 @@ class GLMIterator:
             # extract range of stp rows to read
             start = glm_ak.start_row[0]
             n = sum(glm_ak.n_rows)
-
             if self.time_dict is not None:
                 time_start = time.time()
 
