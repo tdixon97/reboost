@@ -4,11 +4,12 @@ import importlib
 import itertools
 import logging
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from pathlib import Path
 
 from dbetto import AttrsDict
+from lgdo.types import Table
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +63,48 @@ def get_file_list(path: str | None, threads: int | None = None) -> list[str]:
     if threads is None or path is None:
         return path
     return [f"{(Path(path).with_suffix(''))}_t{idx}.lh5" for idx in range(threads)]
+
+
+def copy_units(tab: Table) -> dict:
+    """Extract a dictionary of attributes (i.e. units).
+
+    Parameters
+    ----------
+    tab
+        Table to get the units from.
+
+    Returns
+    -------
+    a dictionary with the units for each field
+    in the table.
+    """
+    units = {}
+
+    for field in tab:
+        if "units" in tab[field].attrs:
+            units[field] = tab[field].attrs["units"]
+
+    return units
+
+
+def assign_units(tab: Table, units: Mapping) -> Table:
+    """Copy the attributes from the map of attributes to the table.
+
+    Parameters
+    ----------
+    tab
+        Table to add attributes to.
+    units
+        mapping (dictionary like) of units of each field
+
+    Returns
+    -------
+    an updated table with LGDO attributes.
+    """
+    for field in tab:
+        if field in units:
+            tab[field].attrs["units"] = units[field]
+    return tab
 
 
 def _search_string(string: str):
@@ -149,7 +192,19 @@ def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, di
 
 
 def get_channels_from_groups(names: list | str | None, groupings: dict | None = None) -> list:
-    """Get a list of channels from a list of groups."""
+    """Get a list of channels from a list of groups.
+
+    Parameters
+    ----------
+    names
+        list of channel names
+    groupings
+        dictionary of the groupings of channels
+
+    Returns
+    -------
+    list of channels
+    """
     if names is None:
         channels_e = []
     elif isinstance(names, str):

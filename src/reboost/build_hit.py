@@ -297,11 +297,13 @@ def build_hit(
                     ak_obj = stps.view_as("ak")
 
                     # produce the hit table
-
                     for out_det_idx, out_detector in enumerate(out_detectors):
                         # loop over the rows
                         if out_detector not in output_tables and files.hit is None:
                             output_tables[out_detector] = None
+
+                        # get the attributes
+                        attrs = utils.copy_units(stps)
 
                         if "hit_table_layout" in proc_group:
                             hit_table = core.evaluate_hit_table_layout(
@@ -309,6 +311,7 @@ def build_hit(
                                 expression=proc_group["hit_table_layout"],
                                 time_dict=time_dict[proc_name],
                             )
+
                         else:
                             hit_table = copy.deepcopy(stps)
 
@@ -335,6 +338,9 @@ def build_hit(
                             hit_table = core.remove_columns(
                                 hit_table, outputs=proc_group["outputs"]
                             )
+
+                        # assign units in the output table
+                        hit_table = utils.assign_units(hit_table, attrs)
 
                         # get the IO mode
 

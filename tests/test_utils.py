@@ -6,9 +6,10 @@ from pathlib import Path
 
 import pytest
 import yaml
+from lgdo.types import Array, Table
 
 import reboost
-from reboost.utils import get_file_dict, get_function_string, merge_dicts
+from reboost.utils import assign_units, copy_units, get_file_dict, get_function_string, merge_dicts
 
 
 def test_search_string():
@@ -143,3 +144,26 @@ def test_get_files_dict():
     assert files.stp == ["stp1.lh5", "stp2.lh5"]
     assert files.hit == ["hit.lh5", "hit.lh5"]
     assert files.glm == ["glm1.lh5", "glm2.lh5"]
+
+
+def test_units():
+    table = Table({"a": Array([1, 2, 3]), "b": Array([4, 5, 6]), "evtid": Array([0, 0, 1])})
+
+    table.a.attrs = {"datatype": "array<1>{real}", "units": "ns"}
+    table.b.attrs = {"datatype": "array<1>{real}", "units": "keV"}
+
+    units = copy_units(table)
+
+    assert units["a"] == "ns"
+    assert units["b"] == "keV"
+
+    reshaped = reboost.shape.group.group_by_evtid(table.view_as("ak"))
+
+    reshaped = assign_units(reshaped, units)
+
+    assert reshaped.a.attrs["units"] == "ns"
+    assert reshaped.b.attrs["units"] == "keV"
+
+
+def test_get_channels():
+    pass
