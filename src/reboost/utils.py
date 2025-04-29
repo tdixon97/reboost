@@ -41,7 +41,10 @@ def get_file_dict(
 
     hit_files_list = (
         [hit_files] * len(stp_files)
-        if (isinstance(hit_files, str | None) and not isinstance(stp_files, str))
+        if (
+            isinstance(hit_files, str | None)
+            or ((len(hit_files) == 1) and not isinstance(stp_files, str))
+        )
         else hit_files
     )
 
