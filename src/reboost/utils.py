@@ -37,6 +37,9 @@ def get_file_dict(
         files will be created in memory.
     """
     # make a list of the right length
+    if isinstance(stp_files, str):
+        stp_files = [stp_files]
+
     glm_files_list = [None] * len(stp_files) if glm_files is None else glm_files
 
     # make a list of files in case
@@ -44,13 +47,13 @@ def get_file_dict(
     # 2) hit_files and stp_files are both lists of different length
 
     hit_is_list = isinstance(hit_files, list)
-    stp_is_list = isinstance(stp_files, list)
 
-    make_files_list = (not hit_is_list and stp_is_list) or (
-        hit_is_list and stp_is_list and len(hit_files) == 1 and len(stp_files) > 1
-    )
-
-    hit_files_list = [hit_files] * len(stp_files) if (make_files_list) else hit_files
+    if not hit_is_list:
+        hit_files_list = [hit_files] * len(stp_files)
+    elif hit_is_list and len(hit_files) == 1 and len(stp_files) > 1:
+        hit_files_list = [hit_files[0]] * len(stp_files)
+    else:
+        hit_files_list = hit_files
 
     files = {}
 

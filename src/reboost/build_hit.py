@@ -238,7 +238,7 @@ def build_hit(
     for file_idx, (stp_file, glm_file) in enumerate(zip(files.stp, files.glm)):
         msg = (
             f"... starting post processing of {stp_file} to {files.hit[file_idx]} "
-            if files.hit is not None
+            if files.hit[file_idx] is not None
             else f"... starting post processing of {stp_file}"
         )
         log.info(msg)
@@ -299,7 +299,7 @@ def build_hit(
                     # produce the hit table
                     for out_det_idx, out_detector in enumerate(out_detectors):
                         # loop over the rows
-                        if out_detector not in output_tables and files.hit is None:
+                        if out_detector not in output_tables and files.hit[file_idx] is None:
                             output_tables[out_detector] = None
 
                         # get the attributes
@@ -360,7 +360,7 @@ def build_hit(
                         )
 
                         # now write
-                        if files.hit is not None:
+                        if files.hit[file_idx] is not None:
                             if time_dict is not None:
                                 start_time = time.time()
 

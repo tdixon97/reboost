@@ -129,6 +129,28 @@ def test_get_files_dict():
     assert files.hit == ["hit1.lh5", "hit2.lh5"]
     assert files.glm == ["glm1.lh5", "glm2.lh5"]
 
+    # hit file being None should be supported
+
+    files = get_file_dict(
+        stp_files=["stp1.lh5", "stp2.lh5"],
+        hit_files=None,
+        glm_files=["glm1.lh5", "glm2.lh5"],
+    )
+
+    assert files.stp == ["stp1.lh5", "stp2.lh5"]
+    assert files.hit == [None, None]
+    assert files.glm == ["glm1.lh5", "glm2.lh5"]
+
+    files = get_file_dict(
+        stp_files="stp.lh5",
+        hit_files=None,
+        glm_files="glm.lh5",
+    )
+
+    assert files.stp == ["stp.lh5"]
+    assert files.hit == [None]
+    assert files.glm == ["glm.lh5"]
+
     # glm file can be None
     files = get_file_dict(
         stp_files=["stp1.lh5", "stp2.lh5"], hit_files=["hit1.lh5", "hit2.lh5"], glm_files=None
@@ -141,6 +163,16 @@ def test_get_files_dict():
     # and hit file can be a string
     files = get_file_dict(
         stp_files=["stp1.lh5", "stp2.lh5"], hit_files="hit.lh5", glm_files=["glm1.lh5", "glm2.lh5"]
+    )
+    assert files.stp == ["stp1.lh5", "stp2.lh5"]
+    assert files.hit == ["hit.lh5", "hit.lh5"]
+    assert files.glm == ["glm1.lh5", "glm2.lh5"]
+
+    # list of one hit file should also work
+    files = get_file_dict(
+        stp_files=["stp1.lh5", "stp2.lh5"],
+        hit_files=["hit.lh5"],
+        glm_files=["glm1.lh5", "glm2.lh5"],
     )
     assert files.stp == ["stp1.lh5", "stp2.lh5"]
     assert files.hit == ["hit.lh5", "hit.lh5"]
