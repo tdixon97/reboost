@@ -39,14 +39,18 @@ def get_file_dict(
     # make a list of the right length
     glm_files_list = [None] * len(stp_files) if glm_files is None else glm_files
 
-    hit_files_list = (
-        [hit_files] * len(stp_files)
-        if (
-            isinstance(hit_files, str | None)
-            or ((len(hit_files) == 1) and not isinstance(stp_files, str))
-        )
-        else hit_files
+    # make a list of files in case
+    # 1) hit_files is a str and stp_files is a list
+    # 2) hit_files and stp_files are both lists of different length
+
+    hit_is_list = isinstance(hit_files, list)
+    stp_is_list = isinstance(stp_files, list)
+
+    make_files_list = (not hit_is_list and stp_is_list) or (
+        hit_is_list and stp_is_list and len(hit_files) == 1 and len(stp_files) > 1
     )
+
+    hit_files_list = [hit_files] * len(stp_files) if (make_files_list) else hit_files
 
     files = {}
 

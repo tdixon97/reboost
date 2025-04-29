@@ -9,6 +9,7 @@ import yaml
 from lgdo.types import Array, Table
 
 import reboost
+from reboost.shape import group
 from reboost.utils import assign_units, copy_units, get_file_dict, get_function_string, merge_dicts
 
 
@@ -157,7 +158,7 @@ def test_units():
     assert units["a"] == "ns"
     assert units["b"] == "keV"
 
-    reshaped = reboost.shape.group.group_by_evtid(table.view_as("ak"))
+    reshaped = group.group_by_evtid(table.view_as("ak"))
 
     reshaped = assign_units(reshaped, units)
 
