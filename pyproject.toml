@@ -44,6 +44,7 @@ dependencies = [
     "pandas",
     "matplotlib",
     "pygama",
+    "pyg4ometry",
 ]
 dynamic = [
     "version",
@@ -75,7 +76,7 @@ test = [
     "legend-pygeom-hpges",
     "legend-pygeom-tools",
     "pyg4ometry",
-    "pylegendtestdata",
+    "pylegendtestdata>=0.6",
 
 ]
 
@@ -146,6 +147,7 @@ ignore = [
   "D213",     # Multi-line docstring summary should start at the first line
   "D401",     # Summary does not need to be in imperative mood
   "D413",     # No blank line after last section in docstring
+  "PLC2401",  # We like non-ASCII characters for math
 ]
 isort.required-imports = ["from __future__ import annotations"]
 # see also napoleon config in docs/source/conf.py

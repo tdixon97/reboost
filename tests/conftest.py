@@ -8,6 +8,7 @@ from tempfile import gettempdir
 
 import numba
 import pytest
+from legendtestdata import LegendTestData
 
 _tmptestdir = Path(gettempdir()) / f"reboost-tests-{getuser()}-{uuid.uuid4()!s}"
 
@@ -16,6 +17,13 @@ _tmptestdir = Path(gettempdir()) / f"reboost-tests-{getuser()}-{uuid.uuid4()!s}"
 def tmptestdir_global():
     _tmptestdir.mkdir(exist_ok=False)
     return _tmptestdir
+
+
+@pytest.fixture(scope="session")
+def legendtestdata():
+    ldata = LegendTestData()
+    ldata.checkout("1d069f1")
+    return ldata
 
 
 @pytest.fixture(scope="module")
