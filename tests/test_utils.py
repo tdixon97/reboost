@@ -10,7 +10,14 @@ from lgdo.types import Array, Table
 
 import reboost
 from reboost.shape import group
-from reboost.utils import assign_units, copy_units, get_file_dict, get_function_string, merge_dicts
+from reboost.utils import (
+    assign_units,
+    copy_units,
+    get_file_dict,
+    get_function_string,
+    get_wo_mode,
+    merge_dicts,
+)
 
 
 def test_search_string():
@@ -108,6 +115,12 @@ def test_save_dict(tmp_path):
         yaml.dump(data, yaml_file, default_flow_style=False)
 
     return tmp_path
+
+
+def test_wo_mode():
+    assert get_wo_mode([0, 0, 0], True, overwrite=True) == "of"
+    assert get_wo_mode([0, 0, 0], True, overwrite=False) == "w"
+    assert get_wo_mode([0, 0, 1], True, overwrite=False) == "ac"
 
 
 def test_get_files_dict():

@@ -175,6 +175,8 @@ def cli(args=None) -> None:
         msg += f"    in_field:       {args.in_field}\n"
         msg += f"    out_field:      {args.out_field}\n"
         msg += f"    buffer:         {args.buffer}"
+        msg += f"    overwrite:      {args.overwrite}"
+
         log.info(msg)
 
         build_hit(
@@ -188,4 +190,5 @@ def cli(args=None) -> None:
             in_field=args.in_field,
             out_field=args.out_field,
             buffer=args.buffer,
+            overwrite=args.overwrite,
         )

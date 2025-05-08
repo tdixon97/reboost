@@ -166,6 +166,7 @@ import awkward as ak
 import dbetto
 from dbetto import AttrsDict
 from lgdo import lh5
+from lgdo.types import Struct
 
 from reboost.iterator import GLMIterator
 from reboost.profile import ProfileDict
@@ -187,6 +188,7 @@ def build_hit(
     in_field: str = "stp",
     out_field: str = "hit",
     buffer: int = int(5e6),
+    overwrite: bool = False,
 ) -> None | ak.Array:
     """Build the hit tier from the remage step files.
 
@@ -213,6 +215,8 @@ def build_hit(
         name of the output field
     buffer
         buffer size for use in the `LH5Iterator`.
+    overwrite
+        flag to overwrite the existing output.
     """
     # extract the config file
     if isinstance(config, str):
@@ -263,6 +267,7 @@ def build_hit(
                     for mapping in proc_group.get("detector_mapping")
                 ]
             )
+
             # loop over detectors
             for in_det_idx, (in_detector, out_detectors) in enumerate(detectors_mapping.items()):
                 msg = f"... processing {in_detector} (to {out_detectors})"
@@ -341,22 +346,14 @@ def build_hit(
                         # assign units in the output table
                         hit_table = utils.assign_units(hit_table, attrs)
 
-                        # get the IO mode
-
                         new_hit_file = (file_idx == 0) or (
                             files.hit[file_idx] != files.hit[file_idx - 1]
                         )
 
-                        wo_mode = (
-                            "of"
-                            if (
-                                group_idx == 0
-                                and out_det_idx == 0
-                                and in_det_idx == 0
-                                and chunk_idx == 0
-                                and new_hit_file
-                            )
-                            else "append"
+                        wo_mode = utils.get_wo_mode(
+                            [group_idx, out_det_idx, in_det_idx, chunk_idx],
+                            new_hit_file,
+                            overwrite=overwrite,
                         )
 
                         # now write
@@ -365,8 +362,8 @@ def build_hit(
                                 start_time = time.time()
 
                             lh5.write(
-                                hit_table,
-                                f"{out_detector}/{out_field}",
+                                Struct({out_detector: hit_table}),
+                                out_field,
                                 files.hit[file_idx],
                                 wo_mode=wo_mode,
                             )

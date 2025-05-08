@@ -5,7 +5,7 @@ from pathlib import Path
 import awkward as ak
 import dbetto
 import pytest
-from lgdo import Array, Table, lh5
+from lgdo import Array, Struct, Table, lh5
 
 import reboost
 from reboost.build_glm import build_glm
@@ -47,7 +47,7 @@ def test_basic(test_gen_lh5, tmptestdir):
         hit_files=f"{tmptestdir}/basic_hit.lh5",
     )
 
-    hits = lh5.read("det1/hit", f"{tmptestdir}/basic_hit.lh5").view_as("ak")
+    hits = lh5.read("hit/det1", f"{tmptestdir}/basic_hit.lh5").view_as("ak")
 
     assert ak.all(hits.energy == [300, 330])
     assert ak.all(hits.t0 == [0, 0.1])
@@ -94,21 +94,26 @@ def test_full_chain(tmptestdir):
         }
     )
 
-    hits, time_dict = reboost.build_hit.build_hit(
+    _, time_dict = reboost.build_hit.build_hit(
         f"{Path(__file__).parent}/configs/hit_config.yaml",
         args=args,
         stp_files=f"{Path(__file__).parent}/test_files/beta_small.lh5",
         glm_files=str(tmptestdir / "beta_small_glm.lh5"),
-        hit_files=None,
+        hit_files=f"{Path(__file__).parent}/test_files/beta_small_hit.lh5",
+        overwrite=True,
     )
-    assert hits["det001"].fields == [
+    hits = lh5.read("hit", f"{Path(__file__).parent}/test_files/beta_small_hit.lh5")
+
+    assert isinstance(hits, Struct)
+
+    assert hits["det001"].view_as("ak").fields == [
         "evtid",
         "t0",
         "truth_energy",
         "active_energy",
         "smeared_energy",
     ]
-    assert hits["det002"].fields == [
+    assert hits["det002"].view_as("ak").fields == [
         "evtid",
         "t0",
         "truth_energy",
