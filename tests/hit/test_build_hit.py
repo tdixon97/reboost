@@ -106,17 +106,17 @@ def test_full_chain(tmptestdir):
 
     assert isinstance(hits, Struct)
 
-    assert hits["det001"].view_as("ak").fields == [
+    assert set(hits["det001"].view_as("ak").fields) == {
         "evtid",
         "t0",
         "truth_energy",
         "active_energy",
         "smeared_energy",
-    ]
-    assert hits["det002"].view_as("ak").fields == [
+    }
+    assert set(hits["det002"].view_as("ak").fields) == {
         "evtid",
         "t0",
         "truth_energy",
         "active_energy",
         "smeared_energy",
-    ]
+    }

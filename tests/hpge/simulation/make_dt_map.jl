@@ -33,7 +33,7 @@ calculate_electric_potential!(
 )
 
 @info "Calculating electric field..."
-calculate_electric_field!(sim, n_points_in_φ=72)
+calculate_electric_field!(sim, n_points_in_φ=2)
 
 @info "Calculating weighting potential..."
 calculate_weighting_potential!(
@@ -44,10 +44,11 @@ calculate_weighting_potential!(
     verbose=false
 )
 
-function make_axis(boundary, gridsize)
+function make_axis(T, boundary, gridsize)
     # define interior domain strictly within (0, boundary)
-    inner_start = 0 + eps()
-    inner_stop = boundary - eps()
+    offset = 2*SSD.ConstructiveSolidGeometry.csg_default_tol(T)
+    inner_start = 0 + offset
+    inner_stop = boundary - offset
 
     # compute number of intervals in the interior
     n = round(Int, (inner_stop - inner_start) / gridsize)
@@ -59,7 +60,7 @@ function make_axis(boundary, gridsize)
     axis = range(inner_start, step=step, length=n + 1)
 
     # prepend and append slightly out-of-bound points
-    extended_axis = [0 - eps(), axis..., boundary + eps()]
+    extended_axis = [0 - offset, axis..., boundary + offset]
 
     return extended_axis
 end
@@ -68,8 +69,8 @@ gridsize = 0.001 # in m
 radius = meta.geometry.radius_in_mm / 1000
 height = meta.geometry.height_in_mm / 1000
 
-x_axis = make_axis(radius, gridsize)
-z_axis = make_axis(height, gridsize)
+x_axis = make_axis(T, radius, gridsize)
+z_axis = make_axis(T, height, gridsize)
 
 spawn_positions = CartesianPoint{T}[]
 idx_spawn_positions = CartesianIndex[]
@@ -95,19 +96,16 @@ dt_threaded = Vector{Int}(undef, n)
 @threads for i in 1:n
     p = spawn_positions[in_idx[i]]
     e = SSD.Event([p], [2039u"keV"])
-    simulate!(e, sim, Δt = time_step, max_nsteps = max_nsteps, verbose = false)
+    drift_charges!(e, sim, Δt = time_step, max_nsteps = max_nsteps, verbose = false)
 
     # store results in preallocated arrays
-    wf = add_baseline_and_extend_tail(e.waveforms[1], 2000, 7000).signal
-    wfs_raw_threaded[i] = ustrip(wf)
-    dt_threaded[i] = length(e.waveforms[1].signal)
+    lhpath = length(e.drift_paths[1].h_path)
+    lepath = length(e.drift_paths[1].e_path)
+    dt_threaded[i] = max(lepath, lhpath)
 end
 
 # assign final results
-wfs_raw = wfs_raw_threaded
 dt = dt_threaded
-
-wfs = wfs_raw ./ maximum.(wfs_raw)
 
 drift_time = fill(NaN, length(x_axis), length(z_axis))
 for (i, idx) in enumerate(idx_spawn_positions[in_idx])
