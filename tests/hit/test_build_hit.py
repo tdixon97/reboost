@@ -73,6 +73,7 @@ def test_basic(test_gen_lh5, tmptestdir):
     assert list(time_dict["geds"].keys()) == [
         "detector_objects",
         "read",
+        "conv",
         "hit_layout",
         "expressions",
     ]

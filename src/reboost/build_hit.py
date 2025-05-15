@@ -290,7 +290,7 @@ def build_hit(
                     start_row=start_evtid,
                     stp_field=in_field,
                     n_rows=n_evtid,
-                    read_vertices=True,
+                    read_vertices=False,
                     buffer=buffer,
                     time_dict=time_dict[proc_name],
                 )
@@ -299,7 +299,14 @@ def build_hit(
                     if stps is None:
                         continue
 
+                    # convert to awkward
+                    if time_dict is not None:
+                        start_time = time.time()
+
                     ak_obj = stps.view_as("ak")
+
+                    if time_dict is not None:
+                        time_dict[proc_name].update_field("conv", start_time)
 
                     # produce the hit table
                     for out_det_idx, out_detector in enumerate(out_detectors):

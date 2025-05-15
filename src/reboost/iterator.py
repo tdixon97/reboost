@@ -4,6 +4,7 @@ import logging
 import time
 import typing
 
+import awkward as ak
 from lgdo.lh5 import LH5Store
 from lgdo.types import LGDO, Table
 
@@ -124,7 +125,8 @@ class GLMIterator:
         if len(glm_ak) > 0:
             # extract range of stp rows to read
             start = glm_ak.start_row[0]
-            n = sum(glm_ak.n_rows)
+            n = ak.sum(glm_ak.n_rows)
+
             if self.time_dict is not None:
                 time_start = time.time()
 
