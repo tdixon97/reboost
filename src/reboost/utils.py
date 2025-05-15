@@ -9,17 +9,26 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from dbetto import AttrsDict
-from lgdo.types import Table
+from lgdo.types import Table, VectorOfVectors
 
 log = logging.getLogger(__name__)
 
 
-def get_wo_mode(indices: list[int], new_hit_file: bool, overwrite: bool = False):
+def get_wo_mode(
+    group: int, out_det: int, in_det: int, chunk: int, new_hit_file: bool, overwrite: bool = False
+):
     """Get the mode for lh5 file writing."""
+    indices = [group, out_det, in_det, chunk]
+
     good_idx = all(i == 0 for i in indices)
+
     if good_idx and new_hit_file:
         return "of" if overwrite else "w"
-    return "ac"
+
+    # if we have a detector not the first and chunk 0 append column
+    if ((in_det > 0) or (out_det > 0)) & (chunk == 0):
+        return "ac"
+    return "a"
 
 
 def get_file_dict(
@@ -121,7 +130,11 @@ def assign_units(tab: Table, units: Mapping) -> Table:
     """
     for field in tab:
         if field in units:
-            tab[field].attrs["units"] = units[field]
+            if not isinstance(tab[field], VectorOfVectors):
+                tab[field].attrs["units"] = units[field]
+            else:
+                tab[field].flattened_data.attrs["units"] = units[field]
+
     return tab
 
 

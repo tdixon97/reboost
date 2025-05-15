@@ -129,7 +129,10 @@ class GLMIterator:
                 time_start = time.time()
 
             stp_rows, n_steps = self.sto.read(
-                f"{self.stp_field}/{self.lh5_group}", self.stp_file, start_row=start, n_rows=n
+                f"{self.stp_field}/{self.lh5_group}",
+                self.stp_file,
+                start_row=int(start),
+                n_rows=int(n),
             )
 
             # save time

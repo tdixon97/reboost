@@ -118,9 +118,10 @@ def test_save_dict(tmp_path):
 
 
 def test_wo_mode():
-    assert get_wo_mode([0, 0, 0], True, overwrite=True) == "of"
-    assert get_wo_mode([0, 0, 0], True, overwrite=False) == "w"
-    assert get_wo_mode([0, 0, 1], True, overwrite=False) == "ac"
+    assert get_wo_mode(0, 0, 0, 0, True, overwrite=True) == "of"
+    assert get_wo_mode(0, 0, 0, 0, True, overwrite=False) == "w"
+    assert get_wo_mode(0, 0, 1, 0, True, overwrite=False) == "ac"
+    assert get_wo_mode(0, 0, 1, 1, True, overwrite=False) == "a"
 
 
 def test_get_files_dict():
@@ -202,13 +203,16 @@ def test_units():
 
     assert units["a"] == "ns"
     assert units["b"] == "keV"
-
     reshaped = group.group_by_evtid(table.view_as("ak"))
 
+    # also add an array field
+    units["c"] = "keV"
+    reshaped["c"] = Array([1, 2])
     reshaped = assign_units(reshaped, units)
 
-    assert reshaped.a.attrs["units"] == "ns"
-    assert reshaped.b.attrs["units"] == "keV"
+    assert reshaped.a.flattened_data.attrs["units"] == "ns"
+    assert reshaped.b.flattened_data.attrs["units"] == "keV"
+    assert reshaped.c.attrs["units"] == "keV"
 
 
 def test_get_channels():
