@@ -153,6 +153,10 @@ def get_stp_evtids(
         )
         evtids = lh5_obj.view_as("ak")
 
+        # pick the first evtid
+        if evtids.ndim > 1:
+            evtids = ak.fill_none(ak.firsts(evtids, axis=-1), -1)
+
         # if the evtids_proc is not set then this is the first valid chunk
         if evtids_proc is None:
             evtids_proc = evtids
