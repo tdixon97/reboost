@@ -9,6 +9,7 @@ using ProgressMeter
 using LegendHDF5IO
 using HDF5
 using Base.Threads
+using RadiationDetectorDSP
 
 SSD = SolidStateDetectors
 T = Float32
@@ -90,19 +91,42 @@ for (id,det) in enumerate(["V99000","B99000"])
 
     # prepare thread-local storage
     n = length(in_idx)
-    wfs_raw_threaded = Vector{Vector{Float64}}(undef, n)
     dt_threaded = Vector{Int}(undef, n)
+    rise_convergence_creteria = 1-1e-6
+    tint = Intersect(mintot = 0)
 
     @info "Simulating energy depositions on grid r=0:$gridsize:$radius and z=0:$gridsize:$height..."
     @threads for i in 1:n
         p = spawn_positions[in_idx[i]]
         e = SSD.Event([p], [2039u"keV"])
-        drift_charges!(e, sim, Δt = time_step, max_nsteps = max_nsteps, verbose = false)
+        simulate!(e, sim, Δt = time_step, max_nsteps = max_nsteps, verbose = false)
+        wf = ustrip(e.waveforms[1].signal)
+        collected_charge = wf[argmax(abs.(wf))]
 
-        # store results in preallocated arrays
-        lhpath = length(e.drift_paths[1].h_path)
-        lepath = length(e.drift_paths[1].e_path)
-        dt_threaded[i] = max(lepath, lhpath)
+        if collected_charge < 0 #very rare, occurs when electron drift dominates and holes are stuck
+            wf *= -1 #to ensure Intersect() works as intended
+            collected_charge *= -1
+        end
+        intersection = tint(wf, rise_convergence_creteria*collected_charge)
+        dt_intersection = ceil(intersection.x)
+        dt_fallback = length(wf)
+        dt_diff = dt_fallback - dt_intersection
+
+        dt_threaded[i] = if intersection.multiplicity > 0
+            if dt_diff > 2 # dt_intersection is not at the end of the wf
+                tint2 = Intersect(mintot = dt_diff) # check intersect again but with min_n_over_thresh (mintot) set to max
+                intersection2 = tint2(wf, rise_convergence_creteria*collected_charge)
+                if intersection2.multiplicity > 0  # usually monotonic waveforms which converge very slowly
+                    dt_intersection
+                else # usually non-monotonic waveforms
+                    dt_fallback
+                end
+            else # dt_intersection is at the end of the wf (ie. both drift length and wf convergence methods agree)
+                dt_intersection
+            end
+        else # no intersection with minimal conditions (mintot=0) found
+            dt_fallback
+        end
     end
 
     # assign final results
