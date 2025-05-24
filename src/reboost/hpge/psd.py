@@ -461,20 +461,16 @@ def maximum_current(
     # extract LGDO data and units
     drift_time, time_unit = units.unwrap_lgdo(drift_time)
 
-    factor = (
-        1
-        if time_unit is None
-        else np.array([1000, 1, 1e-3, 1e-6, 1e-9])[
-            time_unit == np.array(["ps", "ns", "us", "ms", "s"])
-        ][0]
-    )
+    if time_unit not in {"ns", "nanosecond", None}:
+        msg = "Time unit must be ns"
+        raise ValueError(msg)
 
     edep, _ = units.unwrap_lgdo(edep)
 
     return Array(
         _estimate_current_impl(
             ak.Array(edep),
-            ak.Array(drift_time) * factor,
+            ak.Array(drift_time),
             sigma=sigma,
             tail_fraction=tail_fraction,
             tau=tau,
