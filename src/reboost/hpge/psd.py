@@ -289,6 +289,26 @@ def _current_pulse_model(
     return term1 + term2
 
 
+def convolve_surface_response(surf_current: np.ndarray, bulk_pulse: np.ndarray) -> NDArray:
+    """Convolve the surface response pulse with the bulk current pulse.
+
+    This combines the current induced on the edge of the FCCD region with the bulk response
+    on the p+ contact.
+
+    Parameters
+    ----------
+    surf_current
+        array of the current induced via diffusion against time.
+    bulk_pulse
+        the pulse template to convolve the surface current with.
+
+    Returns
+    -------
+    the current waveform after convolution.
+    """
+    return np.convolve(surf_current, bulk_pulse, mode="full")[: len(surf_current)]
+
+
 @numba.njit(cache=True)
 def get_current_waveform(
     edep: ak.Array,
@@ -300,7 +320,7 @@ def get_current_waveform(
     low: float,
     high: float,
     steps: float,
-):
+) -> tuple(NDArray, NDArray):
     r"""Estimate the current waveform.
 
     Based on modelling the current as a sum over the current pulse model in
@@ -338,7 +358,7 @@ def get_current_waveform(
 
     Returns
     -------
-    The predicted current waveform for this event.
+    A tuple of the time and current for the current waveform for this event.
     """
     times = np.linspace(low, high, steps)
     y = np.zeros_like(times)
