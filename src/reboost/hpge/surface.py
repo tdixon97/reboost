@@ -168,10 +168,10 @@ def _compute_diffusion_impl(
     ----------
     init_charge
         Initial charge distribution.
-    n_steps
+    nsteps
         Number of time steps to take.
     kwargs
-        Keyword arguments to pass to _advance_diffusion
+        Keyword arguments to pass to :func:`_advance_diffusion`
     """
     charge = init_charge
     collected_charge = np.zeros(nsteps)
@@ -180,10 +180,7 @@ def _compute_diffusion_impl(
         charge, collected = _advance_diffusion(
             charge, factor=factor, recomb=recomb, recomb_depth=recomb_depth, delta_x=delta_x
         )
-        if i > 0:
-            collected_charge[i] = collected + collected_charge[i - 1]
-        else:
-            collected_charge[i] = collected
+        collected_charge[i] = collected
 
     return collected_charge
 
@@ -237,9 +234,9 @@ def get_surface_response(
         charge = charge / np.sum(charge_full)
     elif int(init * nx / fccd) < len(charge):
         charge[int(init * nx / fccd)] = 1
-        charge_col = np.array([0])
+        charge_col = np.array([])
     else:
-        charge_col = np.array([0, 1])
+        charge_col = np.array([1])
 
     # run the simulation
     charge_collected = _compute_diffusion_impl(
@@ -251,4 +248,4 @@ def get_surface_response(
         delta_x=delta_x,
     )
 
-    return np.concatenate((charge_col, charge_collected))
+    return np.cumsum(np.concatenate((charge_col, charge_collected)))
