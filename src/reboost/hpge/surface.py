@@ -4,10 +4,12 @@ import logging
 
 import awkward as ak
 import legendhpges
+import numba
 import numpy as np
 from lgdo import VectorOfVectors
 from lgdo.types import LGDO
 from numpy.typing import ArrayLike
+from scipy import stats
 
 log = logging.getLogger(__name__)
 
@@ -105,3 +107,145 @@ def distance_to_surface(
         )
 
     return VectorOfVectors(ak.unflatten(distances, size), dtype=np.float32)
+
+
+@numba.njit(cache=True)
+def _advance_diffusion(
+    charge: np.ndarray,
+    factor: float,
+    recomb: float = 0,
+    recomb_depth: float = 600,
+    delta_x: float = 10,
+):
+    """Make a step of diffusion using explicit Euler scheme.
+
+    Parameters
+    ----------
+    charge
+        charge in each space bin up to the FCCD
+    factor
+        the factor of diffusion for the Euler scheme
+    recomb
+        the recomination probability.
+    recomb_depth
+        the depth of the recombination region.
+    delta_x
+        the width of each spatial bin.
+
+    Returns
+    -------
+    a tuple of the charge distribution at the next time step and the collected charge.
+    """
+    charge_xp1 = np.append(charge[1:], [0])
+    charge_xm1 = np.append([0], charge[:-1])
+
+    # collected charge
+    collected = factor * charge[-1]
+
+    # charge at the next step
+    charge_new = charge_xp1 * factor + charge_xm1 * factor + charge * (1 - 2 * factor)
+
+    # correction for recombination
+    charge_new[0 : int(recomb_depth / delta_x)] = (1 - recomb) * charge_new[
+        0 : int(recomb_depth / delta_x)
+    ]
+
+    return charge_new, collected
+
+
+@numba.njit(cache=True)
+def _compute_diffusion_impl(
+    init_charge: np.ndarray,
+    nsteps: int,
+    factor: float,
+    recomb: float = 0,
+    recomb_depth: float = 600,
+    delta_x: float = 10,
+):
+    """Compute the charge collected as a function of time.
+
+    Parameters
+    ----------
+    init_charge
+        Initial charge distribution.
+    nsteps
+        Number of time steps to take.
+    kwargs
+        Keyword arguments to pass to :func:`_advance_diffusion`
+    """
+    charge = init_charge
+    collected_charge = np.zeros(nsteps)
+
+    for i in range(nsteps):
+        charge, collected = _advance_diffusion(
+            charge, factor=factor, recomb=recomb, recomb_depth=recomb_depth, delta_x=delta_x
+        )
+        collected_charge[i] = collected
+
+    return collected_charge
+
+
+def get_surface_response(
+    fccd: float,
+    recomb_depth: float,
+    init: float = 0,
+    recomb: float = 0.002,
+    init_size: float = 0.0,
+    factor: float = 0.29,
+    nsteps: int = 10000,
+    delta_x: float = 10,
+):
+    """Extract the surface response current pulse based on diffusion.
+
+    Parameters
+    ----------
+    fccd
+        the full charge collection depth (in um)
+    recomb_depth
+        the depth of the recombination region (in um)
+    init
+        the initial position of the charge (in um)
+    recomb
+        the recombination rate
+    init_size
+        the initial size of the charge cloud (in um)
+    factor
+        the factor for the explicit Euler scheme (the probability of charge diffusuion)
+    nsteps
+        the number of time steps.
+    delta_x
+        the width of each position bin.
+    """
+    # number of position steps
+    nx = int(fccd / delta_x)
+
+    # initial charge
+    charge = np.zeros(nx)
+
+    # generate initial conditions
+    x = (fccd / nx) * np.arange(nx)
+    x_full = (fccd / nx) * np.arange(2 * nx)
+
+    # generate initial conditions
+    if init_size != 0:
+        charge = stats.norm.pdf(x, loc=init, scale=init_size)
+        charge_full = stats.norm.pdf(x_full, loc=init, scale=init_size)
+        charge_col = [(np.sum(charge_full) - np.sum(charge)) / np.sum(charge_full)]
+        charge = charge / np.sum(charge_full)
+    elif int(init * nx / fccd) < len(charge):
+        charge[int(init * nx / fccd)] = 1
+        charge_col = np.array([])
+    else:
+        charge_col = np.array([1])
+
+    # run the simulation
+    charge_collected = _compute_diffusion_impl(
+        charge,
+        nsteps=nsteps,
+        factor=factor,
+        recomb=recomb,
+        recomb_depth=recomb_depth,
+        delta_x=delta_x,
+    )
+
+    return np.cumsum(np.concatenate((charge_col, charge_collected)))
