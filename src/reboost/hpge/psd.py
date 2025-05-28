@@ -381,7 +381,7 @@ def _estimate_current_impl(
     tail_fraction: float,
     tau: float,
     mean_AoE: float = 0,
-) -> NDArray:
+) -> tuple[NDArray, NDArray]:
     """Estimate the maximum current that would be measured in the HPGe detector.
 
     This is based on extracting a waveform with :func:`get_current_waveform` and finding the maxima of it.
@@ -403,6 +403,7 @@ def _estimate_current_impl(
         The mean AoE value for this detector (to normalise current pulses).
     """
     A = np.zeros(len(dt))
+    maximum_t = np.zeros(len(dt))
 
     # get normalisation factor
     x = np.linspace(3000, 0, 3000)
@@ -444,8 +445,9 @@ def _estimate_current_impl(
 
         # save current
         A[i] = np.max(W)
+        maximum_t[i] = t[np.argmax(W)]
 
-    return A
+    return A, max_t
 
 
 def maximum_current(
@@ -456,6 +458,7 @@ def maximum_current(
     tail_fraction: float,
     tau: float,
     mean_AoE: float = 0,
+    get_timepoint: bool = False,
 ) -> Array:
     """Estimate the maximum current in the HPGe detector based on :func:`_estimate_current_impl`.
 
@@ -473,6 +476,8 @@ def maximum_current(
         Tail parameter of the current pulse
     mean_AoE
         The mean AoE value for this detector (to normalise current pulses).
+    get_timepoint
+        Flag to return the time of the maximum current (relative to t0) instead of the current.
 
     Returns
     -------
@@ -481,19 +486,26 @@ def maximum_current(
     # extract LGDO data and units
     drift_time, time_unit = units.unwrap_lgdo(drift_time)
 
-    if time_unit not in {"ns", "nanosecond", None}:
-        msg = "Time unit must be ns"
-        raise ValueError(msg)
+    # if time_unit not in {"ns", "nanosecond", None}:
+    #    msg = f"Time unit must be ns not {time_unit}"
+    #    raise ValueError(msg)
 
     edep, _ = units.unwrap_lgdo(edep)
 
-    return Array(
-        _estimate_current_impl(
-            ak.Array(edep),
-            ak.Array(drift_time),
-            sigma=sigma,
-            tail_fraction=tail_fraction,
-            tau=tau,
-            mean_AoE=mean_AoE,
-        )
+    curr, time = _estimate_current_impl(
+        ak.Array(edep),
+        ak.Array(drift_time),
+        sigma=sigma,
+        tail_fraction=tail_fraction,
+        tau=tau,
+        mean_AoE=mean_AoE,
     )
+
+    attrs = {}
+    if time_unit is not None:
+        attrs["units"] = units.unit_to_lh5_attr(time_unit)
+
+    # return
+    if get_timepoint:
+        return Array(time, attrs=attrs)
+    return Array(curr)
