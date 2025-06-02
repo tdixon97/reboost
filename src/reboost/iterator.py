@@ -89,7 +89,15 @@ class GLMIterator:
         if self.glm_file is None and (
             (self.n_rows is not None) or (self.start_row != 0) or not reshaped_files
         ):
-            self.glm = build_glm.build_glm(stp_file, None, out_table_name="glm", id_name="evtid")
+            if self.time_dict is not None:
+                time_start = time.time()
+
+            self.glm = build_glm.build_glm(
+                stp_file, None, out_table_name="glm", id_name="evtid", lh5_groups=[lh5_group]
+            )
+
+            if self.time_dict is not None:
+                self.time_dict.update_field("read/glm", time_start)
 
             glm_n_rows = len(self.glm)
 

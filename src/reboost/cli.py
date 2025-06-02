@@ -87,7 +87,8 @@ def cli(args=None) -> None:
     hit_parser.add_argument(
         "--glm-file",
         type=str,
-        required=True,
+        required=False,
+        default=None,
         help="glm file to process, if multithreaded this will be appended with _t$idx",
     )
     hit_parser.add_argument(
@@ -158,7 +159,9 @@ def cli(args=None) -> None:
         hit_files = get_file_list(args.hit_file, threads=args.threads)
 
         _check_input_file(parser, stp_files)
-        _check_input_file(parser, glm_files)
+
+        if args.glm_file is not None:
+            _check_input_file(parser, glm_files)
 
         if args.overwrite is False:
             _check_output_file(parser, hit_files)
@@ -173,8 +176,8 @@ def cli(args=None) -> None:
         msg += f"    n_evtid:        {args.n_evtid}\n"
         msg += f"    in_field:       {args.in_field}\n"
         msg += f"    out_field:      {args.out_field}\n"
-        msg += f"    buffer:         {args.buffer}"
-        msg += f"    overwrite:      {args.overwrite}"
+        msg += f"    buffer:         {args.buffer} \n"
+        msg += f"    overwrite:      {args.overwrite} \n"
 
         log.info(msg)
 

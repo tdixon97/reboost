@@ -140,13 +140,13 @@ def get_global_objects(
 
     msg = f"Getting global objects with {expressions.keys()} and {local_dict}"
     log.info(msg)
+    res = {}
 
-    res = AttrsDict(
-        {
-            obj_name: evaluate_object(expression, local_dict=local_dict)
-            for obj_name, expression in expressions.items()
-        }
-    )
+    for obj_name, expression in expressions.items():
+        res[obj_name] = evaluate_object(
+            expression, local_dict=local_dict | {"OBJECTS": AttrsDict(res)}
+        )
+
     if time_dict is not None:
         time_dict.update_field(name="global_objects", time_start=time_start)
 
@@ -364,6 +364,55 @@ def evaluate_hit_table_layout(
     return res
 
 
+def add_field_with_nesting(tab: Table, col: str, field: LGDO) -> Table:
+    """Add a field handling the nesting."""
+    subfields = col.strip("/").split("___")
+    tab_next = tab
+
+    for level in subfields:
+        # if we are at the end, just add the field
+        if level == subfields[-1]:
+            tab_next.add_field(level, field)
+            break
+
+        if not level:
+            msg = f"invalid field name '{field}'"
+            raise RuntimeError(msg)
+
+        # otherwise, increase nesting
+        if level not in tab:
+            tab_next.add_field(level, Table(size=len(tab)))
+            tab_next = tab[level]
+        else:
+            tab_next = tab[level]
+
+    return tab
+
+
+def _get_table_keys(tab: Table):
+    """Get keys in a table."""
+    existing_cols = list(tab.keys())
+    output_cols = []
+    for col in existing_cols:
+        if isinstance(tab[col], Table):
+            output_cols.extend(
+                [f"{col}___{col_second}" for col_second in _get_table_keys(tab[col])]
+            )
+        else:
+            output_cols.append(col)
+
+    return output_cols
+
+
+def _remove_col(field: str, tab: Table):
+    """Remove column accounting for nesting."""
+    if "___" in field:
+        base_name, sub_field = field.split("___", 1)[0], field.split("___", 1)[1]
+        _remove_col(sub_field, tab[base_name])
+    else:
+        tab.remove_column(field, delete=True)
+
+
 def remove_columns(tab: Table, outputs: list) -> Table:
     """Remove columns from the table not found in the outputs.
 
@@ -378,11 +427,10 @@ def remove_columns(tab: Table, outputs: list) -> Table:
     -------
     the table with columns removed.
     """
-    existing_cols = list(tab.keys())
-    for col in existing_cols:
-        if col not in outputs:
-            tab.remove_column(col, delete=True)
-
+    cols = _get_table_keys(tab)
+    for col_unrename in cols:
+        if col_unrename not in outputs:
+            _remove_col(col_unrename, tab)
     return tab
 
 
