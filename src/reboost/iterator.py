@@ -5,7 +5,6 @@ import time
 import typing
 
 import awkward as ak
-from lgdo import lh5
 from lgdo.lh5 import LH5Store
 from lgdo.types import LGDO, Table
 
@@ -84,13 +83,29 @@ class GLMIterator:
         self.glm = None
         self.use_glm = True
 
+        glm_n_rows = 0
+
         # build the glm in memory if needed
         if self.glm_file is None and (
             (self.n_rows is not None) or (self.start_row != 0) or not reshaped_files
         ):
             self.glm = build_glm.build_glm(stp_file, None, out_table_name="glm", id_name="evtid")
+
+            glm_n_rows = len(self.glm)
+
         elif self.glm_file is None:
             self.use_glm = False
+        else:
+            glm_n_rows = self.sto.read_n_rows(f"glm/{self.lh5_group}", self.glm_file)
+
+        # get the number of stp rows
+        stp_n_rows = self.sto.read_n_rows(f"{self.stp_field}/{self.lh5_group}", self.stp_file)
+
+        # heuristics for a good buffer length
+        if self.use_glm:
+            self.buffer = int(buffer * glm_n_rows / stp_n_rows)
+            msg = f"Number of stp rows {stp_n_rows}, number of glm rows {glm_n_rows} changing buffer from {buffer} to {self.buffer}"
+            log.info(msg)
 
     def __iter__(self) -> typing.Iterator:
         self.current_i_entry = 0
@@ -175,7 +190,7 @@ class GLMIterator:
             time_start = time.time()
 
         try:
-            stp_rows = lh5.read(
+            stp_rows, n_steps = self.sto.read(
                 f"{self.stp_field}/{self.lh5_group}",
                 self.stp_file,
                 start_row=int(start),
@@ -183,8 +198,6 @@ class GLMIterator:
             )
         except OverflowError:
             raise StopIteration from None
-
-        n_steps = stp_rows.loc
 
         if n_rows_read == 0 or n_steps == 0:
             raise StopIteration
