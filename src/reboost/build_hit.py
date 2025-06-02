@@ -269,7 +269,7 @@ def build_hit(
             # loop over detectors
             for in_det_idx, (in_detector, out_detectors) in enumerate(detectors_mapping.items()):
                 msg = f"... processing {in_detector} (to {out_detectors})"
-                log.info(msg)
+                log.debug(msg)
 
                 # get detector objects
                 det_objects = core.get_detector_objects(
@@ -341,7 +341,7 @@ def build_hit(
                                 time_dict=time_dict[proc_name],
                                 name=field,
                             )
-                            hit_table.add_field(field, col)
+                            core.add_field_with_nesting(hit_table, field, col)
 
                         # remove unwanted fields
                         if "outputs" in proc_group:

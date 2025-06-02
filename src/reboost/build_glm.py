@@ -183,6 +183,7 @@ def get_stp_evtids(
 def build_glm(
     stp_files: str | list[str],
     glm_files: str | list[str] | None,
+    lh5_groups: list | None = None,
     *,
     out_table_name: str = "glm",
     id_name: str = "g4_evtid",
@@ -226,7 +227,11 @@ def build_glm(
         log.info(msg)
 
         # loop over the lh5_tables
-        lh5_table_list = list(lh5.ls(stp_file, "stp/"))
+        lh5_table_list = [
+            det
+            for det in lh5.ls(stp_file, "stp/")
+            if lh5_groups is None or det.split("/")[1] in lh5_groups
+        ]
 
         # get rows in the table
         if files.glm[file_idx] is None:
