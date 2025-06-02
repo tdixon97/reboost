@@ -313,18 +313,14 @@ def convolve_surface_response(surf_current: np.ndarray, bulk_pulse: np.ndarray) 
 def get_current_waveform(
     edep: ak.Array,
     drift_time: ak.Array,
-    sigma: float,
-    tail_fraction: float,
-    tau: float,
-    norm: float,
-    low: float,
-    high: float,
-    steps: float,
+    template: ArrayLike,
+    start: float,
+    dt: float,
 ) -> tuple(NDArray, NDArray):
     r"""Estimate the current waveform.
 
-    Based on modelling the current as a sum over the current pulse model in
-    :func:`_current_pulse_model`.
+    Based on modelling the current as a sum over the current pulse model defined by
+    the template.
 
     .. math::
         A(t) = \sum_i E_i \times N f(t,dt_i,\vector{\theta})
@@ -341,35 +337,24 @@ def get_current_waveform(
         Array of energies for each step
     drift_time
         Array of drift times for each step
-    sigma
-        Sigma parameter of the current pulse model.
-    tail_fraction
-        Tail-fraction parameter of the current pulse.
-    tau
-        Tail parameter of the current pulse
-    norm
-        Normalisation factor (from energy to current).
-    low
-        starting time for the waveform
-    high
-        ending time for the waveform
-    steps
-        number of steps
+    template
+        array of the template for the current waveforms, with 1 ns binning.
+    start
+        first time value of the template
+    dt
+        timestep (in ns) for the template.
 
     Returns
     -------
     A tuple of the time and current for the current waveform for this event.
     """
-    times = np.linspace(low, high, steps)
+    times = np.zeros_like(template)
     y = np.zeros_like(times)
 
     for i in range(len(edep)):
-        A = edep[i] * norm
+        E = edep[i]
         mu = drift_time[i]
-        y += _current_pulse_model(
-            times, A, mu=mu, sigma=sigma, tail_fraction=tail_fraction, tau=tau
-        )
-
+        y += E * np.roll(template, int((mu - start) / dt))
     return times, y
 
 
@@ -385,7 +370,6 @@ def _estimate_current_impl(
     """Estimate the maximum current that would be measured in the HPGe detector.
 
     This is based on extracting a waveform with :func:`get_current_waveform` and finding the maxima of it.
-    Two iterations are performed first with ~ 10 ns time steps then a fine scan with 1 ns.
 
     Parameters
     ----------
@@ -406,48 +390,29 @@ def _estimate_current_impl(
     maximum_t = np.zeros(len(dt))
 
     # get normalisation factor
-    x = np.linspace(3000, 0, 3000)
-    y = _current_pulse_model(x, 1, 500, sigma, tail_fraction, tau)
-    factor = np.max(y)
+    x = np.linspace(-6000, 6000, 12001)
+
+    # make a template with 1 ns binning so
+    # template[(i-start)/dt] = _current_pulse_model(x,1,i,...)
+
+    template = _current_pulse_model(x, 1, 0, sigma, tail_fraction, tau)
+    factor = np.max(template)
+
+    # normalise the template
+    template *= mean_AoE
+    template /= factor
 
     for i in range(len(dt)):
         t = np.asarray(dt[i])
         e = np.asarray(edep[i])
 
         # first pass
-        low, high = min(t), max(t)
-        x, W = get_current_waveform(
-            e,
-            t,
-            tau=tau,
-            tail_fraction=tail_fraction,
-            norm=mean_AoE / factor,
-            sigma=sigma,
-            low=low - 50,
-            high=high + 50,
-            steps=round((100 + high - low) / 10),
-        )
+        x, W = get_current_waveform(e, t, template=template, start=-6000, dt=1)
 
-        # second pass
-        max_t = x[np.argmax(W)]
-
-        x, W = get_current_waveform(
-            e,
-            t,
-            tau=tau,
-            tail_fraction=tail_fraction,
-            norm=mean_AoE / factor,
-            sigma=sigma,
-            low=max_t - 20,
-            high=max_t + 20,
-            steps=40,
-        )
-
-        # save current
         A[i] = np.max(W)
-        maximum_t[i] = t[np.argmax(W)]
+        maximum_t[i] = x[np.argmax(W)]
 
-    return A, max_t
+    return A, maximum_t
 
 
 def maximum_current(
@@ -484,11 +449,7 @@ def maximum_current(
     An Array of the maximum current for each hit.
     """
     # extract LGDO data and units
-    drift_time, time_unit = units.unwrap_lgdo(drift_time)
-
-    # if time_unit not in {"ns", "nanosecond", None}:
-    #    msg = f"Time unit must be ns not {time_unit}"
-    #    raise ValueError(msg)
+    drift_time, _ = units.unwrap_lgdo(drift_time)
 
     edep, _ = units.unwrap_lgdo(edep)
 
@@ -501,11 +462,7 @@ def maximum_current(
         mean_AoE=mean_AoE,
     )
 
-    attrs = {}
-    if time_unit is not None:
-        attrs["units"] = units.unit_to_lh5_attr(time_unit)
-
     # return
     if get_timepoint:
-        return Array(time, attrs=attrs)
+        return Array(time)
     return Array(curr)
