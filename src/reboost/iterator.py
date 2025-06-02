@@ -96,7 +96,7 @@ class GLMIterator:
         elif self.glm_file is None:
             self.use_glm = False
         else:
-            stp_n_rows = self.sto.read_n_rows(f"glm/{self.lh5_group}", self.glm_file)
+            glm_n_rows = self.sto.read_n_rows(f"glm/{self.lh5_group}", self.glm_file)
 
         # get the number of stp rows
         stp_n_rows = self.sto.read_n_rows(f"{self.stp_field}/{self.lh5_group}", self.stp_file)
@@ -104,6 +104,8 @@ class GLMIterator:
         # heuristics for a good buffer length
         if self.use_glm:
             self.buffer = int(buffer * glm_n_rows / stp_n_rows)
+            msg = f"Number of stp rows {stp_n_rows}, number of glm rows {glm_n_rows} changing buffer from {buffer} to {self.buffer}"
+            log.info(msg)
 
     def __iter__(self) -> typing.Iterator:
         self.current_i_entry = 0
