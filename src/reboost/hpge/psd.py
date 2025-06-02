@@ -316,6 +316,7 @@ def get_current_waveform(
     template: ArrayLike,
     start: float,
     dt: float,
+    range_t: tuple,
 ) -> tuple(NDArray, NDArray):
     r"""Estimate the current waveform.
 
@@ -343,18 +344,33 @@ def get_current_waveform(
         first time value of the template
     dt
         timestep (in ns) for the template.
+    range_t
+        a range of times to search around
 
     Returns
     -------
     A tuple of the time and current for the current waveform for this event.
     """
-    times = np.zeros_like(template)
+    n = len(template)
+
+    times = np.arange(n) * dt + start
     y = np.zeros_like(times)
 
     for i in range(len(edep)):
         E = edep[i]
         mu = drift_time[i]
-        y += E * np.roll(template, int((mu - start) / dt))
+        shift = int((mu - start) / dt)
+
+        # Add scaled template starting at index `shift`
+        for j in range(n):
+            if (
+                (shift + j) >= n
+                or (times[shift + j] < range_t[0])
+                or (times[shift + j] > range_t[1])
+            ):
+                continue
+            y[shift + j] += E * template[j]
+
     return times, y
 
 
@@ -390,27 +406,38 @@ def _estimate_current_impl(
     maximum_t = np.zeros(len(dt))
 
     # get normalisation factor
-    x = np.linspace(-6000, 6000, 12001)
+    x_coarse = np.linspace(-1000, 3000, 401)
+    x_fine = np.linspace(-1000, 3000, 4001)
 
     # make a template with 1 ns binning so
     # template[(i-start)/dt] = _current_pulse_model(x,1,i,...)
 
-    template = _current_pulse_model(x, 1, 0, sigma, tail_fraction, tau)
-    factor = np.max(template)
+    template_coarse = _current_pulse_model(x_coarse, 1, 0, sigma, tail_fraction, tau)
+    template_coarse /= np.max(template_coarse)
+    template_coarse *= mean_AoE
 
-    # normalise the template
-    template *= mean_AoE
-    template /= factor
+    template_fine = _current_pulse_model(x_fine, 1, 0, sigma, tail_fraction, tau)
+    template_fine /= np.max(template_fine)
+    template_fine *= mean_AoE
 
     for i in range(len(dt)):
         t = np.asarray(dt[i])
         e = np.asarray(edep[i])
 
         # first pass
-        x, W = get_current_waveform(e, t, template=template, start=-6000, dt=1)
+        times_coarse, W = get_current_waveform(
+            e, t, template=template_coarse, start=-1000, dt=10, range_t=(-1000, 3000)
+        )
+
+        max_t = times_coarse[np.argmax(W)]
+
+        # fine scan
+        times, W = get_current_waveform(
+            e, t, template=template_fine, start=-1000, dt=1, range_t=(max_t - 50, max_t + 50)
+        )
 
         A[i] = np.max(W)
-        maximum_t[i] = x[np.argmax(W)]
+        maximum_t[i] = times[np.argmax(W)]
 
     return A, maximum_t
 
