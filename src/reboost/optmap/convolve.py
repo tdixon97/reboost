@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 import legendoptics.scintillate as sc
+import numba
 import numpy as np
 import pint
 from legendoptics import lar
@@ -121,6 +122,9 @@ def _pdgid_to_particle(pdgid: int) -> sc.ParticleIndex:
     return sc.PARTICLE_INDEX_ELECTRON
 
 
+__counts_per_bin_key_type = numba.types.UniTuple(numba.types.int64, 3)
+
+
 # - run with NUMBA_FULL_TRACEBACKS=1 NUMBA_BOUNDSCHECK=1 for testing/checking
 # - cache=True does not work with outer prange, i.e. loading the cached file fails (numba bug?)
 # - the output dictionary is not threadsafe, so parallel=True is not working with it.
@@ -180,6 +184,11 @@ def _iterate_stepwise_depositions(
         # there are _much_ less unique bins, unfortunately np.unique(..., axis=n) does not work
         # with numba; also np.sort(..., axis=n) also does not work.
 
+        counts_per_bin = numba.typed.Dict.empty(
+            key_type=__counts_per_bin_key_type,
+            value_type=np.int64,
+        )
+
         # get probabilities from map.
         hitcount = np.zeros((detidx.shape[0], bins.shape[0]), dtype=np.int64)
         for j in prange(bins.shape[0]):
@@ -227,10 +236,34 @@ def _iterate_stepwise_depositions(
                     hitcount[d, j] += 1
                 ph_det2 += detsel.shape[0]
 
+            elif dist == "poisson":
+                # store the photon count in each bin, to sample them all at once below.
+                if cur_bins not in counts_per_bin:
+                    counts_per_bin[cur_bins] = 1
+                else:
+                    counts_per_bin[cur_bins] += 1
+
             else:
                 msg = "unknown distribution"
                 raise RuntimeError(msg)
 
+        if dist == "poisson":
+            for j, (cur_bins, ph_counts_to_poisson) in enumerate(counts_per_bin.items()):
+                had_det_no_stats = 0
+                had_any = 0
+                for d in detidx:
+                    detp = optmap_weights[d, cur_bins[0], cur_bins[1], cur_bins[2]]
+                    if detp < 0.0:
+                        had_det_no_stats = 1
+                        continue
+                    pois_cnt = rng.poisson(lam=ph_counts_to_poisson * detp)
+                    hitcount[d, j] += pois_cnt
+                    ph_det2 += pois_cnt
+                    had_any = 1
+                ph_det += had_any
+                det_no_stats += had_det_no_stats
+
+        assert scint_times.shape[0] >= hitcount.shape[1]  # TODO: use the right assertion here.
         out_hits_len = np.sum(hitcount)
         if out_hits_len > 0:
             out_times = np.empty(out_hits_len, dtype=np.float64)
