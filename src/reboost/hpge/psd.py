@@ -359,7 +359,7 @@ def get_current_waveform(
     for i in range(len(edep)):
         E = edep[i]
         mu = drift_time[i]
-        shift = int((mu - start) / dt)
+        shift = int(mu / dt)
 
         # Add scaled template starting at index `shift`
         for j in range(n):
@@ -406,7 +406,7 @@ def _estimate_current_impl(
     maximum_t = np.zeros(len(dt))
 
     # get normalisation factor
-    x_coarse = np.linspace(-1000, 3000, 401)
+    x_coarse = np.linspace(-1000, 3000, 201)
     x_fine = np.linspace(-1000, 3000, 4001)
 
     # make a template with 1 ns binning so
@@ -426,7 +426,7 @@ def _estimate_current_impl(
 
         # first pass
         times_coarse, W = get_current_waveform(
-            e, t, template=template_coarse, start=-1000, dt=10, range_t=(-1000, 3000)
+            e, t, template=template_coarse, start=-1000, dt=20, range_t=(-1000, 3000)
         )
 
         max_t = times_coarse[np.argmax(W)]
