@@ -296,7 +296,10 @@ def _check_input_file(parser, file: str | Iterable[str], descr: str = "input") -
         parser.error(f"{descr} file(s) {''.join(not_existing)} missing")
 
 
-def _check_output_file(parser, file: str | Iterable[str]) -> None:
+def _check_output_file(parser, file: str | Iterable[str] | None, optional: bool = False) -> None:
+    if file is None and optional:
+        return
+
     file = (file,) if isinstance(file, str) else file
     for f in file:
         if Path(f).exists():
