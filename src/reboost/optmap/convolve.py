@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 import legendoptics.scintillate as sc
+import numba
 import numpy as np
 import pint
 from legendoptics import lar
@@ -23,7 +24,8 @@ OPTMAP_SUM_CH = -2
 
 def open_optmap(optmap_fn: str):
     maps = lh5.ls(optmap_fn)
-    det_ntuples = [m for m in maps if m not in ("all", "_hitcounts", "_hitcounts_exp")]
+    # TODO: rewrite logic to only accept _<number> instead of a blacklist
+    det_ntuples = [m for m in maps if m not in ("all", "_hitcounts", "_hitcounts_exp", "all_orig")]
     detids = np.array([int(m.lstrip("_")) for m in det_ntuples])
     detidx = np.arange(0, detids.shape[0])
 
@@ -69,15 +71,16 @@ def iterate_stepwise_depositions(
     optmap_for_convolve,
     scint_mat_params: sc.ComputedScintParams,
     rng: np.random.Generator = None,
+    dist: str = "multinomial",
+    mode: str = "no-fano",
 ):
     # those np functions are not supported by numba, but needed for efficient array access below.
     x0 = structured_to_unstructured(edep_df[["xloc_pre", "yloc_pre", "zloc_pre"]], np.float64)
     x1 = structured_to_unstructured(edep_df[["xloc_post", "yloc_post", "zloc_post"]], np.float64)
 
     rng = np.random.default_rng() if rng is None else rng
-
     output_map, res = _iterate_stepwise_depositions(
-        edep_df, x0, x1, rng, *optmap_for_convolve, scint_mat_params
+        edep_df, x0, x1, rng, *optmap_for_convolve, scint_mat_params, dist, mode
     )
     if res["any_no_stats"] > 0 or res["det_no_stats"] > 0:
         log.warning(
@@ -119,6 +122,9 @@ def _pdgid_to_particle(pdgid: int) -> sc.ParticleIndex:
     return sc.PARTICLE_INDEX_ELECTRON
 
 
+__counts_per_bin_key_type = numba.types.UniTuple(numba.types.int64, 3)
+
+
 # - run with NUMBA_FULL_TRACEBACKS=1 NUMBA_BOUNDSCHECK=1 for testing/checking
 # - cache=True does not work with outer prange, i.e. loading the cached file fails (numba bug?)
 # - the output dictionary is not threadsafe, so parallel=True is not working with it.
@@ -134,6 +140,8 @@ def _iterate_stepwise_depositions(
     optmap_weights,
     optmap_multi_det_exp,
     scint_mat_params: sc.ComputedScintParams,
+    dist: str,
+    mode: str,
 ):
     pdgid_map = {}
     output_map = {}
@@ -160,6 +168,7 @@ def _iterate_stepwise_depositions(
             charge,
             t.edep,
             rng,
+            emission_term_model=("poisson" if mode == "no-fano" else "normal_fano"),
         )
         if scint_times.shape[0] == 0:  # short-circuit if we have no photons at all.
             continue
@@ -174,6 +183,11 @@ def _iterate_stepwise_depositions(
 
         # there are _much_ less unique bins, unfortunately np.unique(..., axis=n) does not work
         # with numba; also np.sort(..., axis=n) also does not work.
+
+        counts_per_bin = numba.typed.Dict.empty(
+            key_type=__counts_per_bin_key_type,
+            value_type=np.int64,
+        )
 
         # get probabilities from map.
         hitcount = np.zeros((detidx.shape[0], bins.shape[0]), dtype=np.int64)
@@ -191,35 +205,65 @@ def _iterate_stepwise_depositions(
                 continue
             if px_any == 0.0:
                 continue
-            if rng.uniform() >= px_any:
-                continue
-            ph_det += 1
-            # we detect this energy deposition; we should at least get one photon out here!
 
-            detsel_size = 1
-            if np.isfinite(optmap_multi_det_exp):
-                detsel_size = rng.geometric(1 - np.exp(-optmap_multi_det_exp))
+            if dist == "multinomial":
+                if rng.uniform() >= px_any:
+                    continue
+                ph_det += 1
+                # we detect this energy deposition; we should at least get one photon out here!
 
-            px_sum = optmap_weights[OPTMAP_SUM_CH, cur_bins[0], cur_bins[1], cur_bins[2]]
-            assert px_sum >= 0.0  # should not be negative.
-            detp = np.empty(detidx.shape, dtype=np.float64)
-            had_det_no_stats = 0
-            for d in detidx:
-                # normalize so that sum(detp) = 1
-                detp[d] = optmap_weights[d, cur_bins[0], cur_bins[1], cur_bins[2]] / px_sum
-                if detp[d] < 0.0:
-                    had_det_no_stats = 1
-                    detp[d] = 0.0
-            det_no_stats += had_det_no_stats
+                detsel_size = 1
+                if np.isfinite(optmap_multi_det_exp):
+                    detsel_size = rng.geometric(1 - np.exp(-optmap_multi_det_exp))
 
-            # should be equivalent to rng.choice(detidx, size=(detsel_size, p=detp)
-            detsel = detidx[
-                np.searchsorted(np.cumsum(detp), rng.random(size=(detsel_size,)), side="right")
-            ]
-            for d in detsel:
-                hitcount[d, j] += 1
-            ph_det2 += detsel.shape[0]
+                px_sum = optmap_weights[OPTMAP_SUM_CH, cur_bins[0], cur_bins[1], cur_bins[2]]
+                assert px_sum >= 0.0  # should not be negative.
+                detp = np.empty(detidx.shape, dtype=np.float64)
+                had_det_no_stats = 0
+                for d in detidx:
+                    # normalize so that sum(detp) = 1
+                    detp[d] = optmap_weights[d, cur_bins[0], cur_bins[1], cur_bins[2]] / px_sum
+                    if detp[d] < 0.0:
+                        had_det_no_stats = 1
+                        detp[d] = 0.0
+                det_no_stats += had_det_no_stats
 
+                # should be equivalent to rng.choice(detidx, size=(detsel_size, p=detp)
+                detsel = detidx[
+                    np.searchsorted(np.cumsum(detp), rng.random(size=(detsel_size,)), side="right")
+                ]
+                for d in detsel:
+                    hitcount[d, j] += 1
+                ph_det2 += detsel.shape[0]
+
+            elif dist == "poisson":
+                # store the photon count in each bin, to sample them all at once below.
+                if cur_bins not in counts_per_bin:
+                    counts_per_bin[cur_bins] = 1
+                else:
+                    counts_per_bin[cur_bins] += 1
+
+            else:
+                msg = "unknown distribution"
+                raise RuntimeError(msg)
+
+        if dist == "poisson":
+            for j, (cur_bins, ph_counts_to_poisson) in enumerate(counts_per_bin.items()):
+                had_det_no_stats = 0
+                had_any = 0
+                for d in detidx:
+                    detp = optmap_weights[d, cur_bins[0], cur_bins[1], cur_bins[2]]
+                    if detp < 0.0:
+                        had_det_no_stats = 1
+                        continue
+                    pois_cnt = rng.poisson(lam=ph_counts_to_poisson * detp)
+                    hitcount[d, j] += pois_cnt
+                    ph_det2 += pois_cnt
+                    had_any = 1
+                ph_det += had_any
+                det_no_stats += had_det_no_stats
+
+        assert scint_times.shape[0] >= hitcount.shape[1]  # TODO: use the right assertion here.
         out_hits_len = np.sum(hitcount)
         if out_hits_len > 0:
             out_times = np.empty(out_hits_len, dtype=np.float64)
@@ -285,6 +329,7 @@ def convolve(
     material: str,
     output_file: str | None = None,
     buffer_len: int = int(1e6),
+    dist_mode: str = "multinomial+no-fano",
 ):
     if material not in ["lar", "pen"]:
         msg = f"unknown material {material} for scintillation"
@@ -304,6 +349,11 @@ def convolve(
     log.info("opening map %s", map_file)
     optmap_for_convolve = open_optmap(map_file)
 
+    # special handling of distributions and flags.
+    dist, mode = dist_mode.split("+")
+    assert dist in ("multinomial", "poisson")
+    assert mode in ("", "no-fano")
+
     log.info("opening energy deposition hit output %s", edep_file)
     it = LH5Iterator(edep_file, edep_path, buffer_len=buffer_len)
     for it_count, (edep_lgdo, edep_events, edep_n_rows) in enumerate(it):
@@ -311,7 +361,9 @@ def convolve(
         edep_df = edep_lgdo.view_as("pd").iloc[0:edep_n_rows].to_records()
 
         log.info("start event processing (%d)", it_count)
-        output_map = iterate_stepwise_depositions(edep_df, optmap_for_convolve, scint_mat_params)
+        output_map = iterate_stepwise_depositions(
+            edep_df, optmap_for_convolve, scint_mat_params, dist=dist, mode=mode
+        )
 
         log.info("store output photon hits (%d)", it_count)
         ph_count_o, tbl = get_output_table(output_map)
@@ -319,4 +371,4 @@ def convolve(
             "output photons: %d energy depositions -> %d photons", len(output_map), ph_count_o
         )
         if output_file is not None:
-            lh5.write(tbl, "optical", lh5_file=output_file, group="hit", wo_mode="append")
+            lh5.write(tbl, "optical", lh5_file=output_file, group="stp", wo_mode="append")

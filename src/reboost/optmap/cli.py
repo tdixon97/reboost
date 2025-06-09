@@ -166,7 +166,12 @@ def optical_cli() -> None:
         action="store",
         required=True,
         metavar="LGDO_PATH",
-        help="path to LGDO inside non-optical LH5 hit file (e.g. /hit/detXX)",
+        help="path to LGDO inside non-optical LH5 hit file (e.g. /stp/detXX)",
+    )
+    convolve_parser.add_argument(
+        "--dist-mode",
+        action="store",
+        default="multinomial+no-fano",
     )
     convolve_parser.add_argument("--output", help="output hit LH5 file", metavar="OUTPUT_HIT")
 
@@ -267,8 +272,16 @@ def optical_cli() -> None:
         from reboost.optmap.convolve import convolve
 
         _check_input_file(parser, [args.map, args.edep])
-        _check_output_file(parser, args.output)
-        convolve(args.map, args.edep, args.edep_lgdo, args.material, args.output, args.bufsize)
+        _check_output_file(parser, args.output, optional=True)
+        convolve(
+            args.map,
+            args.edep,
+            args.edep_lgdo,
+            args.material,
+            args.output,
+            args.bufsize,
+            dist_mode=args.dist_mode,
+        )
 
     # STEP X: rebin maps
     if args.command == "rebin":
