@@ -95,7 +95,7 @@ class GLMIterator:
         # read the glm rows]
         if self.glm_file is not None:
             glm_rows, n_rows_read = self.sto.read(
-                f"glm/{self.lh5_group}", self.glm_file, start_row=self.start_row_tmp, n_rows=n_rows
+                f"/glm/{self.lh5_group}", self.glm_file, start_row=self.start_row_tmp, n_rows=n_rows
             )
         else:
             # get the maximum row to read
@@ -131,7 +131,7 @@ class GLMIterator:
                 time_start = time.time()
 
             stp_rows, n_steps = self.sto.read(
-                f"{self.stp_field}/{self.lh5_group}",
+                f"/{self.stp_field}/{self.lh5_group}",
                 self.stp_file,
                 start_row=int(start),
                 n_rows=int(n),
@@ -145,7 +145,7 @@ class GLMIterator:
 
             if self.read_vertices:
                 vert_rows, _ = self.sto.read(
-                    f"{self.stp_field}/vertices",
+                    "/vtx",
                     self.stp_file,
                     start_row=self.start_row,
                     n_rows=n_rows,

@@ -47,7 +47,7 @@ def tbl_hits(tmptestdir):
     )
 
     hit_file = tmptestdir / "hit.lh5"
-    lh5.write(tbl_vertices, name="stp/vertices", lh5_file=hit_file, wo_mode="overwrite_file")
+    lh5.write(tbl_vertices, name="vtx", lh5_file=hit_file, wo_mode="overwrite_file")
     lh5.write(tbl_optical, name="stp/optical", lh5_file=hit_file, wo_mode="overwrite")
     return hit_file
 
