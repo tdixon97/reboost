@@ -238,7 +238,7 @@ def build_glm(
         # start row for each table
         start_row = dict.fromkeys(lh5_table_list, 0)
 
-        vfield = f"stp/vertices/{id_name}"
+        vfield = f"vtx/{id_name}"
 
         # iterate over the vertex table
         for vert_obj, vidx, n_evtid in LH5Iterator(stp_file, vfield, buffer_len=evtid_buffer):

@@ -26,7 +26,7 @@ def test_gen_lh5(tmptestdir):
     lh5.write(tab, "stp/det1", stp_path, wo_mode="of")
     lh5.write(
         Table({"evtid": Array(vertices)}),
-        "stp/vertices",
+        "vtx",
         stp_path,
         wo_mode="append",
     )

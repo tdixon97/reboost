@@ -56,7 +56,7 @@ def test_data_files(tmptestdir):
 
     # simple every evtid in vertices
     vertex_evtid = ak.Array({"evtid": np.arange(10000)})
-    lh5.write(Table(vertex_evtid), "stp/vertices", tmptestdir / "simple_test.lh5", wo_mode="of")
+    lh5.write(Table(vertex_evtid), "vtx", tmptestdir / "simple_test.lh5", wo_mode="of")
 
     # make some simple stp file
     steps_1 = ak.Array({"evtid": np.sort(rng.integers(0, 10000, size=21082))})
@@ -68,7 +68,7 @@ def test_data_files(tmptestdir):
     # file with some gaps (multithreaded mode)
 
     vertex_evtid = ak.Array({"evtid": np.sort(np.unique(rng.integers(0, 200000, size=10000)))})
-    lh5.write(Table(vertex_evtid), "stp/vertices", tmptestdir / "gaps_test.lh5", wo_mode="of")
+    lh5.write(Table(vertex_evtid), "vtx", tmptestdir / "gaps_test.lh5", wo_mode="of")
 
     # make some simple stp file
     steps_1 = ak.Array({"evtid": np.sort(rng.choice(vertex_evtid.evtid, size=21082))})
@@ -144,7 +144,7 @@ def test_build_glm(tmptestdir):
     for buffer in [71, 100, 1000, 2000, 40000]:
         # two files (no gaps and gaps)
         for test in ["simple", "gaps"]:
-            evtids = lh5.read_as("stp/vertices/evtid", str(tmptestdir / f"{test}_test.lh5"), "np")
+            evtids = lh5.read_as("vtx/evtid", str(tmptestdir / f"{test}_test.lh5"), "np")
 
             evtids1_read = lh5.read_as("stp/det1/evtid", str(tmptestdir / f"{test}_test.lh5"), "np")
             evtids2_read = lh5.read_as("stp/det2/evtid", str(tmptestdir / f"{test}_test.lh5"), "np")
