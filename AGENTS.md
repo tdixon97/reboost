@@ -18,3 +18,8 @@ Use Pytest to run all unit tests.
 
 To run linting, use pre-commit. Always make sure pre-commit checks pass before
 committing.
+
+## Submitting a Pull Request
+
+Make sure to include a concise description of the changes and link the relevant
+pull requests or issues.
