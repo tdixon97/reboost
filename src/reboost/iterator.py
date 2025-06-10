@@ -5,6 +5,7 @@ import time
 import typing
 
 import awkward as ak
+from lgdo import lh5
 from lgdo.lh5 import LH5Store
 from lgdo.types import LGDO, Table
 
@@ -25,17 +26,28 @@ class GLMIterator:
         n_rows: int | None,
         *,
         stp_field: str = "stp",
-        read_vertices: bool = False,
         buffer: int = 10000,
         time_dict: dict | None = None,
+        reshaped_files: bool = False,
     ):
-        """Constructor for the glmIterator.
+        """Constructor for the GLMIterator.
+
+        The GLM iterator provides a way to iterate over the
+        simulated geant4 evtids, extracting the number of hits or steps for
+        each range in evtids. This ensures a single simulated event
+        is not split between two iterations and allows to specify a
+        start and an end evtid to extract.
+
+        In case the data is already reshaped and we do not need to
+        read a specific range of evtids this iterator is just loops
+        over the input stp field. Otherwise if the GLM file is not provided
+        this is created in memory.
 
         Parameters
         ----------
         glm_file
             the file containing the event lookup map, if `None` the glm will
-            be created in memory.
+            be created in memory if needed.
         stp_file
             the file containing the steps to read.
         lh5_group
@@ -46,12 +58,12 @@ class GLMIterator:
             the number of rows to read, if `None` read them all.
         stp_field
             name of the group.
-        read_vertices
-            whether to read also the vertices table.
         buffer
             the number of rows to read at once.
         time_dict
             time profiling data structure.
+        reshaped_files
+            flag for whether the files are reshaped.
         """
         # initialise
         self.glm_file = glm_file
@@ -62,18 +74,23 @@ class GLMIterator:
         self.n_rows = n_rows
         self.buffer = buffer
         self.current_i_entry = 0
-        self.read_vertices = read_vertices
         self.stp_field = stp_field
+        self.reshaped_files = reshaped_files
 
         # would be good to replace with an iterator
         self.sto = LH5Store()
         self.n_rows_read = 0
         self.time_dict = time_dict
         self.glm = None
+        self.use_glm = True
 
-        # build the glm in memory
-        if self.glm_file is None:
+        # build the glm in memory if needed
+        if self.glm_file is None and (
+            (self.n_rows is not None) or (self.start_row != 0) or not reshaped_files
+        ):
             self.glm = build_glm.build_glm(stp_file, None, out_table_name="glm", id_name="evtid")
+        elif self.glm_file is None:
+            self.use_glm = False
 
     def __iter__(self) -> typing.Iterator:
         self.current_i_entry = 0
@@ -81,78 +98,101 @@ class GLMIterator:
         self.start_row_tmp = self.start_row
         return self
 
-    def __next__(self) -> tuple[LGDO, LGDO | None, int, int]:
+    def get_n_rows(self):
+        """Get the number of rows to read."""
         # get the number of rows to read
+        if self.time_dict is not None:
+            time_start = time.time()
+
         if self.n_rows is not None:
             rows_left = self.n_rows - self.n_rows_read
             n_rows = self.buffer if (self.buffer > rows_left) else rows_left
         else:
             n_rows = self.buffer
 
+        glm_rows = None
+        start = 0
+        n = 0
+
+        if self.use_glm:
+            if self.glm_file is not None:
+                glm_rows, n_rows_read = self.sto.read(
+                    f"glm/{self.lh5_group}",
+                    self.glm_file,
+                    start_row=self.start_row_tmp,
+                    n_rows=n_rows,
+                )
+            else:
+                # get the maximum row to read
+                max_row = self.start_row_tmp + n_rows
+                max_row = min(len(self.glm[self.lh5_group]), max_row)
+
+                if max_row != self.start_row_tmp:
+                    glm_rows = Table(self.glm[self.lh5_group][self.start_row_tmp : max_row])
+
+                n_rows_read = max_row - self.start_row_tmp
+
+            if self.time_dict is not None:
+                self.time_dict.update_field("read/glm", time_start)
+
+            self.n_rows_read += n_rows_read
+            self.start_row_tmp += n_rows_read
+
+            # view our glm as an awkward array
+            if glm_rows is not None:
+                glm_ak = glm_rows.view_as("ak")
+
+                # remove empty rows
+                glm_ak = glm_ak[glm_ak.n_rows > 0]
+
+                if len(glm_ak) > 0:
+                    # extract range of stp rows to read
+                    start = glm_ak.start_row[0]
+                    n = ak.sum(glm_ak.n_rows)
+
+        else:
+            start = self.start_row_tmp
+            n = n_rows
+            n_rows_read = n
+            self.start_row_tmp += n
+
+        return start, n, n_rows_read
+
+    def __next__(self) -> tuple[LGDO, int, int]:
+        """Read one chunk.
+
+        Returns
+        -------
+        a tuple of:
+            - the steps
+            - the chunk index
+            - the number of steps read
+        """
+        # read the glm rows]
+        start, n, n_rows_read = self.get_n_rows()
+
         if self.time_dict is not None:
             time_start = time.time()
 
-        # read the glm rows]
-        if self.glm_file is not None:
-            glm_rows, n_rows_read = self.sto.read(
-                f"/glm/{self.lh5_group}", self.glm_file, start_row=self.start_row_tmp, n_rows=n_rows
-            )
-        else:
-            # get the maximum row to read
-            max_row = self.start_row_tmp + n_rows
-            max_row = min(len(self.glm[self.lh5_group]), max_row)
-
-            if max_row != self.start_row_tmp:
-                glm_rows = Table(self.glm[self.lh5_group][self.start_row_tmp : max_row])
-
-            n_rows_read = max_row - self.start_row_tmp
-
-        if self.time_dict is not None:
-            self.time_dict.update_field("read/glm", time_start)
-
-        self.n_rows_read += n_rows_read
-        self.start_row_tmp += n_rows_read
-
-        if n_rows_read == 0:
-            raise StopIteration
-
-        # view our glm as an awkward array
-        glm_ak = glm_rows.view_as("ak")
-
-        # remove empty rows
-        glm_ak = glm_ak[glm_ak.n_rows > 0]
-
-        if len(glm_ak) > 0:
-            # extract range of stp rows to read
-            start = glm_ak.start_row[0]
-            n = ak.sum(glm_ak.n_rows)
-
-            if self.time_dict is not None:
-                time_start = time.time()
-
-            stp_rows, n_steps = self.sto.read(
-                f"/{self.stp_field}/{self.lh5_group}",
+        try:
+            stp_rows = lh5.read(
+                f"{self.stp_field}/{self.lh5_group}",
                 self.stp_file,
                 start_row=int(start),
                 n_rows=int(n),
             )
+        except OverflowError:
+            raise StopIteration from None
 
-            # save time
-            if self.time_dict is not None:
-                self.time_dict.update_field("read/stp", time_start)
+        n_steps = stp_rows.loc
 
-            self.current_i_entry += 1
+        if n_rows_read == 0 or n_steps == 0:
+            raise StopIteration
 
-            if self.read_vertices:
-                vert_rows, _ = self.sto.read(
-                    "/vtx",
-                    self.stp_file,
-                    start_row=self.start_row,
-                    n_rows=n_rows,
-                )
-            else:
-                vert_rows = None
-            # vertex table should have same structure as glm
+        # save time
+        if self.time_dict is not None:
+            self.time_dict.update_field("read/stp", time_start)
 
-            return (stp_rows, vert_rows, self.current_i_entry - 1, n_steps)
-        return (None, None, self.current_i_entry, 0)
+        self.current_i_entry += 1
+
+        return (stp_rows, self.current_i_entry - 1, n_steps)

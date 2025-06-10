@@ -142,22 +142,22 @@ def test_eval_expression():
 
 def test_detector_mapping():
     # basic
-    assert reboost.core.get_detectors_mapping("[str(i) for i in range(3)]") == {
+    assert reboost.core.get_one_detector_mapping("[str(i) for i in range(3)]") == {
         "0": ["0"],
         "1": ["1"],
         "2": ["2"],
     }
 
-    assert reboost.core.get_detectors_mapping("0") == {"0": ["0"]}
+    assert reboost.core.get_one_detector_mapping("0") == {"0": ["0"]}
 
     # with input name
-    assert reboost.core.get_detectors_mapping(
+    assert reboost.core.get_one_detector_mapping(
         "[str(i) for i in range(3)]", input_detector_name="dets"
     ) == {"dets": ["0", "1", "2"]}
 
     # with  objects:
     objs = AttrsDict({"format": "ch"})
-    assert reboost.core.get_detectors_mapping(
+    assert reboost.core.get_one_detector_mapping(
         "[f'{OBJECTS.format}{i}' for i in range(3)]", input_detector_name="dets", objects=objs
     ) == {"dets": ["ch0", "ch1", "ch2"]}
 

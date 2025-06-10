@@ -4,12 +4,16 @@ import importlib
 import itertools
 import logging
 import re
+import time
 from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from pathlib import Path
 
 from dbetto import AttrsDict
-from lgdo.types import Table, VectorOfVectors
+from lgdo import lh5
+from lgdo.types import Struct, Table, VectorOfVectors
+
+from reboost.profile import ProfileDict
 
 log = logging.getLogger(__name__)
 
@@ -304,3 +308,49 @@ def _check_output_file(parser, file: str | Iterable[str] | None, optional: bool 
     for f in file:
         if Path(f).exists():
             parser.error(f"output file {f} already exists")
+
+
+def write_lh5(
+    hit_table: Table,
+    file: str,
+    time_dict: ProfileDict,
+    out_field: str,
+    out_detector: str,
+    wo_mode: str,
+):
+    """Write the lh5 file. This function handles writing first the data as a struct and then appending to this.
+
+    Parameters
+    ----------
+    hit_table
+        the table to write
+    file
+        the file to write to
+    time_dict
+        the dictionary of timing information to update.
+    out_field
+        output field
+    out_detector
+        output detector name
+    wo_mode
+        the mode to pass to `lh5.write`
+    """
+    if time_dict is not None:
+        start_time = time.time()
+
+    if wo_mode != "a":
+        lh5.write(
+            Struct({out_detector: hit_table}),
+            out_field,
+            file,
+            wo_mode=wo_mode,
+        )
+    else:
+        lh5.write(
+            hit_table,
+            f"{out_field}/{out_detector}",
+            file,
+            wo_mode=wo_mode,
+        )
+    if time_dict is not None:
+        time_dict.update_field("write", start_time)

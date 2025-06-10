@@ -35,6 +35,7 @@ def get_glm_rows(stp_evtids: ArrayLike, vert: ArrayLike, *, start_row: int = 0) 
         output = ak.Array({"evtid": vert})
         output["n_rows"] = np.array([0] * len(vert), dtype=float)
         output["start_row"] = np.array([np.nan] * len(vert), dtype=float)
+
         return output
 
     if not isinstance(stp_evtids, np.ndarray):

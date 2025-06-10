@@ -119,7 +119,7 @@ def evaluate_object(
 
 def get_global_objects(
     expressions: dict[str, str], *, local_dict: dict, time_dict: dict | None = None
-) -> dict:
+) -> AttrsDict:
     """Extract global objects used in the processing.
 
     Parameters
@@ -150,10 +150,33 @@ def get_global_objects(
     )
     if time_dict is not None:
         time_dict.update_field(name="global_objects", time_start=time_start)
-    return res
+
+    return AttrsDict(res)
 
 
-def get_detectors_mapping(
+def get_detector_mapping(detector_mapping: dict, global_objects: AttrsDict) -> dict:
+    """Get all the detector mapping using :func:`get_one_detector_mapping`.
+
+    Parameters
+    ----------
+    detector_mapping
+        dictionary of detector mapping
+    global_objects
+        dictionary of global objects to use in evaluating the mapping.
+    """
+    return utils.merge_dicts(
+        [
+            get_one_detector_mapping(
+                mapping["output"],
+                input_detector_name=mapping.get("input", None),
+                objects=global_objects,
+            )
+            for mapping in detector_mapping
+        ]
+    )
+
+
+def get_one_detector_mapping(
     output_detector_expression: str | list,
     objects: AttrsDict | None = None,
     input_detector_name: str | None = None,

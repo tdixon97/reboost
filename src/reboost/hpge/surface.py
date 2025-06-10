@@ -104,4 +104,4 @@ def distance_to_surface(
             local_positions[indices], surface_indices=surface_indices
         )
 
-    return VectorOfVectors(ak.unflatten(distances, size))
+    return VectorOfVectors(ak.unflatten(distances, size), dtype=np.float32)

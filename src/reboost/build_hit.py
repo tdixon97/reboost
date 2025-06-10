@@ -165,8 +165,6 @@ from collections.abc import Mapping
 import awkward as ak
 import dbetto
 from dbetto import AttrsDict
-from lgdo import lh5
-from lgdo.types import Struct
 
 from reboost.iterator import GLMIterator
 from reboost.profile import ProfileDict
@@ -225,19 +223,19 @@ def build_hit(
     # get the arguments
     if not isinstance(args, AttrsDict):
         args = AttrsDict(args)
+
     time_dict = ProfileDict()
 
     # get the global objects
-    global_objects = AttrsDict(
-        core.get_global_objects(
-            expressions=config.get("objects", {}), local_dict={"ARGS": args}, time_dict=time_dict
-        )
+    global_objects = core.get_global_objects(
+        expressions=config.get("objects", {}), local_dict={"ARGS": args}, time_dict=time_dict
     )
 
     # get the input files
     files = utils.get_file_dict(stp_files=stp_files, glm_files=glm_files, hit_files=hit_files)
 
     output_tables = {}
+
     # iterate over files
     for file_idx, (stp_file, glm_file) in enumerate(zip(files.stp, files.glm)):
         msg = (
@@ -257,15 +255,8 @@ def build_hit(
                 time_dict[proc_name] = ProfileDict()
 
             # extract the output detectors and the mapping to input detectors
-            detectors_mapping = utils.merge_dicts(
-                [
-                    core.get_detectors_mapping(
-                        mapping["output"],
-                        input_detector_name=mapping.get("input", None),
-                        objects=global_objects,
-                    )
-                    for mapping in proc_group.get("detector_mapping")
-                ]
+            detectors_mapping = core.get_detector_mapping(
+                proc_group.get("detector_mapping"), global_objects
             )
 
             # loop over detectors
@@ -283,18 +274,19 @@ def build_hit(
                 )
 
                 # begin iterating over the glm
-                glm_it = GLMIterator(
+                iterator = GLMIterator(
                     glm_file,
                     stp_file,
                     lh5_group=in_detector,
                     start_row=start_evtid,
                     stp_field=in_field,
                     n_rows=n_evtid,
-                    read_vertices=False,
                     buffer=buffer,
                     time_dict=time_dict[proc_name],
+                    reshaped_files="hit_table_layout" not in proc_group,
                 )
-                for stps, _, chunk_idx, _ in glm_it:
+
+                for stps, chunk_idx, _ in iterator:
                     # converting to awkward
                     if stps is None:
                         continue
@@ -353,40 +345,30 @@ def build_hit(
                         # assign units in the output table
                         hit_table = utils.assign_units(hit_table, attrs)
 
-                        new_hit_file = (file_idx == 0) or (
-                            files.hit[file_idx] != files.hit[file_idx - 1]
-                        )
-
-                        wo_mode = utils.get_wo_mode(
-                            group=group_idx,
-                            out_det=out_det_idx,
-                            in_det=in_det_idx,
-                            chunk=chunk_idx,
-                            new_hit_file=new_hit_file,
-                            overwrite=overwrite,
-                        )
-
                         # now write
                         if files.hit[file_idx] is not None:
-                            if time_dict is not None:
-                                start_time = time.time()
+                            # get modes to write with
+                            new_hit_file = (file_idx == 0) or (
+                                files.hit[file_idx] != files.hit[file_idx - 1]
+                            )
 
-                            if wo_mode != "a":
-                                lh5.write(
-                                    Struct({out_detector: hit_table}),
-                                    out_field,
-                                    files.hit[file_idx],
-                                    wo_mode=wo_mode,
-                                )
-                            else:
-                                lh5.write(
-                                    hit_table,
-                                    f"{out_field}/{out_detector}",
-                                    files.hit[file_idx],
-                                    wo_mode=wo_mode,
-                                )
-                            if time_dict is not None:
-                                time_dict[proc_name].update_field("write", start_time)
+                            wo_mode = utils.get_wo_mode(
+                                group=group_idx,
+                                out_det=out_det_idx,
+                                in_det=in_det_idx,
+                                chunk=chunk_idx,
+                                new_hit_file=new_hit_file,
+                                overwrite=overwrite,
+                            )
+                            # write the file
+                            utils.write_lh5(
+                                hit_table,
+                                files.hit[file_idx],
+                                time_dict[proc_name],
+                                out_field=out_field,
+                                out_detector=out_detector,
+                                wo_mode=wo_mode,
+                            )
 
                         else:
                             output_tables[out_detector] = core.merge(
