@@ -45,7 +45,10 @@ def test_basic(test_gen_lh5, tmptestdir):
         stp_files=stp_path,
         glm_files=glm_path,
         hit_files=f"{tmptestdir}/basic_hit.lh5",
+        overwrite=True,
     )
+
+    assert lh5.ls(f"{tmptestdir}/basic_hit.lh5") == ["hit", "vtx"]
 
     hits = lh5.read("hit/det1", f"{tmptestdir}/basic_hit.lh5").view_as("ak")
 

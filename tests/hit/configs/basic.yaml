@@ -15,3 +15,6 @@ processing_groups:
       t0: ak.fill_none(ak.firsts(HITS.time, axis=-1), np.nan)
       first_evtid: ak.fill_none(ak.firsts(HITS.evtid, axis=-1), np.nan)
       energy: ak.sum(HITS.edep, axis=-1)
+
+forward:
+  - /vtx
