@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from reboost import build_hit, core, iterator, math, shape
-from reboost._version import version as __version__
+from . import build_hit, core, iterator, math, shape
+from ._version import version as __version__
 
 __all__ = [
     "__version__",

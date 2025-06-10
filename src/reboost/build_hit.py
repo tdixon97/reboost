@@ -166,10 +166,9 @@ import awkward as ak
 import dbetto
 from dbetto import AttrsDict
 
-from reboost.iterator import GLMIterator
-from reboost.profile import ProfileDict
-
 from . import core, utils
+from .iterator import GLMIterator
+from .profile import ProfileDict
 
 log = logging.getLogger(__name__)
 

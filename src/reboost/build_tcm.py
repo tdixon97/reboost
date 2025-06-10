@@ -6,7 +6,7 @@ import re
 import awkward as ak
 from lgdo import Table, lh5
 
-from reboost.shape import group
+from .shape import group
 
 log = logging.getLogger(__name__)
 

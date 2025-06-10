@@ -9,7 +9,7 @@ from lgdo import lh5
 from lgdo.lh5 import LH5Store
 from lgdo.types import LGDO, Table
 
-from reboost import build_glm
+from . import build_glm
 
 log = logging.getLogger(__name__)
 
