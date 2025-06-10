@@ -13,7 +13,7 @@ from dbetto import AttrsDict
 from lgdo import lh5
 from lgdo.types import Struct, Table, VectorOfVectors
 
-from reboost.profile import ProfileDict
+from .profile import ProfileDict
 
 log = logging.getLogger(__name__)
 

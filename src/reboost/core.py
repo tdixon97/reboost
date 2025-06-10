@@ -8,9 +8,8 @@ import awkward as ak
 from dbetto import AttrsDict
 from lgdo.types import LGDO, Table
 
-from reboost.profile import ProfileDict
-
 from . import utils
+from .profile import ProfileDict
 
 log = logging.getLogger(__name__)
 

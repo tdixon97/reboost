@@ -9,7 +9,7 @@ from lgdo import Array, Table, lh5
 from lgdo.lh5 import LH5Iterator, LH5Store
 from numpy.typing import ArrayLike
 
-from reboost import utils
+from . import utils
 
 log = logging.getLogger(__name__)
 

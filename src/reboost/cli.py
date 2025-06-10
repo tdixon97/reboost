@@ -5,11 +5,10 @@ import logging
 
 import dbetto
 
-from reboost.build_glm import build_glm
-from reboost.build_hit import build_hit
-from reboost.utils import _check_input_file, _check_output_file, get_file_list
-
+from .build_glm import build_glm
+from .build_hit import build_hit
 from .log_utils import setup_log
+from .utils import _check_input_file, _check_output_file, get_file_list
 
 log = logging.getLogger(__name__)
 
