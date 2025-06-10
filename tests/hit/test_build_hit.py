@@ -100,10 +100,10 @@ def test_full_chain(tmptestdir):
         args=args,
         stp_files=f"{Path(__file__).parent}/test_files/beta_small.lh5",
         glm_files=str(tmptestdir / "beta_small_glm.lh5"),
-        hit_files=f"{Path(__file__).parent}/test_files/beta_small_hit.lh5",
+        hit_files=str(tmptestdir / "beta_small_hit.lh5"),
         overwrite=True,
     )
-    hits = lh5.read("hit", f"{Path(__file__).parent}/test_files/beta_small_hit.lh5")
+    hits = lh5.read("hit", str(tmptestdir / "beta_small_hit.lh5"))
 
     assert isinstance(hits, Struct)
 
