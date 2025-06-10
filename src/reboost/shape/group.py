@@ -122,7 +122,7 @@ def group_by_time(
 
     # get difference
     time_diffs = np.diff(obj[time_name])
-    index_diffs = np.array(np.diff(obj[evtid_name]), dtype=np.int32)
+    index_diffs = np.diff(obj[evtid_name])
 
     # index of the last element in each run
     time_change = (time_diffs > window * 1000) & (index_diffs == 0)

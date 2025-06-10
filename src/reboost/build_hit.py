@@ -20,7 +20,7 @@ A :func:`build_hit` to parse the following configuration file:
 
           # this is a list of included detectors (part of the processing group)
           detector_mapping:
-            - output: OBJECTS.lmeta.channglmap(on=ARGS.timestamp)
+            - output: OBJECTS.lmeta.channelmap(on=ARGS.timestamp)
              .group('system').geds
              .group('analysis.status').on
              .map('name').keys()
@@ -153,6 +153,12 @@ A :func:`build_hit` to parse the following configuration file:
              )
 
             pe_times: ak.concatenate([HITS.pe_times_lar, HITS.pe_times_pen], axis=-1)
+
+    # can list here some lh5 objects that should just be forwarded to the
+    # output file, without any processing
+    forward:
+      - /vtx
+      - /some/dataset
 """
 
 from __future__ import annotations
@@ -165,6 +171,8 @@ from collections.abc import Mapping
 import awkward as ak
 import dbetto
 from dbetto import AttrsDict
+from lgdo import lh5
+from lgdo.lh5.exceptions import LH5EncodeError
 
 from . import core, utils
 from .iterator import GLMIterator
@@ -373,6 +381,26 @@ def build_hit(
                             output_tables[out_detector] = core.merge(
                                 hit_table, output_tables[out_detector]
                             )
+
+        # forward some data, if requested
+        # possible improvement: iterate over data if it's a lot
+        if "forward" in config and files.hit[file_idx] is not None:
+            obj_list = config["forward"]
+
+            if not isinstance(obj_list, list):
+                obj_list = [obj_list]
+
+            for obj in obj_list:
+                try:
+                    lh5.write(
+                        lh5.read(obj, stp_file),
+                        obj,
+                        files.hit[file_idx],
+                        wo_mode="write_safe",
+                    )
+                except LH5EncodeError as e:
+                    msg = f"cannot forward object {obj} as it has been already processed by reboost"
+                    raise RuntimeError(msg) from e
 
     # return output table or nothing
     log.info(time_dict)

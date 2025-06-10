@@ -45,7 +45,10 @@ def test_basic(test_gen_lh5, tmptestdir):
         stp_files=stp_path,
         glm_files=glm_path,
         hit_files=f"{tmptestdir}/basic_hit.lh5",
+        overwrite=True,
     )
+
+    assert lh5.ls(f"{tmptestdir}/basic_hit.lh5") == ["hit", "vtx"]
 
     hits = lh5.read("hit/det1", f"{tmptestdir}/basic_hit.lh5").view_as("ak")
 
@@ -100,10 +103,10 @@ def test_full_chain(tmptestdir):
         args=args,
         stp_files=f"{Path(__file__).parent}/test_files/beta_small.lh5",
         glm_files=str(tmptestdir / "beta_small_glm.lh5"),
-        hit_files=f"{Path(__file__).parent}/test_files/beta_small_hit.lh5",
+        hit_files=str(tmptestdir / "beta_small_hit.lh5"),
         overwrite=True,
     )
-    hits = lh5.read("hit", f"{Path(__file__).parent}/test_files/beta_small_hit.lh5")
+    hits = lh5.read("hit", str(tmptestdir / "beta_small_hit.lh5"))
 
     assert isinstance(hits, Struct)
 

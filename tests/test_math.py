@@ -36,7 +36,7 @@ def test_hpge_activeness():
     assert np.allclose(activeness.view_as("np"), [0, 1 / 3.0, 1])
 
     # test with array
-    distances = ak.Array([0.2, 0.6, 2])
+    distances = [0.2, 0.6, 2]
     activeness = functions.piecewise_linear_activeness(Array(distances), fccd=1, dlf=0.4)
 
     # first point should be 0
