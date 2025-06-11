@@ -53,7 +53,7 @@ def build_tcm(
     )
 
     if tcm is not None:
-        lh5.write(tcm, "tcm", out_file, wo_mode="of")
+        lh5.write(tcm, "tcm", out_file, wo_mode="overwrite_file")
 
 
 def get_tcm_from_ak(

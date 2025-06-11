@@ -125,7 +125,7 @@ A :func:`build_hit` to parse the following configuration file:
             .group("system").spms
             .group("analysis.status").on
             .map("name").keys()
-             input: lar
+           - input: lar
 
           outputs:
             - t0

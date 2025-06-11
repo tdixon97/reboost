@@ -280,7 +280,7 @@ def build_glm(
                     out_tab.add_field(field, Array(glm[field].to_numpy()))
 
                 # write the output file
-                mode = "of" if (vidx == 0 and idx == 0) else "append"
+                mode = "overwrite_file" if (vidx == 0 and idx == 0) else "append"
 
                 lh5_subgroup = lh5_table.replace("stp/", "")
 

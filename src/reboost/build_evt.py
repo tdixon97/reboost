@@ -91,7 +91,7 @@ def build_evt(
     # iterate through the TCM
 
     out_ak = ak.Array([])
-    mode = "of"
+    mode = "overwrite_file"
 
     # get channel groupings
     channels = {}

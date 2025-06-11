@@ -27,12 +27,12 @@ def get_wo_mode(
     good_idx = all(i == 0 for i in indices)
 
     if good_idx and new_hit_file:
-        return "of" if overwrite else "w"
+        return "overwrite_file" if overwrite else "write_safe"
 
     # if we have a detector not the first and chunk 0 append column
     if ((in_det > 0) or (out_det > 0)) & (chunk == 0):
-        return "ac"
-    return "a"
+        return "append_column"
+    return "append"
 
 
 def get_file_dict(
@@ -338,7 +338,7 @@ def write_lh5(
     if time_dict is not None:
         start_time = time.time()
 
-    if wo_mode != "a":
+    if wo_mode not in ("a", "append"):
         lh5.write(
             Struct({out_detector: hit_table}),
             out_field,
