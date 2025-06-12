@@ -4,6 +4,7 @@ from pathlib import Path
 
 import awkward as ak
 import dbetto
+import h5py
 import pytest
 from lgdo import Array, Struct, Table, lh5
 
@@ -39,18 +40,24 @@ def test_gen_lh5(tmptestdir):
 def test_basic(test_gen_lh5, tmptestdir):
     stp_path, glm_path = test_gen_lh5
 
+    outfile = f"{tmptestdir}/basic_hit.lh5"
+
     reboost.build_hit.build_hit(
         f"{Path(__file__).parent}/configs/basic.yaml",
         args={},
         stp_files=stp_path,
         glm_files=glm_path,
-        hit_files=f"{tmptestdir}/basic_hit.lh5",
+        hit_files=outfile,
         overwrite=True,
     )
 
-    assert lh5.ls(f"{tmptestdir}/basic_hit.lh5") == ["hit", "vtx"]
+    assert lh5.ls(outfile) == ["hit", "vtx"]
 
-    hits = lh5.read("hit/det1", f"{tmptestdir}/basic_hit.lh5").view_as("ak")
+    with h5py.File(outfile) as h5f:
+        assert h5f["/hit/det1/energy"].shuffle is True
+        assert h5f["/hit/det1/energy"].compression == "lzf"
+
+    hits = lh5.read("hit/det1", outfile).view_as("ak")
 
     assert ak.all(hits.energy == [300, 330])
     assert ak.all(hits.t0 == [0, 0.1])
