@@ -139,12 +139,14 @@ class GLMIterator:
 
         if self.use_glm:
             if self.glm_file is not None:
-                glm_rows, n_rows_read = self.sto.read(
+                glm_rows = self.sto.read(
                     f"glm/{self.lh5_group}",
                     self.glm_file,
                     start_row=self.start_row_tmp,
                     n_rows=n_rows,
                 )
+                n_rows_read = len(glm_rows.view_as("ak"))
+
             else:
                 # get the maximum row to read
                 max_row = self.start_row_tmp + n_rows
@@ -198,12 +200,14 @@ class GLMIterator:
             time_start = time.time()
 
         try:
-            stp_rows, n_steps = self.sto.read(
+            stp_rows = self.sto.read(
                 f"{self.stp_field}/{self.lh5_group}",
                 self.stp_file,
                 start_row=int(start),
                 n_rows=int(n),
             )
+            n_steps = len(stp_rows.view_as("ak"))
+
         except OverflowError:
             raise StopIteration from None
 

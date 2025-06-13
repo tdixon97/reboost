@@ -103,7 +103,6 @@ def cli(args=None) -> None:
     hit_parser.add_argument(
         "--n-evtid", type=int, default=None, help="Number of event id to process."
     )
-    hit_parser.add_argument("--in-field", type=str, default="stp", help="Input field name.")
     hit_parser.add_argument("--out-field", type=str, default="hit", help="Output field name.")
     hit_parser.add_argument("--buffer", type=int, default=int(5e6), help="Buffer size.")
 
@@ -174,7 +173,6 @@ def cli(args=None) -> None:
         msg += f"    hit files:      {hit_files}\n"
         msg += f"    start_evtid:    {args.start_evtid}\n"
         msg += f"    n_evtid:        {args.n_evtid}\n"
-        msg += f"    in_field:       {args.in_field}\n"
         msg += f"    out_field:      {args.out_field}\n"
         msg += f"    buffer:         {args.buffer} \n"
         msg += f"    overwrite:      {args.overwrite} \n"
@@ -189,7 +187,6 @@ def cli(args=None) -> None:
             hit_files=hit_files,
             start_evtid=args.start_evtid,
             n_evtid=args.n_evtid,
-            in_field=args.in_field,
             out_field=args.out_field,
             buffer=args.buffer,
             overwrite=args.overwrite,

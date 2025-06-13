@@ -1,0 +1,11 @@
+processing_groups:
+  - name: all
+
+    detector_mapping:
+      - output: det1
+      - output: det2
+
+    hit_table_layout: "reboost.shape.group.group_by_time(STEPS, 10)"
+
+forward:
+  - /vtx

@@ -102,9 +102,9 @@ def build_evt(
         elif isinstance(info, list):
             channels[group] = info
 
-    for tcm_lh5, _, n_rows_read in LH5Iterator(tcm_file, "tcm", buffer_len=buffer):
+    for tcm_lh5 in LH5Iterator(tcm_file, "tcm", buffer_len=buffer):
         tcm_lh5_sel = tcm_lh5
-        tcm_ak = tcm_lh5_sel.view_as("ak")[:n_rows_read]
+        tcm_ak = tcm_lh5_sel.view_as("ak")
 
         tcm = TCMData(
             id=np.array(ak.flatten(tcm_ak.array_id)),

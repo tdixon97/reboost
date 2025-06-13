@@ -190,7 +190,6 @@ def build_hit(
     *,
     start_evtid: int = 0,
     n_evtid: int | None = None,
-    in_field: str = "stp",
     out_field: str = "hit",
     buffer: int = int(5e6),
     overwrite: bool = False,
@@ -214,8 +213,6 @@ def build_hit(
         first evtid to read.
     n_evtid
         number of evtid to read, if `None` read all.
-    in_field
-        name of the input field in the remage output.
     out_field
         name of the output field
     buffer
@@ -280,13 +277,17 @@ def build_hit(
                     time_dict=time_dict[proc_name],
                 )
 
+                lh5_group = proc_group.get("lh5_group", "stp")
+                if lh5_group is None:
+                    lh5_group = "/"
+
                 # begin iterating over the glm
                 iterator = GLMIterator(
                     glm_file,
                     stp_file,
                     lh5_group=in_detector,
                     start_row=start_evtid,
-                    stp_field=in_field,
+                    stp_field=lh5_group,
                     n_rows=n_evtid,
                     buffer=buffer,
                     time_dict=time_dict[proc_name],

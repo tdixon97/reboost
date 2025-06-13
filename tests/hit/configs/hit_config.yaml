@@ -7,8 +7,8 @@ processing_groups:
   - name: geds
 
     detector_mapping:
-      - output: det001
-      - output: det002
+      - output: det1
+      - output: det2
     detector_objects:
       meta: dbetto.AttrsDict(pygeomtools.get_sensvol_metadata(OBJECTS.geometry,
         OBJECTS.user_pars[DETECTOR].name ))
@@ -23,8 +23,6 @@ processing_groups:
       - truth_energy
       - active_energy
       - smeared_energy
-
-    hit_table_layout: reboost.shape.group.group_by_evtid(STEPS)
 
     operations:
       t0: ak.fill_none(ak.firsts(HITS.time, axis=-1), np.nan)
