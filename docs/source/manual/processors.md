@@ -18,6 +18,10 @@ hit tier output. These processors convert the "regular" structure of the remage
 output into a jagged structure, where each row corresponds to a "hit" and the
 fields are variable length vectors containing information on the steps in each
 hit.
+:::{note}
+This is only relevant if the "flat" output structure of _remage_ files is
+used.
+:::
 
 Currently two step-grouping options are implemented. Once the remage output is
 loaded as an _awkward_ array, we can either group by Geant4 event id or by time

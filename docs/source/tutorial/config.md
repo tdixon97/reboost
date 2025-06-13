@@ -46,25 +46,6 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 ```
 
-## Efficient iteration - the GLM
-
-As explained in the [user manual](../manual/iteration.md) the _remage_ output
-files (currently) consist of a flat table of steps in sensitive detectors, i.e.
-every step is one row. This introduces a challenge in iterating over these
-files.
-
-To solve this we store an object on disk called the "Geant4 event lookup map"
-(GLM), created through {func}`~.build_glm.build_glm`.
-
-:::{note}
-Future versions of _remage_ will likely switch the generation of the GLM into the
-remage _itself_.
-:::
-
-```python
-build_glm(stp_files="stp_out.lh5", glm_files="glm_out.lh5", id_name="evtid")
-```
-
 ## The config file
 
 We are now almost ready to start our post-processing. However, we need some
@@ -106,7 +87,6 @@ config:
         - active_energy
         - smeared_energy
         - r90
-      hit_table_layout: reboost.shape.group.group_by_time(STEPS, window = 10)
       operations:
         t0: ak.fill_none(ak.firsts(HITS.time, axis=-1), np.nan)
         first_evtid: ak.fill_none(ak.firsts(HITS.evtid, axis=-1), np.nan)
@@ -210,6 +190,12 @@ processing_groups
   - name: geds
 ```
 
+For each processing group you can specify which "lh5_group" in the
+input file the tables belong to with the "lh5_group" key.
+
+- if this is not set it defaults to `stp`,
+- if set to `null` the base group (`\`) is used.
+
 ### Detector mapping
 
 Next we need to define our list of detectors to process. However, in general it
@@ -303,11 +289,20 @@ outputs:
   - r90
 ```
 
+::{note}
+If the "outputs" key is not present all fields will be saved!
+:::
+
 ### Hit-table layout
 
-As mentioned previously the remage output files (currently) have a flat
-structure with every row corresponding to a step. To convert this into a table
-oriented by the "hits" in the detector, we perform a step called the "hit-table
+:::{note}
+For the default _remage_ output the files are already reshaped and this
+is not necessary!
+:::
+
+If remage is run with the "flat output" option it is necessary to reshape
+the tables to oriented by the "hits" in the detector,
+to do this we perform a step called the "hit-table
 layout". This name is chosen since this step defines the shape of the hit
 table, while all following processors act on this table without changing its
 shape.
@@ -378,7 +373,6 @@ build_hit(
     "config.yaml",
     args,
     stp_files="stp_out.lh5",
-    glm_files="glm_out.lh5",
     hit_files="hit_out.lh5",
     buffer=int(1e5),
 )
@@ -400,7 +394,6 @@ Reboost post processing took:
  - geds:
    - detector_objects    :     0.4 s
    - read:
-     - glm               :     0.1 s
      - stp               :     2.4 s
    - hit_layout          :     0.6 s
    - expressions:
@@ -441,8 +434,8 @@ previous section (or others). As an example lets try comparing the energy
 spectra for the two detectors.
 
 ```python
-hits_det001 = lh5.read("det001/hit", "hit_out.lh5")
-hits_det002 = lh5.read("det002/hit", "hit_out.lh5")
+hits_det001 = lh5.read("hit/det001", "hit_out.lh5")
+hits_det002 = lh5.read("hit/det002", "hit_out.lh5")
 
 fig, ax = plt.subplots(figsize=(12, 4))
 h1 = (

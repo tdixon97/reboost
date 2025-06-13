@@ -115,38 +115,11 @@ of different lengths.
 stp = lh5.read_as("stp/det001", "stp_out.lh5", "ak")
 ```
 
-## Reshape: group by time
-
-The _remage_ output file consists of a "flat" table of the Geant4 steps in the
-sensitive detector. However, given the small time differences between energy
-depositions from the same particle compared to the time resolution of a HPGe
-detector the individual steps will not be experimentally resolvable.
-
-The first step of our post-processing chain consists of grouping together steps
-within the same simulated Geant4 event and with similar times.
-This is performed by the {mod}`.shape.group` module, which defines "hits" in
-the Germanium detector. Currently two options are implemented:
-
-- _group_by_evtid_: simply group together steps with the same geant4 event id,
-- _group_by_time_: also group together steps with similar times (based on the user supplied time-window).
-
-We use the second option and a time window of 10 us.
-
-```python
-hits = reboost.shape.group.group_by_time(stp, window=10).view_as("ak")
-```
-
-Printing the data we can see it now has a jagged structure. Now each row
-corresponds to a particular hit in the HPGe detector in analogy to [pygama hit
-tier data](https://pygama.readthedocs.io/en/stable/api/pygama.hit.html) used in
-the pygama data processing software.
-
-```python
-lh5.write(Table(hits), name="stp/germanium", lh5_file="new_format.lh5")
-```
-
 ## Processors
 
+:::{note}
+If the _remage_ flat output file is used an additional step of "step-grouping" is required.
+:::
 Now we can compute some quantities based on our simulation. This is based on
 "processors" (see the User manual for more details). This is just any
 (generic) python function computing a new (post-processed) quantity (i.e. a new

@@ -41,10 +41,6 @@ A :func:`build_hit` to parse the following configuration file:
              phyvol: OBJECTS.geometry.physical_volume_dict[DETECTOR]
              drift_time_map: lgdo.lh5.read(DETECTOR, ARGS.dtmap_file)
 
-          # this defines "hits", i.e. layout of the output hit table
-          # group steps by time and evtid with 10us window
-          hit_table_layout: reboost.shape.group_by_time(STEPS, window=10)
-
           # finally, the processing chain
           operations:
 

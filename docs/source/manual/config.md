@@ -88,7 +88,12 @@ outputs:
   - smeared_energy
 ```
 
-Next we define the step grouping function (i.e. we create our hits). Here
+:::{note}
+If the "outputs" key is not present all fields will be included!
+:::
+
+In case the flat output file option for _remage_ was used we need to
+define the the step grouping function (i.e. we create our hits). Here
 "STEPS" is a special keyword corresponding to the remage data.
 
 ```yaml
