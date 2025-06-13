@@ -58,7 +58,7 @@ def test_cli(tmptestdir, test_gen_lh5_flat):
         ]
     )
 
-    glm = lh5.read("glm/det001", f"{tmptestdir}/glm.lh5").view_as("ak")
+    glm = lh5.read("glm/det1", f"{tmptestdir}/glm.lh5").view_as("ak")
     assert glm.fields == ["evtid", "n_rows", "start_row"]
 
     # test cli for build_hit
@@ -66,10 +66,8 @@ def test_cli(tmptestdir, test_gen_lh5_flat):
         [
             "build-hit",
             "--config",
-            f"{test_file_dir}/configs/hit_config.yaml",
+            f"{test_file_dir}/configs/reshape.yaml",
             "-w",
-            "--glm-file",
-            f"{tmptestdir}/glm.lh5",
             "--stp-file",
             test_gen_lh5_flat,
             "--hit-file",
@@ -79,5 +77,5 @@ def test_cli(tmptestdir, test_gen_lh5_flat):
         ]
     )
 
-    hit1 = lh5.read("hit/det001", f"{tmptestdir}/hit.lh5").view_as("ak")
-    assert set(hit1.fields) == {"evtid", "t0", "truth_energy", "active_energy", "smeared_energy"}
+    hit1 = lh5.read("hit/det1", f"{tmptestdir}/hit.lh5").view_as("ak")
+    assert set(hit1.fields) == {"xloc", "yloc", "zloc", "dist_to_surf", "time", "edep", "evtid"}
