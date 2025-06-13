@@ -146,13 +146,14 @@ def get_stp_evtids(
 
     while start_row < n_rows_tot:
         # read the file
-        lh5_obj, n_read = store.read(
+        lh5_obj = store.read(
             f"{lh5_table}/{id_name}",
             stp_file,
             start_row=start_row,
             n_rows=stp_buffer,
         )
         evtids = lh5_obj.view_as("ak")
+        n_read = len(evtids)
 
         # pick the first evtid
         if evtids.ndim > 1:
@@ -247,9 +248,9 @@ def build_glm(
         vfield = f"vtx/{id_name}"
 
         # iterate over the vertex table
-        for vert_obj, vidx, n_evtid in LH5Iterator(stp_file, vfield, buffer_len=evtid_buffer):
+        for vidx, vert_obj in enumerate(LH5Iterator(stp_file, vfield, buffer_len=evtid_buffer)):
             # range of vertices
-            vert_ak = vert_obj.view_as("ak")[:n_evtid]
+            vert_ak = vert_obj.view_as("ak")
 
             msg = f"... read chunk {vidx}"
             log.debug(msg)

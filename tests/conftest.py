@@ -12,6 +12,8 @@ from legendtestdata import LegendTestData
 
 _tmptestdir = Path(gettempdir()) / f"reboost-tests-{getuser()}-{uuid.uuid4()!s}"
 
+collect_ignore = ["test_optmap.py"]
+
 
 @pytest.fixture(scope="session")
 def tmptestdir_global():

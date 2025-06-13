@@ -1,9 +1,9 @@
-det001:
+det1:
   fccd_in_mm: 0.71
   dlf: 0.7
   reso_in_sigma: 1.1
   name: BEGe
-det002:
+det2:
   fccd_in_mm: 2.2
   dlf: 0.4
   reso_in_sigma: 2.32

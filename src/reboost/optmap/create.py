@@ -130,9 +130,8 @@ def _create_optical_maps_chunk(
 
     hits_per_primary = np.zeros(10, dtype=np.int64)
     hits_per_primary_len = 0
-    for it_count, (events_lgdo, events_entry, event_n_rows) in enumerate(optmap_events_it):
-        assert (it_count == 0) == (events_entry == 0)
-        optmap_events = events_lgdo.view_as("pd").iloc[0:event_n_rows]
+    for it_count, events_lgdo in enumerate(optmap_events_it):
+        optmap_events = events_lgdo.view_as("pd").iloc
         hitcounts = optmap_events[all_det_ids].to_numpy()
         loc = optmap_events[["xloc", "yloc", "zloc"]].to_numpy()
 

@@ -80,8 +80,8 @@ def build_optmap_evt(
             _store_vert_df()
 
             # read the next vertex chunk into memory.
-            (vert_lgdo, vert_entry, vert_n_rows) = next(vert_it)
-            vert_df = vert_lgdo.view_as("pd").iloc[0:vert_n_rows]
+            (vert_lgdo, vert_entry) = next(vert_it)
+            vert_df = vert_lgdo.view_as("pd").iloc
 
             # prepare vertex coordinates.
             vert_df = vert_df.set_index("evtid", drop=True).drop(["n_part", "time"], axis=1)
@@ -94,9 +94,8 @@ def build_optmap_evt(
     log.info("prepare evt table")
     # use smaller integer type uint8 to spare RAM when storing types.
     hit_count_type = np.uint8
-    for opti_it_count, (opti_lgdo, opti_entry, opti_n_rows) in enumerate(opti_it):
-        assert (opti_it_count == 0) == (opti_entry == 0)
-        opti_df = opti_lgdo.view_as("pd").iloc[0:opti_n_rows]
+    for opti_it_count, opti_lgdo in enumerate(opti_it):
+        opti_df = opti_lgdo.view_as("pd").iloc
 
         log.info("build evt table (%d)", opti_it_count)
         for t in opti_df[["evtid", "det_uid"]].itertuples(name=None, index=False):
