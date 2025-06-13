@@ -42,3 +42,9 @@ processing_groups:
 
       active_energy: ak.sum(HITS.edep*HITS.activeness, axis=-1)
       smeared_energy: reboost.math.stats.gaussian_sample(HITS.active_energy,DETECTOR_OBJECTS.det_pars.reso_in_sigma)
+
+  - name: vtx
+    detector_mapping:
+      - output: vtx
+
+    lh5_group: null
