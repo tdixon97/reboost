@@ -132,6 +132,8 @@ def test_basic(test_gen_lh5, tmptestdir):
     assert ak.all(hits.evtid[0] == [0, 0])
     assert ak.all(hits.evtid[1] == [1, 1, 1])
 
+    assert len(hits) == 2
+
     # test in memory
 
     hits, time_dict = reboost.build_hit.build_hit(
@@ -156,6 +158,25 @@ def test_basic(test_gen_lh5, tmptestdir):
     }
     assert set(time_dict["geds"]["read"].keys()) == {"stp"}
     assert set(time_dict["geds"]["expressions"].keys()) == {"t0", "first_evtid", "energy"}
+
+
+def test_file_merging(test_gen_lh5, tmptestdir):
+    outfile = f"{tmptestdir}/basic_hit_merged.lh5"
+
+    reboost.build_hit.build_hit(
+        f"{Path(__file__).parent}/configs/basic.yaml",
+        args={},
+        stp_files=[test_gen_lh5, test_gen_lh5],
+        glm_files=None,
+        hit_files=outfile,
+        overwrite=True,
+    )
+
+    assert lh5.ls(outfile) == ["hit", "vtx"]
+
+    hits = lh5.read("hit/det1", outfile).view_as("ak")
+
+    assert len(hits) == 4
 
 
 def test_full_chain(test_gen_lh5, tmptestdir):
