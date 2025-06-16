@@ -25,7 +25,6 @@ def build_optmap_evt(
     if lh5_out_file_tmp.exists():
         msg = f"temporary output file {lh5_out_file_tmp} already exists"
         raise RuntimeError(msg)
-
     vert_it = LH5Iterator(lh5_in_file, "vtx", buffer_len=buffer_len)
     opti_it = LH5Iterator(lh5_in_file, "stp/optical", buffer_len=buffer_len)
 
@@ -80,8 +79,7 @@ def build_optmap_evt(
             _store_vert_df()
 
             # read the next vertex chunk into memory.
-            (vert_lgdo, vert_entry) = next(vert_it)
-            vert_df = vert_lgdo.view_as("pd").iloc
+            vert_df = next(vert_it).view_as("pd")
 
             # prepare vertex coordinates.
             vert_df = vert_df.set_index("evtid", drop=True).drop(["n_part", "time"], axis=1)
@@ -95,9 +93,10 @@ def build_optmap_evt(
     # use smaller integer type uint8 to spare RAM when storing types.
     hit_count_type = np.uint8
     for opti_it_count, opti_lgdo in enumerate(opti_it):
-        opti_df = opti_lgdo.view_as("pd").iloc
+        opti_df = opti_lgdo.view_as("pd")
 
         log.info("build evt table (%d)", opti_it_count)
+
         for t in opti_df[["evtid", "det_uid"]].itertuples(name=None, index=False):
             _ensure_vert_df(vert_it, t[0])
             vert_df.loc[t[0], str(t[1])] += 1

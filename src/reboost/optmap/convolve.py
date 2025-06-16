@@ -75,8 +75,14 @@ def iterate_stepwise_depositions(
     mode: str = "no-fano",
 ):
     # those np functions are not supported by numba, but needed for efficient array access below.
-    x0 = structured_to_unstructured(edep_df[["xloc_pre", "yloc_pre", "zloc_pre"]], np.float64)
-    x1 = structured_to_unstructured(edep_df[["xloc_post", "yloc_post", "zloc_post"]], np.float64)
+    if "xloc_pre" in edep_df.dtype.names:
+        x0 = structured_to_unstructured(edep_df[["xloc_pre", "yloc_pre", "zloc_pre"]], np.float64)
+        x1 = structured_to_unstructured(
+            edep_df[["xloc_post", "yloc_post", "zloc_post"]], np.float64
+        )
+    else:
+        x0 = structured_to_unstructured(edep_df[["xloc", "yloc", "zloc"]], np.float64)
+        x1 = None
 
     rng = np.random.default_rng() if rng is None else rng
     output_map, res = _iterate_stepwise_depositions(
@@ -157,12 +163,16 @@ def _iterate_stepwise_depositions(
 
         # do the scintillation.
         part, charge = pdgid_map[t.particle]
+
+        # if we have both pre and post step points use them
+        # else pass as None
+
         scint_times = sc.scintillate(
             scint_mat_params,
             x0[rowid],
-            x1[rowid],
-            t.v_pre,
-            t.v_post,
+            x1[rowid] if x1 is not None else None,
+            t.v_pre if x1 is not None else None,
+            t.v_post if x1 is not None else None,
             t.time,
             part,
             charge,
@@ -358,7 +368,7 @@ def convolve(
     it = LH5Iterator(edep_file, edep_path, buffer_len=buffer_len)
 
     for it_count, edep_lgdo in enumerate(it):
-        edep_df = edep_lgdo.view_as("pd").iloc.to_records()
+        edep_df = edep_lgdo.view_as("pd").to_records()
 
         log.info("start event processing (%d)", it_count)
         output_map = iterate_stepwise_depositions(
