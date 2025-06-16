@@ -393,7 +393,7 @@ def build_hit(
                         lh5.read(obj, stp_file),
                         obj,
                         files.hit[file_idx],
-                        wo_mode="write_safe",
+                        wo_mode="write_safe" if file_idx == 0 else "append",
                     )
                 except LH5EncodeError as e:
                     msg = f"cannot forward object {obj} as it has been already processed by reboost"
