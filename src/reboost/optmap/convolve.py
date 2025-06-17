@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 import legendoptics.scintillate as sc
 import numba
@@ -24,8 +25,8 @@ OPTMAP_SUM_CH = -2
 
 def open_optmap(optmap_fn: str):
     maps = lh5.ls(optmap_fn)
-    # TODO: rewrite logic to only accept _<number> instead of a blacklist
-    det_ntuples = [m for m in maps if m not in ("all", "_hitcounts", "_hitcounts_exp", "all_orig")]
+    # only accept _<number> (/all is read separately)
+    det_ntuples = [m for m in maps if re.match(r"_\d+$", m)]
     detids = np.array([int(m.lstrip("_")) for m in det_ntuples])
     detidx = np.arange(0, detids.shape[0])
 
