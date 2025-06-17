@@ -53,17 +53,25 @@ def open_optmap(optmap_fn: str):
 
     # give this check some numerical slack.
     if np.any(
-        ow[OPTMAP_SUM_CH][ow[OPTMAP_ANY_CH] >= 0] - ow[OPTMAP_ANY_CH][ow[OPTMAP_ANY_CH] >= 0]
+        np.abs(
+            ow[OPTMAP_SUM_CH][ow[OPTMAP_ANY_CH] >= 0] - ow[OPTMAP_ANY_CH][ow[OPTMAP_ANY_CH] >= 0]
+        )
         < -1e-15
     ):
         msg = "optical map does not fulfill relation sum(p_i) >= p_any"
         raise ValueError(msg)
 
-    # get the exponent from the optical map file
-    optmap_multi_det_exp = lh5.read("/_hitcounts_exp", optmap_fn).value
-    assert isinstance(optmap_multi_det_exp, float)
+    try:
+        # check the exponent from the optical map file
+        optmap_multi_det_exp = lh5.read("/_hitcounts_exp", optmap_fn).value
+        assert isinstance(optmap_multi_det_exp, float)
+        if np.isfinite(optmap_multi_det_exp):
+            msg = f"found finite _hitcounts_exp {optmap_multi_det_exp} which is not supported any more"
+            raise RuntimeError(msg)
+    except KeyError:  # the _hitcounts_exp might not be always present.
+        pass
 
-    return detids, detidx, optmap_edges, ow, optmap_multi_det_exp
+    return detids, detidx, optmap_edges, ow
 
 
 def iterate_stepwise_depositions(
@@ -144,7 +152,6 @@ def _iterate_stepwise_depositions(
     detidx,
     optmap_edges,
     optmap_weights,
-    optmap_multi_det_exp,
     scint_mat_params: sc.ComputedScintParams,
     dist: str,
     mode: str,
@@ -223,8 +230,6 @@ def _iterate_stepwise_depositions(
                 # we detect this energy deposition; we should at least get one photon out here!
 
                 detsel_size = 1
-                if np.isfinite(optmap_multi_det_exp):
-                    detsel_size = rng.geometric(1 - np.exp(-optmap_multi_det_exp))
 
                 px_sum = optmap_weights[OPTMAP_SUM_CH, cur_bins[0], cur_bins[1], cur_bins[2]]
                 assert px_sum >= 0.0  # should not be negative.
@@ -238,7 +243,7 @@ def _iterate_stepwise_depositions(
                         detp[d] = 0.0
                 det_no_stats += had_det_no_stats
 
-                # should be equivalent to rng.choice(detidx, size=(detsel_size, p=detp)
+                # should be equivalent to rng.choice(detidx, size=detsel_size, p=detp)
                 detsel = detidx[
                     np.searchsorted(np.cumsum(detp), rng.random(size=(detsel_size,)), side="right")
                 ]

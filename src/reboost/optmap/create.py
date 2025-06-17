@@ -401,6 +401,9 @@ def merge_optical_maps(
     hits_per_primary = np.zeros(10, dtype=np.int64)
     hits_per_primary_len = 0
     for optmap_fn in map_l5_files:
+        if "_hitcounts" not in lh5.ls(optmap_fn):
+            log.warning("skipping _hitcounts calculations, missing in file %s", optmap_fn)
+            return
         hitcounts = lh5.read("/_hitcounts", optmap_fn)
         assert isinstance(hitcounts, Array)
         hits_per_primary[0 : len(hitcounts)] += hitcounts
@@ -417,13 +420,18 @@ def merge_optical_maps(
 def check_optical_map(map_l5_file: str):
     """Run a health check on the map file.
 
-    This checks for consistency, and output details on map statistics.
+    This checks for consistency, and outputs details on map statistics.
     """
-    if lh5.read("_hitcounts_exp", lh5_file=map_l5_file).value != np.inf:
-        log.error("unexpected hitcount exp not equal to positive infinity")
+    if "_hitcounts_exp" not in lh5.ls(map_l5_file):
+        log.info("no _hitcounts_exp found")
+    elif lh5.read("_hitcounts_exp", lh5_file=map_l5_file).value != np.inf:
+        log.error("unexpected _hitcounts_exp not equal to positive infinity")
         return
-    if lh5.read("_hitcounts", lh5_file=map_l5_file).nda.shape != (2,):
-        log.error("unexpected hitcount shape")
+
+    if "_hitcounts" not in lh5.ls(map_l5_file):
+        log.info("no _hitcounts found")
+    elif lh5.read("_hitcounts", lh5_file=map_l5_file).nda.shape != (2,):
+        log.error("unexpected _hitcounts shape")
         return
 
     all_binning = None
@@ -477,4 +485,5 @@ def rebin_optical_maps(map_l5_file: str, output_lh5_file: str, factor: int):
 
     # just copy hitcounts exponent.
     for dset in ("_hitcounts_exp", "_hitcounts"):
-        lh5.write(lh5.read(dset, lh5_file=map_l5_file), dset, lh5_file=output_lh5_file)
+        if dset in lh5.ls(map_l5_file):
+            lh5.write(lh5.read(dset, lh5_file=map_l5_file), dset, lh5_file=output_lh5_file)

@@ -67,16 +67,17 @@ def tbl_evt_fns(tmptestdir) -> tuple[str]:
     evt_count = 100
     rng = np.random.default_rng(1234)
     loc = rng.uniform(size=(evt_count, 3))
-    hits = rng.geometric(p=0.9, size=(evt_count, 3)) - 1
+    # hits = rng.geometric(p=0.9, size=(evt_count, 3)) - 1
+    hits = rng.choice([1, 2, 3], size=evt_count)
 
     tbl_evt = Table(
         {
             "xloc": Array(loc[:, 0]),
             "yloc": Array(loc[:, 1]),
             "zloc": Array(loc[:, 2]),
-            "001": Array(hits[:, 0]),
-            "002": Array(hits[:, 1]),
-            "003": Array(hits[:, 2]),
+            "001": Array((hits == 1).astype(int)),
+            "002": Array((hits == 2).astype(int)),
+            "003": Array((hits == 3).astype(int)),
         }
     )
 
