@@ -78,9 +78,6 @@ def build_evt(
     -------
     ak.Array of the evt tier data (if the data is not saved to disk)
     """
-    msg = "... beginning the evt tier processing"
-    log.info(msg)
-
     # create the objects needed for evaluate expression
 
     file_info = {

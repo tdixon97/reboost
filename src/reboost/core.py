@@ -139,7 +139,7 @@ def get_global_objects(
         time_start = time.time()
 
     msg = f"Getting global objects with {expressions.keys()} and {local_dict}"
-    log.info(msg)
+    log.debug(msg)
     res = {}
 
     for obj_name, expression in expressions.items():

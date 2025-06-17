@@ -113,7 +113,7 @@ class GLMIterator:
         if self.use_glm:
             self.buffer = int(buffer * glm_n_rows / stp_n_rows)
             msg = f"Number of stp rows {stp_n_rows}, number of glm rows {glm_n_rows} changing buffer from {buffer} to {self.buffer}"
-            log.info(msg)
+            log.debug(msg)
 
     def __iter__(self) -> typing.Iterator:
         self.current_i_entry = 0

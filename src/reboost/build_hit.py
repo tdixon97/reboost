@@ -239,17 +239,17 @@ def build_hit(
     # iterate over files
     for file_idx, (stp_file, glm_file) in enumerate(zip(files.stp, files.glm)):
         msg = (
-            f"... starting post processing of {stp_file} to {files.hit[file_idx]} "
+            f"starting processing of {stp_file} to {files.hit[file_idx]} "
             if files.hit[file_idx] is not None
-            else f"... starting post processing of {stp_file}"
+            else f"starting processing of {stp_file}"
         )
         log.info(msg)
 
         # loop over processing groups
         for group_idx, proc_group in enumerate(config["processing_groups"]):
             proc_name = proc_group.get("name", "default")
-            msg = f"... starting group {proc_name}"
-            log.info(msg)
+            msg = f"starting group {proc_name}"
+            log.debug(msg)
 
             if proc_name not in time_dict:
                 time_dict[proc_name] = ProfileDict()
@@ -261,7 +261,7 @@ def build_hit(
 
             # loop over detectors
             for in_det_idx, (in_detector, out_detectors) in enumerate(detectors_mapping.items()):
-                msg = f"... processing {in_detector} (to {out_detectors})"
+                msg = f"processing {in_detector} (to {out_detectors})"
                 log.debug(msg)
 
                 # get detector objects
@@ -400,7 +400,7 @@ def build_hit(
                     raise RuntimeError(msg) from e
 
     # return output table or nothing
-    log.info(time_dict)
+    log.debug(time_dict)
 
     if output_tables == {}:
         output_tables = None

@@ -224,8 +224,8 @@ def build_glm(
     glm_sum = {}
 
     for file_idx, stp_file in enumerate(files.stp):
-        msg = f"Start generating glm for {stp_file} "
-        log.info(msg)
+        msg = f"start generating glm for {stp_file} "
+        log.debug(msg)
 
         # loop over the lh5_tables
         lh5_table_list = [
@@ -298,8 +298,6 @@ def build_glm(
                         if glm_sum[lh5_subgroup] is None
                         else ak.concatenate((glm_sum[lh5_subgroup], glm))
                     )
-        msg = f"Finished generating glm for {stp_file} "
-        log.info(msg)
 
     # return if it was requested to keep glm in memory
     if glm_sum is not None:
