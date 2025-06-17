@@ -79,7 +79,7 @@ def test_gen_lh5_flat(tmptestdir):
 def test_reshape(test_gen_lh5_flat, tmptestdir):
     outfile = f"{tmptestdir}/basic_hit_reshaped.lh5"
 
-    reboost.build_hit.build_hit(
+    reboost.build_hit(
         f"{Path(__file__).parent}/configs/reshape.yaml",
         args={},
         stp_files=test_gen_lh5_flat,
@@ -110,7 +110,7 @@ def test_reshape(test_gen_lh5_flat, tmptestdir):
 def test_basic(test_gen_lh5, tmptestdir):
     outfile = f"{tmptestdir}/basic_hit.lh5"
 
-    reboost.build_hit.build_hit(
+    reboost.build_hit(
         f"{Path(__file__).parent}/configs/basic.yaml",
         args={},
         stp_files=test_gen_lh5,
@@ -136,7 +136,7 @@ def test_basic(test_gen_lh5, tmptestdir):
 
     # test in memory
 
-    hits, time_dict = reboost.build_hit.build_hit(
+    hits, time_dict = reboost.build_hit(
         f"{Path(__file__).parent}/configs/basic.yaml",
         args={},
         stp_files=test_gen_lh5,
@@ -163,7 +163,7 @@ def test_basic(test_gen_lh5, tmptestdir):
 def test_file_merging(test_gen_lh5, tmptestdir):
     outfile = f"{tmptestdir}/basic_hit_merged.lh5"
 
-    reboost.build_hit.build_hit(
+    reboost.build_hit(
         f"{Path(__file__).parent}/configs/basic.yaml",
         args={},
         stp_files=[test_gen_lh5, test_gen_lh5],
@@ -187,7 +187,7 @@ def test_full_chain(test_gen_lh5, tmptestdir):
         }
     )
 
-    _, time_dict = reboost.build_hit.build_hit(
+    _, time_dict = reboost.build_hit(
         f"{Path(__file__).parent}/configs/hit_config.yaml",
         args=args,
         stp_files=test_gen_lh5,
