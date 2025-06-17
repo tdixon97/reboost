@@ -328,7 +328,14 @@ def build_hit(
                             "DETECTOR": out_detector,
                         }
                         # add fields
-                        for field, expression in proc_group.get("operations", {}).items():
+                        for field, info in proc_group.get("operations", {}).items():
+                            if isinstance(info, str):
+                                expression = info
+                                units = None
+                            else:
+                                expression = info["expression"]
+                                units = info.get("units", None)
+
                             # evaluate the expression
                             col = core.evaluate_output_column(
                                 hit_table,
@@ -338,6 +345,10 @@ def build_hit(
                                 time_dict=time_dict[proc_name],
                                 name=field,
                             )
+
+                            if units is not None:
+                                col.attrs["units"] = units
+
                             core.add_field_with_nesting(hit_table, field, col)
 
                         # remove unwanted fields
