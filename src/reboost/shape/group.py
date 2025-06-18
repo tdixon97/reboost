@@ -4,9 +4,45 @@ import logging
 
 import awkward as ak
 import numpy as np
+from dbetto import AttrsDict
 from lgdo import Table, VectorOfVectors
+from numpy.typing import ArrayLike
 
 log = logging.getLogger(__name__)
+
+
+def isin(channels: ak.Array, chan_list: list):
+    """Check if each element of the awkward array channels is in the channel list."""
+    num_channels = ak.num(channels, axis=-1)
+    channels_flat = ak.flatten(channels)
+    isin = np.isin(channels_flat, chan_list)
+
+    # unflatten
+    return ak.unflatten(isin, num_channels)
+
+
+def get_isin_group(channels: ArrayLike, groups: AttrsDict, tcm_tables: dict, group: str = "off"):
+    """For each channel check if it is in the group.
+
+    Parameters
+    ----------
+    channels
+        Array of the channel indices.
+    groups
+        A mapping of the group for every channel name.
+    tcm_tables
+        the mapping of indices to table names
+    group
+        the group to select.
+
+    Returns
+    -------
+    an awkward array of the same shape of channels of booleans.
+    """
+    usability = {key: groups[tab.split("/")[-1]] for key, tab in tcm_tables.items()}
+    group_idx = [key for key, item in usability.items() if item == group]
+
+    return isin(channels, group_idx)
 
 
 def _sort_data(obj: ak.Array, *, time_name: str = "time", evtid_name: str = "evtid") -> ak.Array:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Callable
 
 import awkward as ak
 import numpy as np
@@ -8,6 +9,46 @@ from lgdo import Array
 from numpy.typing import ArrayLike
 
 log = logging.getLogger(__name__)
+
+
+def apply_energy_resolution(
+    energies: ak.Array, channels: ak.Array, tcm_tables: dict, reso_pars: dict, reso_func: Callable
+):
+    """Apply the energy resolution sampling to an array with many channels.
+
+    Parameters
+    ----------
+    energies
+        the energies to smear
+    channels
+        the channel index for each energy
+    tcm_tables
+        the mapping from indices to channel names.
+    reso_pars
+        the pars for each channel.
+    reso_func
+        the function to compute the resolution.
+    """
+    n_pars = len(reso_pars[next(iter(reso_pars))])
+
+    pars_shaped = []
+
+    for _ in range(n_pars):
+        pars_shaped.append(np.zeros(len(ak.flatten(channels))))
+
+    num = ak.num(channels, axis=-1)
+
+    for key in tcm_tables:
+        for i in range(n_pars):
+            pars_shaped[i][ak.flatten(channels) == key] = reso_pars[tcm_tables[key].split("/")[-1]][
+                i
+            ]
+
+    ch_reso = reso_func(energies, *pars_shaped)
+
+    energies_flat_smear = gaussian_sample(ak.flatten(energies), ch_reso)
+
+    return ak.unflatten(energies_flat_smear, num)
 
 
 def gaussian_sample(mu: ArrayLike, sigma: ArrayLike | float, *, seed: int = 999) -> Array:
