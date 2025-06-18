@@ -111,7 +111,7 @@ class GLMIterator:
 
         # heuristics for a good buffer length
         if self.use_glm:
-            self.buffer = int(buffer * glm_n_rows / stp_n_rows)
+            self.buffer = int(buffer * glm_n_rows / (1 + stp_n_rows))
             msg = f"Number of stp rows {stp_n_rows}, number of glm rows {glm_n_rows} changing buffer from {buffer} to {self.buffer}"
             log.debug(msg)
 
