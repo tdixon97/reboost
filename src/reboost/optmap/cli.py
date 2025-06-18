@@ -171,7 +171,7 @@ def optical_cli() -> None:
     convolve_parser.add_argument(
         "--dist-mode",
         action="store",
-        default="multinomial+no-fano",
+        default="poisson+no-fano",
     )
     convolve_parser.add_argument("--output", help="output hit LH5 file", metavar="OUTPUT_HIT")
 

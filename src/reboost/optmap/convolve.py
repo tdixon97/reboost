@@ -80,7 +80,7 @@ def iterate_stepwise_depositions(
     optmap_for_convolve,
     scint_mat_params: sc.ComputedScintParams,
     rng: np.random.Generator = None,
-    dist: str = "multinomial",
+    dist: str = "poisson",
     mode: str = "no-fano",
 ):
     # those np functions are not supported by numba, but needed for efficient array access below.
@@ -345,7 +345,7 @@ def convolve(
     material: str,
     output_file: str | None = None,
     buffer_len: int = int(1e6),
-    dist_mode: str = "multinomial+no-fano",
+    dist_mode: str = "poisson+no-fano",
 ):
     if material not in ["lar", "pen"]:
         msg = f"unknown material {material} for scintillation"
@@ -362,13 +362,18 @@ def convolve(
             (1 * pint.get_application_registry().ns),  # dummy!
         )
 
-    log.info("opening map %s", map_file)
-    optmap_for_convolve = open_optmap(map_file)
-
     # special handling of distributions and flags.
     dist, mode = dist_mode.split("+")
-    assert dist in ("multinomial", "poisson")
-    assert mode in ("", "no-fano")
+    if (
+        dist not in ("multinomial", "poisson")
+        or mode not in ("", "no-fano")
+        or (dist == "poisson" and mode != "no-fano")
+    ):
+        msg = f"unsupported statistical distribution {dist_mode} for scintillation emission"
+        raise ValueError(msg)
+
+    log.info("opening map %s", map_file)
+    optmap_for_convolve = open_optmap(map_file)
 
     log.info("opening energy deposition hit output %s", edep_file)
     it = LH5Iterator(edep_file, edep_path, buffer_len=buffer_len)
