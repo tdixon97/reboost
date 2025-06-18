@@ -5,13 +5,75 @@ import time
 from typing import Any
 
 import awkward as ak
+import numpy as np
 from dbetto import AttrsDict
+from lgdo import lh5
 from lgdo.types import LGDO, Table
 
 from . import utils
 from .profile import ProfileDict
 
 log = logging.getLogger(__name__)
+
+
+def read_data_at_channel_as_ak(
+    channels: ak.Array, rows: ak.Array, file: str, field: str, tab_map: dict
+) -> ak.Array:
+    r"""Read the data from a particular field to an awkward array. This replaces the TCM like object defined by the channels and rows with the corresponding data field.
+
+    Parameters
+    ----------
+    channels
+        Array of the channel indices
+    rows
+        Array of the rows in the hit files.
+    file
+        File to read from.
+    tab_map
+        mapping between indices and table names.
+
+    Returns
+    -------
+    an array with the data.
+    """
+    table_keys = list(tab_map.keys())
+
+    # initialise the output
+    data_flat = None
+    tcm_rows_full = None
+
+    # save the unflattening
+    reorder = ak.num(rows)
+
+    for key in table_keys:
+        # get the rows to read
+        idx = np.array(ak.flatten(rows[channels == key]))
+        arg_idx = np.argsort(idx)
+
+        # get the rows in the flattened data we want to append to
+        tcm_rows = np.where(ak.flatten(channels == key))[0]
+        tab_name = tab_map[key]
+
+        # read the data with sorted idx
+        data_ch = lh5.read(f"{tab_name}/{field}", file, idx=idx[arg_idx]).view_as("ak")
+
+        # sort back to order for tcm
+        data_ch = data_ch[np.argsort(arg_idx)]
+
+        # append to output
+        data_flat = ak.concatenate((data_flat, data_ch)) if data_flat is not None else data_ch
+        tcm_rows_full = (
+            np.concatenate((tcm_rows_full, tcm_rows)) if tcm_rows_full is not None else tcm_rows
+        )
+
+    if len(data_flat) != len(tcm_rows_full):
+        msg = "every index in the tcm should have been read"
+        raise ValueError(msg)
+
+    # sort the final data
+    data_flat = data_flat[np.argsort(tcm_rows_full)]
+
+    return ak.unflatten(data_flat, reorder)
 
 
 def evaluate_output_column(

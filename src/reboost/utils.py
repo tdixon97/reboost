@@ -18,6 +18,14 @@ from .profile import ProfileDict
 log = logging.getLogger(__name__)
 
 
+def get_table_names(tcm: VectorOfVectors) -> dict:
+    """Extract table names from tcm.attrs['tables'] and return them as a dictionary."""
+    raw = tcm.attrs["tables"]
+    cleaned = raw.strip("[]").replace(" ", "").replace("'", "")
+    tables = cleaned.split(",")
+    return dict(tables)
+
+
 def get_wo_mode(
     group: int, out_det: int, in_det: int, chunk: int, new_hit_file: bool, overwrite: bool = False
 ) -> str:
