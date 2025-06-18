@@ -30,9 +30,9 @@ def get_wo_mode(
         return "overwrite_file" if overwrite else "write_safe"
 
     # if we have a detector not the first and chunk 0 append column
-    is_append = ((in_det > 0) or (out_det > 0)) & (chunk == 0)
-    is_append = is_append or (in_det == 0 and out_det == 0 and chunk == 0 and group > 0)
-    if is_append:
+    is_ac = ((in_det > 0) or (out_det > 0)) & (chunk == 0)
+    is_ac = is_ac or (in_det == 0 and out_det == 0 and chunk == 0 and (group > 0) and new_hit_file)
+    if is_ac:
         return "append_column"
     return "append"
 
