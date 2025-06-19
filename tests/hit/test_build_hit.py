@@ -179,6 +179,60 @@ def test_file_merging(test_gen_lh5, tmptestdir):
     assert len(hits) == 4
 
 
+def test_multi_file(test_gen_lh5, tmptestdir):
+    outfile = [f"{tmptestdir}/basic_hit_t0.lh5", f"{tmptestdir}/basic_hit_t1.lh5"]
+
+    reboost.build_hit(
+        f"{Path(__file__).parent}/configs/basic.yaml",
+        args={},
+        stp_files=[test_gen_lh5, test_gen_lh5],
+        glm_files=None,
+        hit_files=outfile,
+        overwrite=True,
+    )
+
+    for file in outfile:
+        assert lh5.ls(file) == ["hit", "vtx"]
+
+        hits = lh5.read("hit/det1", file).view_as("ak")
+
+        assert len(hits) == 2
+
+
+def test_overwrite(test_gen_lh5, tmptestdir):
+    # test with two output files
+    outfile = [f"{tmptestdir}/basic_hit_t0.lh5", f"{tmptestdir}/basic_hit_t1.lh5"]
+
+    reboost.build_hit(
+        f"{Path(__file__).parent}/configs/basic.yaml",
+        args={},
+        stp_files=[test_gen_lh5, test_gen_lh5],
+        glm_files=None,
+        hit_files=outfile,
+        overwrite=True,
+    )
+    for file in outfile:
+        assert lh5.ls(file) == ["hit", "vtx"]
+
+        hits = lh5.read("hit/det1", file).view_as("ak")
+
+        assert len(hits) == 2
+
+    outfile = f"{tmptestdir}/basic_hit_merged.lh5"
+
+    reboost.build_hit(
+        f"{Path(__file__).parent}/configs/basic.yaml",
+        args={},
+        stp_files=[test_gen_lh5, test_gen_lh5],
+        glm_files=None,
+        hit_files=outfile,
+        overwrite=True,
+    )
+    assert lh5.ls(outfile) == ["hit", "vtx"]
+    hits = lh5.read("hit/det1", outfile).view_as("ak")
+    assert len(hits) == 4
+
+
 def test_full_chain(test_gen_lh5, tmptestdir):
     args = dbetto.AttrsDict(
         {

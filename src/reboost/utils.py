@@ -20,8 +20,35 @@ log = logging.getLogger(__name__)
 
 def get_wo_mode(
     group: int, out_det: int, in_det: int, chunk: int, new_hit_file: bool, overwrite: bool = False
-):
-    """Get the mode for lh5 file writing."""
+) -> str:
+    """Get the mode for lh5 file writing.
+
+    If all indices are 0 and we are writing a new output file
+    then the mode "overwrite_file" is used (if the overwrite) flag
+    is set, otherwise the mode "write_safe" is used.
+
+    Otherwise the code choses between "append_column" if this is the
+    first time a group is being written to the file, or "append"
+
+    Parameters
+    ----------
+    group
+        the index of the processing group
+    out_det
+        the index of the output detector
+    in_det
+        the index of the input detector
+    chunk
+        the chunk index
+    new_hit_file
+        a flag of whether we are writing a new hit file
+    overwrite
+        a flag of whether to overwrite the old file.
+
+    Returns
+    -------
+    the mode for IO
+    """
     indices = [group, out_det, in_det, chunk]
 
     good_idx = all(i == 0 for i in indices)
@@ -31,8 +58,9 @@ def get_wo_mode(
 
     # if we have a detector not the first and chunk 0 append column
     is_ac = ((in_det > 0) or (out_det > 0)) & (chunk == 0)
-    is_ac = is_ac or (in_det == 0 and out_det == 0 and chunk == 0 and (group > 0) and new_hit_file)
-    if is_ac:
+    is_ac = is_ac or (in_det == 0 and out_det == 0 and chunk == 0 and (group > 0))
+
+    if is_ac and new_hit_file:
         return "append_column"
     return "append"
 

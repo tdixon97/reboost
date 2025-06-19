@@ -122,6 +122,7 @@ def test_wo_mode():
     assert get_wo_mode(0, 0, 0, 0, True, overwrite=False) == "write_safe"
     assert get_wo_mode(0, 0, 1, 0, True, overwrite=False) == "append_column"
     assert get_wo_mode(0, 0, 1, 1, True, overwrite=False) == "append"
+    assert get_wo_mode(0, 0, 1, 0, False, overwrite=False) == "append"
 
 
 def test_get_files_dict():
