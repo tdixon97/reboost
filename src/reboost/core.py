@@ -60,7 +60,7 @@ def read_data_at_channel_as_ak(
     for tab_name, key in tab_map.items():
         # get the rows to read
 
-        idx = np.array(ak.flatten(rows[channels == key]))
+        idx = ak.flatten(rows[channels == key]).to_numpy()
         arg_idx = np.argsort(idx)
 
         # get the rows in the flattened data we want to append to
