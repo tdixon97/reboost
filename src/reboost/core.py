@@ -38,20 +38,18 @@ def read_data_at_channel_as_ak(
 
         .. code:: python
 
-            {UID: NAME}
+            {NAME: UID}
 
         For example:
 
         .. code:: python
 
-            {1: "det001", 2: "det002"}
+            {"det001": 1, "det002": 2}
 
     Returns
     -------
     an array with the data, of the same same as the channels and rows.
     """
-    table_keys = list(tab_map.keys())
-
     # initialise the output
     data_flat = None
     tcm_rows_full = None
@@ -59,7 +57,7 @@ def read_data_at_channel_as_ak(
     # save the unflattening
     reorder = ak.num(rows)
 
-    for key in table_keys:
+    for tab_name, key in tab_map.items():
         # get the rows to read
 
         idx = np.array(ak.flatten(rows[channels == key]))
@@ -67,7 +65,6 @@ def read_data_at_channel_as_ak(
 
         # get the rows in the flattened data we want to append to
         tcm_rows = np.where(ak.flatten(channels == key))[0]
-        tab_name = tab_map[key]
 
         # read the data with sorted idx
         data_ch = lh5.read(f"{group}/{tab_name}/{field}", file, idx=idx[arg_idx]).view_as("ak")

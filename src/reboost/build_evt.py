@@ -4,10 +4,11 @@ import logging
 
 import awkward as ak
 import numpy as np
-from dbetto import AttrsDict, TextDB
+from dbetto import AttrsDict
 from lgdo import Array, Table, VectorOfVectors, lh5
 
 from . import core, math, shape, utils
+from .shape import group
 
 log = logging.getLogger(__name__)
 
@@ -16,10 +17,10 @@ def build_evt(
     tcm: VectorOfVectors,
     hitfile: str,
     outfile: str | None,
-    meta: TextDB,
+    channel_groups: AttrsDict,
     pars: AttrsDict,
     run_part: AttrsDict,
-) -> ak.Array | None:
+) -> Table | None:
     """Build events out of a TCM.
 
     Parameters
@@ -29,13 +30,45 @@ def build_evt(
     hitfile
         file with the hits.
     outfile
-        the path to the output-file.
-    meta
-        the metadata database
+        the path to the output-file, if `None` with return
+        the events in memory.
+    channel_groups
+        a dictionary of groups of channels. For example:
+
+        ..code :: python
+            {
+                "det1": "on",
+                "det2": "off",
+                "det3": "ac
+            }
     pars
-        extra parameters
+        a dictionary of parameters, the first key should
+        be the run and then different sets of parameters
+        can be arranged in groups. Run numbers should
+        be given in the format "p00-r001" etc.
+
+         For example:
+
+        ..code :: python
+            {
+                "p03-r000": {
+                        "reso": {
+                                    "det1": [1,2],
+                                    "det2": [0,1]
+                                }
+                }
+            }
+
     run_part
-        the run partitioning file.
+        the run partitioning file giving the number of events
+        for each run. This should be organised as a
+        dictionary with the following format:
+
+        ..code :: python
+            {
+                "p03-r000": 1000,
+                "p03-r001": 2000
+            }
     """
     tcm_tables = utils.get_table_names(tcm)
     tcm_ak = tcm.view_as("ak")
@@ -53,13 +86,11 @@ def build_evt(
 
         tcm_tmp = tcm_ak[cum_sum : cum_sum + n_event]
 
-        # get the channel map
-        timestamp = meta.datasets.runinfo[period][run].phy.start_key
-        chmap = meta.channelmap(timestamp)
-
         # usabilities
 
-        is_off = shape.group.get_isin_group(tcm_tmp.table_key, chmap, tcm_tables, group="off")
+        is_off = shape.group.get_isin_group(
+            tcm_tmp.table_key, channel_groups, tcm_tables, group="off"
+        )
 
         # filter out off channels
         channels = tcm_tmp.table_key[~is_off]
@@ -69,10 +100,12 @@ def build_evt(
         out_tab.add_field("row_in_table", VectorOfVectors(rows))
 
         # now check for channels in ac
-        is_good = shape.group.get_isin_group(channels, chmap, tcm_tables, group="on")
+        is_good = group.get_isin_group(channels, channel_groups, tcm_tables, group="on")
 
         # get energy
-        energy_true = core.read_data_at_channel(channels, rows, hitfile, "energy", tcm_tables)
+        energy_true = core.read_data_at_channel_as_ak(
+            channels, rows, hitfile, "energy", "hit", tcm_tables
+        )
 
         energy = math.stats.apply_energy_resolution(
             energy_true,
@@ -102,4 +135,4 @@ def build_evt(
                 else out_tab.view_as("ak")
             )
 
-    return tab
+    return Table(tab)

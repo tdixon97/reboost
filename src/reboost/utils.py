@@ -24,7 +24,8 @@ def get_table_names(tcm: VectorOfVectors) -> dict:
     cleaned = raw.strip("[]").replace(" ", "").replace("'", "")
     tables = cleaned.split(",")
     tables = [tab.split("/")[-1] for tab in tables]
-    return dict(enumerate(tables))
+
+    return {name: idx for idx, name in enumerate(tables)}
 
 
 def get_wo_mode(

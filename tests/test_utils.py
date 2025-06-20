@@ -223,5 +223,5 @@ def test_table_names():
     tcm = VectorOfVectors([[]], attrs={"tables": names})
 
     table_names = get_table_names(tcm)
-    assert table_names[0] == "det001"
-    assert table_names[1] == "det002"
+    assert table_names["det001"] == 0
+    assert table_names["det002"] == 1
