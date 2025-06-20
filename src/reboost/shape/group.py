@@ -39,7 +39,7 @@ def get_isin_group(channels: ArrayLike, groups: AttrsDict, tcm_tables: dict, gro
     -------
     an awkward array of the same shape of channels of booleans.
     """
-    usability = {key: groups[tab.split("/")[-1]] for key, tab in tcm_tables.items()}
+    usability = {key: groups[tab] for key, tab in tcm_tables.items()}
     group_idx = [key for key, item in usability.items() if item == group]
 
     return isin(channels, group_idx)

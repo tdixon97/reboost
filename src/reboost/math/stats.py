@@ -11,10 +11,10 @@ from numpy.typing import ArrayLike
 log = logging.getLogger(__name__)
 
 
-def apply_energy_resolution(
+def get_resolution(
     energies: ak.Array, channels: ak.Array, tcm_tables: dict, reso_pars: dict, reso_func: Callable
-):
-    """Apply the energy resolution sampling to an array with many channels.
+) -> ak.Array:
+    """Get the resolution for each energy.
 
     Parameters
     ----------
@@ -38,20 +38,41 @@ def apply_energy_resolution(
 
     num = ak.num(channels, axis=-1)
 
-    for key in tcm_tables:
+    for key, value in tcm_tables.items():
         for i in range(n_pars):
-            pars_shaped[i][ak.flatten(channels) == key] = reso_pars[tcm_tables[key].split("/")[-1]][
-                i
-            ]
+            pars_shaped[i][ak.flatten(channels) == value] = reso_pars[key][i]
 
-    ch_reso = reso_func(energies, *pars_shaped)
+    ch_reso = reso_func(ak.flatten(energies), *pars_shaped)
+    return ak.unflatten(ch_reso, num)
 
-    energies_flat_smear = gaussian_sample(ak.flatten(energies), ch_reso)
+
+def apply_energy_resolution(
+    energies: ak.Array, channels: ak.Array, tcm_tables: dict, reso_pars: dict, reso_func: Callable
+):
+    """Apply the energy resolution sampling to an array with many channels.
+
+    Parameters
+    ----------
+    energies
+        the energies to smear
+    channels
+        the channel index for each energy
+    tcm_tables
+        the mapping from indices to channel names.
+    reso_pars
+        the pars for each channel.
+    reso_func
+        the function to compute the resolution.
+    """
+    num = ak.num(channels, axis=-1)
+
+    ch_reso = get_resolution(energies, channels, tcm_tables, reso_pars, reso_func)
+    energies_flat_smear = gaussian_sample(ak.flatten(energies), ak.flatten(ch_reso))
 
     return ak.unflatten(energies_flat_smear, num)
 
 
-def gaussian_sample(mu: ArrayLike, sigma: ArrayLike | float, *, seed: int = 999) -> Array:
+def gaussian_sample(mu: ArrayLike, sigma: ArrayLike | float, *, seed: int | None = None) -> Array:
     r"""Generate samples from a gaussian.
 
     Based on:

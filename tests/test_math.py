@@ -98,3 +98,28 @@ def test_sample():
     # sigma float
     samples = stats.gaussian_sample([1, 2, 3], 0.1)
     assert isinstance(samples, Array)
+
+
+def test_energy_res():
+    energy = ak.Array([[100, 100], [200], [300, 100, 100]])
+    channels = ak.Array([[0, 1], [1], [2, 0, 1]])
+
+    tcm_tables = {"det000": 0, "det001": 1, "det002": 2}
+
+    reso_pars = {"det000": [1, 0], "det001": [1, 0.01], "det002": [2, 0.05]}
+
+    def reso_func(energy, p0, p1):
+        return np.sqrt(energy * p1 + p0)
+
+    reso = stats.get_resolution(energy, channels, tcm_tables, reso_pars, reso_func)
+
+    assert len(reso) == len(energy)
+    assert ak.all(ak.num(reso, axis=-1) == ak.num(energy, axis=-1))
+
+    # test a few values
+    assert reso[0][0] == np.sqrt(100 * 0 + 1)
+    assert reso[0][1] == np.sqrt(100 * 0.01 + 1)
+
+    smeared = stats.apply_energy_resolution(energy, channels, tcm_tables, reso_pars, reso_func)
+    assert len(smeared) == len(energy)
+    assert ak.all(ak.num(smeared, axis=-1) == ak.num(energy, axis=-1))

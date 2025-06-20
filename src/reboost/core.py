@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 
 def read_data_at_channel_as_ak(
-    channels: ak.Array, rows: ak.Array, file: str, field: str, tab_map: dict[int, str]
+    channels: ak.Array, rows: ak.Array, file: str, field: str, group: str, tab_map: dict[int, str]
 ) -> ak.Array:
     r"""Read the data from a particular field to an awkward array. This replaces the TCM like object defined by the channels and rows with the corresponding data field.
 
@@ -31,18 +31,20 @@ def read_data_at_channel_as_ak(
         File to read the data from.
     field
         the field to read.
+    group
+        the group to read data from (eg. `hit` or `stp`.)
     tab_map
         mapping between indices and table names. Of the form:
 
         .. code:: python
 
-            {UID: FULL_NAME}
+            {UID: NAME}
 
         For example:
 
         .. code:: python
 
-            {1: "hit/det001", 2: "hit/det002"}
+            {1: "det001", 2: "det002"}
 
     Returns
     -------
@@ -68,7 +70,7 @@ def read_data_at_channel_as_ak(
         tab_name = tab_map[key]
 
         # read the data with sorted idx
-        data_ch = lh5.read(f"{tab_name}/{field}", file, idx=idx[arg_idx]).view_as("ak")
+        data_ch = lh5.read(f"{group}/{tab_name}/{field}", file, idx=idx[arg_idx]).view_as("ak")
 
         # sort back to order for tcm
         data_ch = data_ch[np.argsort(arg_idx)]
