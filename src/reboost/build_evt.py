@@ -35,40 +35,34 @@ def build_evt(
     channel_groups
         a dictionary of groups of channels. For example:
 
-        ..code :: python
-            {
-                "det1": "on",
-                "det2": "off",
-                "det3": "ac
-            }
+        .. code-block:: python
+
+            {"det1": "on", "det2": "off", "det3": "ac"}
+
     pars
-        a dictionary of parameters, the first key should
-        be the run and then different sets of parameters
-        can be arranged in groups. Run numbers should
-        be given in the format "p00-r001" etc.
+        A dictionary of parameters. The first key should
+        be the run ID, followed by different sets of parameters
+        arranged in groups. Run numbers should be given in the
+        format `"p00-r001"`, etc.
 
-         For example:
+        For example:
 
-        ..code :: python
-            {
-                "p03-r000": {
-                        "reso": {
-                                    "det1": [1,2],
-                                    "det2": [0,1]
-                                }
-                }
-            }
+        .. code-block:: python
+
+            {"p03-r000": {"reso": {"det1": [1, 2], "det2": [0, 1]}}}
 
     run_part
-        the run partitioning file giving the number of events
-        for each run. This should be organised as a
-        dictionary with the following format:
+        The run partitioning file giving the number of events
+        for each run. This should be organized as a dictionary
+        with the following format:
 
-        ..code :: python
-            {
-                "p03-r000": 1000,
-                "p03-r001": 2000
-            }
+        .. code-block:: python
+
+            {"p03-r000": 1000, "p03-r001": 2000}
+
+    Returns
+    -------
+    the event file in memory as a table if no output file is specified.
     """
     tcm_tables = utils.get_table_names(tcm)
     tcm_ak = tcm.view_as("ak")
