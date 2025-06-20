@@ -102,7 +102,7 @@ def test_isin_group():
     chan_list = [4]
     assert ak.all(group.isin(channels, chan_list) == ak.Array([[0, 0, 0], [1, 0]]))
 
-    tcm_tables = {1: "det001", 2: "det002", 3: "det003"}
+    tcm_tables = {"det001": 1, "det002": 2, "det003": 3}
     channels = ak.Array([[1, 2], [1], [3]])
     groups = {"det001": "on", "det002": "on", "det003": "off"}
     off = group.get_isin_group(channels, groups, tcm_tables, group="off")

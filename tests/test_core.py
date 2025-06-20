@@ -87,7 +87,7 @@ def test_read_data_at_channel(hitfiles):
     tcm_rows = ak.Array([[0], [1], [2, 0], [1], [2], [3, 3], [4], [5]])
 
     energy = reboost.core.read_data_at_channel_as_ak(
-        tcm_channels, tcm_rows, hitfiles[2], "energy", {0: "hit/det001", 1: "hit/det002"}
+        tcm_channels, tcm_rows, hitfiles[2], "energy", "hit", {"det001": 0, "det002": 1}
     )
 
     # check the same
@@ -101,7 +101,7 @@ def test_read_data_at_channel(hitfiles):
 
     # also check for VoV
     times = reboost.core.read_data_at_channel_as_ak(
-        tcm_channels, tcm_rows, hitfiles[2], "times", {0: "hit/det001", 1: "hit/det002"}
+        tcm_channels, tcm_rows, hitfiles[2], "times", "hit", {"det001": 0, "det002": 1}
     )
     assert len(times) == len(tcm_channels)
 
