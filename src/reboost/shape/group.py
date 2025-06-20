@@ -21,7 +21,9 @@ def isin(channels: ak.Array, chan_list: list):
     return ak.unflatten(isin, num_channels)
 
 
-def get_isin_group(channels: ArrayLike, groups: AttrsDict, tcm_tables: dict, group: str = "off"):
+def get_isin_group(
+    channels: ArrayLike, groups: AttrsDict, tcm_tables: dict, group: str = "off"
+) -> ak.Array:
     """For each channel check if it is in the group.
 
     Parameters
