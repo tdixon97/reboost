@@ -39,7 +39,8 @@ The first step of event building is to gather data from the various tiers.
 This can be done with {func}`reboost.core.read_data_at_channel_as_ak`. This will
 return the data as a {class}`awkward.Array` with the same shape as the TCM.
 
-From this more manipulation can be applied using awkward manipulations.
+From this more manipulation can be applied using awkward manipulations, or custom
+written processors.
 
 ## Filtering channels
 
