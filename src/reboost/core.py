@@ -17,24 +17,36 @@ log = logging.getLogger(__name__)
 
 
 def read_data_at_channel_as_ak(
-    channels: ak.Array, rows: ak.Array, file: str, field: str, tab_map: dict
+    channels: ak.Array, rows: ak.Array, file: str, field: str, tab_map: dict[int, str]
 ) -> ak.Array:
     r"""Read the data from a particular field to an awkward array. This replaces the TCM like object defined by the channels and rows with the corresponding data field.
 
     Parameters
     ----------
     channels
-        Array of the channel indices
+        Array of the channel indices (uids).
     rows
-        Array of the rows in the hit files.
+        Array of the rows in the files to gather data from.
     file
-        File to read from.
+        File to read the data from.
+    field
+        the field to read.
     tab_map
-        mapping between indices and table names.
+        mapping between indices and table names. Of the form:
+
+        .. code:: python
+
+            {UID: FULL_NAME}
+
+        For example:
+
+        .. code:: python
+
+            {1: "hit/det001", 2: "hit/det002"}
 
     Returns
     -------
-    an array with the data.
+    an array with the data, of the same same as the channels and rows.
     """
     table_keys = list(tab_map.keys())
 
@@ -47,6 +59,7 @@ def read_data_at_channel_as_ak(
 
     for key in table_keys:
         # get the rows to read
+
         idx = np.array(ak.flatten(rows[channels == key]))
         arg_idx = np.argsort(idx)
 

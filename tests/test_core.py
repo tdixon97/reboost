@@ -11,7 +11,7 @@ import pygeomtools
 import pytest
 from dbetto import AttrsDict
 from legendtestdata import LegendTestData
-from lgdo import Array, Table
+from lgdo import Array, Struct, Table, VectorOfVectors, lh5
 
 import reboost
 
@@ -52,6 +52,58 @@ def make_gdml(test_data_configs):
     w.write(f"{test_data_configs}/geometry.gdml")
 
     return f"{test_data_configs}/geometry.gdml"
+
+
+@pytest.fixture(scope="module")
+def hitfiles(tmptestdir):
+    # make some hit tier files
+    channel1 = Table(
+        {
+            "energy": Array([100, 200, 400, 300]),
+            "times": VectorOfVectors([[0.1], [0.2, 0.3], [0.4, 98], [2]]),
+        }
+    )
+    channel2 = Table(
+        {
+            "energy": Array([10, 70, 0, 56, 400, 400]),
+            "times": VectorOfVectors([[12], [], [-0.4, 0.4], [89], [1], [2]]),
+        }
+    )
+
+    lh5.write(Struct({"det001": channel1}), "hit", f"{tmptestdir}/hit_file_test.lh5", wo_mode="of")
+    lh5.write(
+        Struct({"det002": channel2}),
+        "hit",
+        f"{tmptestdir}/hit_file_test.lh5",
+        wo_mode="append_column",
+    )
+
+    return channel1.view_as("ak"), channel2.view_as("ak"), f"{tmptestdir}/hit_file_test.lh5"
+
+
+def test_read_data_at_channel(hitfiles):
+    # make a TCM
+    tcm_channels = ak.Array([[0], [0], [0, 1], [1], [1], [0, 1], [1], [1]])
+    tcm_rows = ak.Array([[0], [1], [2, 0], [1], [2], [3, 3], [4], [5]])
+
+    energy = reboost.core.read_data_at_channel_as_ak(
+        tcm_channels, tcm_rows, hitfiles[2], "energy", {0: "hit/det001", 1: "hit/det002"}
+    )
+
+    # check the same
+    assert len(energy) == len(tcm_channels)
+    assert ak.all(ak.num(energy, axis=-1) == ak.num(tcm_channels, axis=-1))
+
+    # check the data itself
+    assert energy[0] == hitfiles[0].energy[0]
+    assert energy[1] == hitfiles[0].energy[1]
+    assert ak.all(energy[2] == [hitfiles[0].energy[2], hitfiles[1].energy[0]])
+
+    # also check for VoV
+    times = reboost.core.read_data_at_channel_as_ak(
+        tcm_channels, tcm_rows, hitfiles[2], "times", {0: "hit/det001", 1: "hit/det002"}
+    )
+    assert len(times) == len(tcm_channels)
 
 
 def test_get_objects(test_data_configs, make_gdml):
