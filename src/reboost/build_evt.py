@@ -95,9 +95,11 @@ def build_evt(
         # filter out off channels
         channels = tcm_tmp.table_key[~is_off]
         rows = tcm_tmp.row_in_table[~is_off]
-
         out_tab.add_field("channel", VectorOfVectors(channels))
         out_tab.add_field("row_in_table", VectorOfVectors(rows))
+
+        out_tab.add_field("period", Array(np.ones(len(channels)) * int(period[1:])))
+        out_tab.add_field("run", Array(np.ones(len(channels)) * int(run[1:])))
 
         # now check for channels in ac
         is_good = group.get_isin_group(channels, channel_groups, tcm_tables, group="on")
@@ -118,7 +120,7 @@ def build_evt(
         out_tab.add_field("is_good", VectorOfVectors(is_good[energy > 25]))
 
         out_tab.add_field("energy", VectorOfVectors(energy[energy > 25]))
-        out_tab.add_field("multiplicity", Array(ak.sum(energy > 25, axis=-1)))
+        out_tab.add_field("multiplicity", Array(ak.sum(energy > 25, axis=-1).to_numpy()))
 
         # write table
         wo_mode = "of" if idx == 0 else "append"
