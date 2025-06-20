@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from lgdo.types import Array, Table
+from lgdo.types import Array, Table, VectorOfVectors
 
 import reboost
 from reboost.shape import group
@@ -15,6 +15,7 @@ from reboost.utils import (
     copy_units,
     get_file_dict,
     get_function_string,
+    get_table_names,
     get_wo_mode,
     merge_dicts,
 )
@@ -216,5 +217,11 @@ def test_units():
     assert reshaped.c.attrs["units"] == "keV"
 
 
-def test_get_channels():
-    pass
+def test_table_names():
+    names = "['hit/det001','hit/det002']"
+
+    tcm = VectorOfVectors([[]], attrs={"tables": names})
+
+    table_names = get_table_names(tcm)
+    assert table_names[0] == "det001"
+    assert table_names[1] == "det002"

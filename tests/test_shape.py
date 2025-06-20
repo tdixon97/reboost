@@ -93,6 +93,26 @@ def test_time_group():
     )
 
 
+def test_isin_group():
+    channels = ak.Array([[1, 2, 3], [4, 5]])
+    chan_list = [1, 2]
+
+    assert ak.all(group.isin(channels, chan_list) == ak.Array([[1, 1, 0], [0, 0]]))
+
+    chan_list = [4]
+    assert ak.all(group.isin(channels, chan_list) == ak.Array([[0, 0, 0], [1, 0]]))
+
+    tcm_tables = {1: "det001", 2: "det002", 3: "det003"}
+    channels = ak.Array([[1, 2], [1], [3]])
+    groups = {"det001": "on", "det002": "on", "det003": "off"}
+    off = group.get_isin_group(channels, groups, tcm_tables, group="off")
+
+    assert ak.all(off == ak.Array([[0, 0], [0], [1]]))
+
+    on = group.get_isin_group(channels, groups, tcm_tables, group="on")
+    assert ak.all(on == ak.Array([[1, 1], [1], [0]]))
+
+
 def test_cluster_basic():
     trackid = ak.Array([[1, 1, 1, 2, 2, 3, 3, 7], [2, 2, 2, 3, 3, 3], [1]])
 
