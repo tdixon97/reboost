@@ -1,17 +1,17 @@
 # Configuration file for the Sphinx documentation builder.
 from __future__ import annotations
 
+import importlib.metadata
 import sys
 from pathlib import Path
 
-from pkg_resources import get_distribution
 from sphinx.ext.napoleon.docstring import GoogleDocstring, NumpyDocstring
 
 sys.path.insert(0, Path(__file__).parents[2].resolve().as_posix())
 
 project = "reboost"
 copyright = "The LEGEND Collaboration"
-version = get_distribution("reboost").version
+version = importlib.metadata.version(("reboost")
 
 extensions = [
     "sphinx.ext.githubpages",
@@ -57,7 +57,7 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "pygama": ("https://pygama.readthedocs.io/en/stable/", None),
     "numpy": ("https://numpy.org/doc/stable", None),
-    "scipy": ("https://docs.scipy.org/doc/scipy/reference", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "pandas": ("https://pandas.pydata.org/docs", None),
     "matplotlib": ("https://matplotlib.org/stable", None),
     "pint": ("https://pint.readthedocs.io/en/stable", None),
