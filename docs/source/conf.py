@@ -11,7 +11,7 @@ sys.path.insert(0, Path(__file__).parents[2].resolve().as_posix())
 
 project = "reboost"
 copyright = "The LEGEND Collaboration"
-version = importlib.metadata.version(("reboost")
+version = importlib.metadata.version("reboost")
 
 extensions = [
     "sphinx.ext.githubpages",
