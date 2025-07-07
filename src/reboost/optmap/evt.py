@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from pathlib import Path
 
 import numpy as np
@@ -109,6 +109,15 @@ def build_optmap_evt(
         msg = f"output file {lh5_out_file_tmp} already exists after writing tmp output file"
         raise RuntimeError(msg)
     lh5_out_file_tmp.rename(lh5_out_file)
+
+
+def get_optical_detectors_from_geom(geom_fn) -> list[int]:
+    import pyg4ometry
+    import pygeomtools
+
+    geom_registry = pyg4ometry.gdml.Reader(geom_fn).getRegistry()
+    detectors = pygeomtools.get_all_sensvols(geom_registry)
+    return [d.uid for d in detectors.values() if d.detector_type == "optical"]
 
 
 def read_optmap_evt(lh5_file: str, buffer_len: int = int(5e6)) -> LH5Iterator:
