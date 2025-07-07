@@ -147,6 +147,7 @@ ignore = [
   "D213",     # Multi-line docstring summary should start at the first line
   "D401",     # Summary does not need to be in imperative mood
   "D413",     # No blank line after last section in docstring
+  "PLC0415",  # we sometimes use relative imports for performance reasons
   "PLC2401",  # We like non-ASCII characters for math
 ]
 isort.required-imports = ["from __future__ import annotations"]

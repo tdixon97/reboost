@@ -100,7 +100,7 @@ def dt_map_dummy(legendtestdata):
     data = lh5.read("V99000A", legendtestdata["lh5/hpge-drift-time-maps.lh5"])
     data = AttrsDict({k: data[k].view_as("np", with_units=True) for k in ("r", "z", "drift_time")})
 
-    nan_idx = np.where(data.drift_time.m == np.nan)
+    nan_idx = np.isnan(data.drift_time.m)
 
     dt_dummy_z = np.arange(0.1, 2, step=0.023)
     drift_time = np.tile(dt_dummy_z, 38).reshape((38, 83))
