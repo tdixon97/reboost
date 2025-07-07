@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 from lgdo import Array, Table, lh5
@@ -49,13 +51,13 @@ def tbl_hits(tmptestdir):
     hit_file = tmptestdir / "hit.lh5"
     lh5.write(tbl_vertices, name="vtx", lh5_file=hit_file, wo_mode="overwrite_file")
     lh5.write(tbl_optical, name="stp/optical", lh5_file=hit_file, wo_mode="overwrite")
-    return hit_file
+    return (str(hit_file),)
 
 
 def test_optmap_evt(tbl_hits, tmptestdir):
     evt_out_file = tmptestdir / "evt-out.lh5"
     build_optmap_evt(
-        str(tbl_hits),
+        tbl_hits[0],
         str(evt_out_file),
         detectors=("1", "002", "003"),
         buffer_len=20,  # note: shorter window sizes (e.g. 10) do not work.
@@ -87,43 +89,56 @@ def tbl_evt_fns(tmptestdir) -> tuple[str]:
 
 
 @pytest.mark.filterwarnings("ignore::scipy.optimize._optimize.OptimizeWarning")
-def test_optmap_create(tbl_evt_fns):
+@pytest.mark.parametrize("input_fixture", ["tbl_evt_fns", "tbl_hits"])
+def test_optmap_create(input_fixture, request):
     settings = {
         "range_in_m": [[0, 1], [0, 1], [0, 1]],
         "bins": [10, 10, 10],
     }
 
+    extra_params = {
+        "is_stp_file": input_fixture == "tbl_hits",
+        "geom_fn": (
+            f"{Path(__file__).parent}/test_optmap_dets.gdml" if input_fixture == "tbl_hits" else ""
+        ),
+    }
+    input_fixture = request.getfixturevalue(input_fixture)
+
     # test creation only with the summary map.
     create_optical_maps(
-        tbl_evt_fns,
+        input_fixture,
         settings,
         chfilter=(),
         output_lh5_fn=None,
+        **extra_params,
     )
 
     # test creation with all detectors.
     create_optical_maps(
-        tbl_evt_fns,
+        input_fixture,
         settings,
         chfilter=("001", "002", "003"),
         output_lh5_fn=None,
+        **extra_params,
     )
 
     # test creation with some detectors.
     create_optical_maps(
-        tbl_evt_fns,
+        input_fixture,
         settings,
         chfilter=("001"),
         output_lh5_fn=None,
+        **extra_params,
     )
 
     # test creation on multiple cores.
     create_optical_maps(
-        tbl_evt_fns,
+        input_fixture,
         settings,
         chfilter=("001", "002", "003"),
         output_lh5_fn=None,
         n_procs=2,
+        **extra_params,
     )
 
 
@@ -140,6 +155,7 @@ def test_optmap_merge(tbl_evt_fns, tmptestdir):
         settings,
         chfilter=("001", "002", "003"),
         output_lh5_fn=map1_fn,
+        is_stp_file=False,
     )
     map2_fn = str(tmptestdir / "map2.lh5")
     create_optical_maps(
@@ -147,6 +163,7 @@ def test_optmap_merge(tbl_evt_fns, tmptestdir):
         settings,
         chfilter=("001", "002", "003"),
         output_lh5_fn=map2_fn,
+        is_stp_file=False,
     )
 
     # test in sequential mode.
@@ -171,6 +188,7 @@ def test_optmap_rebin(tbl_evt_fns, tmptestdir):
         settings,
         chfilter=("001", "002", "003"),
         output_lh5_fn=map1_fn,
+        is_stp_file=False,
     )
 
     map_rebinned_fn = str(tmptestdir / "map-rebinned.lh5")
@@ -220,6 +238,7 @@ def test_optmap_convolve(tbl_evt_fns, tbl_edep, tmptestdir):
         settings,
         chfilter=("001"),
         output_lh5_fn=map_fn,
+        is_stp_file=False,
     )
 
     out_fn = str(tmptestdir / "convolved.lh5")
@@ -246,6 +265,7 @@ def test_optmap_save_and_load(tmptestdir, tbl_evt_fns):
         settings,
         chfilter=("001", "002", "003"),
         output_lh5_fn=map_fn,
+        is_stp_file=False,
     )
 
     assert list_optical_maps(map_fn) == ["_001", "_002", "_003", "all"]
