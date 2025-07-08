@@ -122,8 +122,10 @@ def test_basic(test_gen_lh5, tmptestdir):
     assert lh5.ls(outfile) == ["hit", "vtx"]
 
     with h5py.File(outfile) as h5f:
-        assert h5f["/hit/det1/energy"].shuffle is True
-        assert h5f["/hit/det1/energy"].compression == "lzf"
+        assert (
+            h5f["/hit/det1/energy"].id.get_create_plist().get_filter(0)[3]
+            == b"Zstandard compression: http://www.zstd.net"
+        )
 
     hits = lh5.read("hit/det1", outfile).view_as("ak")
 
