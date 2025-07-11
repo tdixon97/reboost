@@ -14,7 +14,12 @@ from numba import njit
 from numpy.typing import NDArray
 
 from ..log_utils import setup_log
-from .evt import EVT_TABLE_NAME, read_optmap_evt
+from .evt import (
+    EVT_TABLE_NAME,
+    generate_optmap_evt,
+    get_optical_detectors_from_geom,
+    read_optmap_evt,
+)
 from .optmap import OpticalMap
 
 log = logging.getLogger(__name__)
@@ -109,12 +114,13 @@ def _create_optical_maps_process_init(optmaps, log_level) -> None:
 
 
 def _create_optical_maps_process(
-    optmap_events_fn, buffer_len, all_det_ids, ch_idx_to_map_idx
+    optmap_events_fn, buffer_len, is_stp_file, all_det_ids, ch_idx_to_map_idx
 ) -> None:
     log.info("started worker task for %s", optmap_events_fn)
     x = _create_optical_maps_chunk(
         optmap_events_fn,
         buffer_len,
+        is_stp_file,
         all_det_ids,
         _shared_optmaps,
         ch_idx_to_map_idx,
@@ -124,9 +130,12 @@ def _create_optical_maps_process(
 
 
 def _create_optical_maps_chunk(
-    optmap_events_fn, buffer_len, all_det_ids, optmaps, ch_idx_to_map_idx
+    optmap_events_fn, buffer_len, is_stp_file, all_det_ids, optmaps, ch_idx_to_map_idx
 ) -> None:
-    optmap_events_it = read_optmap_evt(optmap_events_fn, buffer_len)
+    if not is_stp_file:
+        optmap_events_it = read_optmap_evt(optmap_events_fn, buffer_len)
+    else:
+        optmap_events_it = generate_optmap_evt(optmap_events_fn, all_det_ids, buffer_len)
 
     hits_per_primary = np.zeros(10, dtype=np.int64)
     hits_per_primary_len = 0
@@ -156,19 +165,24 @@ def create_optical_maps(
     optmap_events_fn: list[str],
     settings,
     buffer_len: int = int(5e6),
+    is_stp_file: bool = True,
     chfilter: tuple[str | int] | Literal["*"] = (),
     output_lh5_fn: str | None = None,
     after_save: Callable[[int, str, OpticalMap]] | None = None,
     check_after_create: bool = False,
     n_procs: int | None = 1,
+    geom_fn: str | None = None,
 ) -> None:
     """Create optical maps.
 
     Parameters
     ----------
     optmap_events_fn
-        list of filenames to lh5 files with a table ``/optmap_evt`` with columns ``{x,y,z}loc``
-        and one column (with numeric header) for each SiPM channel.
+        list of filenames to lh5 files, that can either be stp files from remage or "optmap-evt"
+        files with a table ``/optmap_evt`` with columns ``{x,y,z}loc`` and one column (with numeric
+        header) for each SiPM channel.
+    is_stp_file
+        if true, do convert a remage output file (stp file) on-the-fly to an optmap-evt file.
     chfilter
         tuple of detector ids that will be included in the resulting optmap. Those have to match
         the column names in ``optmap_events_fn``.
@@ -181,9 +195,13 @@ def create_optical_maps(
 
     use_shmem = n_procs is None or n_procs > 1
 
-    optmap_evt_columns = list(
-        lh5.read(EVT_TABLE_NAME, optmap_events_fn[0], start_row=0, n_rows=1).keys()
-    )  # peek into the (first) file to find column names.
+    if not is_stp_file:
+        optmap_evt_columns = list(
+            lh5.read(EVT_TABLE_NAME, optmap_events_fn[0], start_row=0, n_rows=1).keys()
+        )  # peek into the (first) file to find column names.
+    else:
+        optmap_evt_columns = [str(i) for i in get_optical_detectors_from_geom(geom_fn)]
+
     all_det_ids, optmaps, optmap_det_ids = _optmaps_for_channels(
         optmap_evt_columns, settings, chfilter=chfilter, use_shmem=use_shmem
     )
@@ -202,7 +220,9 @@ def create_optical_maps(
     if not use_shmem:
         for fn in optmap_events_fn:
             q.append(
-                _create_optical_maps_chunk(fn, buffer_len, all_det_ids, optmaps, ch_idx_to_map_idx)
+                _create_optical_maps_chunk(
+                    fn, buffer_len, is_stp_file, all_det_ids, optmaps, ch_idx_to_map_idx
+                )
             )
     else:
         ctx = mp.get_context("forkserver")
@@ -222,7 +242,7 @@ def create_optical_maps(
         for fn in optmap_events_fn:
             r = pool.apply_async(
                 _create_optical_maps_process,
-                args=(fn, buffer_len, all_det_ids, ch_idx_to_map_idx),
+                args=(fn, buffer_len, is_stp_file, all_det_ids, ch_idx_to_map_idx),
             )
             pool_results.append((r, fn))
 
@@ -401,6 +421,9 @@ def merge_optical_maps(
     hits_per_primary = np.zeros(10, dtype=np.int64)
     hits_per_primary_len = 0
     for optmap_fn in map_l5_files:
+        if "_hitcounts" not in lh5.ls(optmap_fn):
+            log.warning("skipping _hitcounts calculations, missing in file %s", optmap_fn)
+            return
         hitcounts = lh5.read("/_hitcounts", optmap_fn)
         assert isinstance(hitcounts, Array)
         hits_per_primary[0 : len(hitcounts)] += hitcounts
@@ -417,13 +440,18 @@ def merge_optical_maps(
 def check_optical_map(map_l5_file: str):
     """Run a health check on the map file.
 
-    This checks for consistency, and output details on map statistics.
+    This checks for consistency, and outputs details on map statistics.
     """
-    if lh5.read("_hitcounts_exp", lh5_file=map_l5_file).value != np.inf:
-        log.error("unexpected hitcount exp not equal to positive infinity")
+    if "_hitcounts_exp" not in lh5.ls(map_l5_file):
+        log.info("no _hitcounts_exp found")
+    elif lh5.read("_hitcounts_exp", lh5_file=map_l5_file).value != np.inf:
+        log.error("unexpected _hitcounts_exp not equal to positive infinity")
         return
-    if lh5.read("_hitcounts", lh5_file=map_l5_file).nda.shape != (2,):
-        log.error("unexpected hitcount shape")
+
+    if "_hitcounts" not in lh5.ls(map_l5_file):
+        log.info("no _hitcounts found")
+    elif lh5.read("_hitcounts", lh5_file=map_l5_file).nda.shape != (2,):
+        log.error("unexpected _hitcounts shape")
         return
 
     all_binning = None
@@ -477,4 +505,5 @@ def rebin_optical_maps(map_l5_file: str, output_lh5_file: str, factor: int):
 
     # just copy hitcounts exponent.
     for dset in ("_hitcounts_exp", "_hitcounts"):
-        lh5.write(lh5.read(dset, lh5_file=map_l5_file), dset, lh5_file=output_lh5_file)
+        if dset in lh5.ls(map_l5_file):
+            lh5.write(lh5.read(dset, lh5_file=map_l5_file), dset, lh5_file=output_lh5_file)

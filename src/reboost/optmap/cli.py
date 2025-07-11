@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
-from pathlib import Path
+
+import dbetto
 
 from ..log_utils import setup_log
 from ..utils import _check_input_file, _check_output_file
@@ -35,14 +35,18 @@ def optical_cli() -> None:
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # STEP 1: build evt file from hit tier
-    evt_parser = subparsers.add_parser("evt", help="build evt file from remage hit file")
-    evt_parser.add_argument(
-        "--detectors",
-        help="file that contains a list of detector ids that are part of the input file",
-        required=True,
+    # STEP 1: build evt file from stp tier
+    evt_parser = subparsers.add_parser("evt", help="build optmap-evt file from remage stp file")
+    evt_parser_det_group = evt_parser.add_mutually_exclusive_group(required=True)
+    evt_parser_det_group.add_argument(
+        "--geom",
+        help="GDML geometry file",
     )
-    evt_parser.add_argument("input", help="input hit LH5 file", metavar="INPUT_HIT")
+    evt_parser_det_group.add_argument(
+        "--detectors",
+        help="file with detector ids of all optical channels.",
+    )
+    evt_parser.add_argument("input", help="input stp LH5 file", metavar="INPUT_STP")
     evt_parser.add_argument("output", help="output evt LH5 file", metavar="OUTPUT_EVT")
 
     # STEP 2a: build map file from evt tier
@@ -55,7 +59,20 @@ def optical_cli() -> None:
     )
     map_parser.add_argument(
         "--detectors",
-        help="file that contains a list of detector ids that will be produced as additional output maps.",
+        help=(
+            "file that contains a list of detector ids that will be produced as additional output maps."
+            + "By default, all channels will be included."
+        ),
+    )
+    map_parser_det_group = map_parser.add_mutually_exclusive_group(required=True)
+    map_parser_det_group.add_argument(
+        "--geom",
+        help="GDML geometry file",
+    )
+    map_parser_det_group.add_argument(
+        "--evt",
+        action="store_true",
+        help="the input file is already an optmap-evt file.",
     )
     map_parser.add_argument(
         "--n-procs",
@@ -69,7 +86,9 @@ def optical_cli() -> None:
         action="store_true",
         help="""Check map statistics after creation. default: %(default)s""",
     )
-    map_parser.add_argument("input", help="input evt LH5 file", metavar="INPUT_EVT", nargs="+")
+    map_parser.add_argument(
+        "input", help="input stp or optmap-evt LH5 file", metavar="INPUT_EVT", nargs="+"
+    )
     map_parser.add_argument("output", help="output map LH5 file", metavar="OUTPUT_MAP")
 
     # STEP 2b: view maps
@@ -171,7 +190,7 @@ def optical_cli() -> None:
     convolve_parser.add_argument(
         "--dist-mode",
         action="store",
-        default="multinomial+no-fano",
+        default="poisson+no-fano",
     )
     convolve_parser.add_argument("--output", help="output hit LH5 file", metavar="OUTPUT_HIT")
 
@@ -188,15 +207,18 @@ def optical_cli() -> None:
 
     # STEP 1: build evt file from hit tier
     if args.command == "evt":
-        from .evt import build_optmap_evt
+        from .evt import build_optmap_evt, get_optical_detectors_from_geom
 
-        _check_input_file(parser, args.detectors)
         _check_input_file(parser, args.input)
         _check_output_file(parser, args.output)
 
-        # load detector ids from a JSON array
-        with Path.open(Path(args.detectors)) as detectors_f:
-            detectors = json.load(detectors_f)
+        # load detector ids from the geometry.
+        if args.geom is not None:
+            _check_input_file(parser, args.geom, "geometry")
+            detectors = get_optical_detectors_from_geom(args.geom)
+        else:
+            _check_input_file(parser, args.detectors, "detectors")
+            detectors = dbetto.utils.load_dict(args.detectors)
 
         build_optmap_evt(args.input, args.output, detectors, args.bufsize)
 
@@ -209,23 +231,23 @@ def optical_cli() -> None:
 
         # load settings for binning from config file.
         _check_input_file(parser, args.input, "settings")
-        with Path.open(Path(args.settings)) as settings_f:
-            settings = json.load(settings_f)
+        settings = dbetto.utils.load_dict(args.settings)
 
-        chfilter = ()
+        chfilter = "*"
         if args.detectors is not None:
-            # load detector ids from a JSON array
-            with Path.open(Path(args.detectors)) as detectors_f:
-                chfilter = json.load(detectors_f)
+            # load detector ids from a JSON/YAML array
+            chfilter = dbetto.utils.load_dict(args.detectors)
 
         create_optical_maps(
             args.input,
             settings,
             args.bufsize,
+            is_stp_file=(not args.evt),
             chfilter=chfilter,
             output_lh5_fn=args.output,
             check_after_create=args.check,
             n_procs=args.n_procs,
+            geom_fn=args.geom,
         )
 
     # STEP 2b: view maps
@@ -251,8 +273,7 @@ def optical_cli() -> None:
 
         # load settings for binning from config file.
         _check_input_file(parser, args.input, "settings")
-        with Path.open(Path(args.settings)) as settings_f:
-            settings = json.load(settings_f)
+        settings = dbetto.utils.load_dict(args.settings)
 
         _check_input_file(parser, args.input)
         _check_output_file(parser, args.output)

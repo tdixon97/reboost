@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<gdml xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://cern.ch/service-spi/app/releases/GDML/schema/gdml.xsd">
+  <materials></materials>
+  <solids>
+    <box name="world" x="20" y="20" z="20" lunit="m"/>
+  </solids>
+  <structure>
+    <volume name="world">
+      <materialref ref="G4_Galactic"/>
+      <solidref ref="world"/>
+    </volume>
+  </structure>
+	<userinfo>
+	  <auxiliary auxtype="RMG_detector_meta" auxvalue=""/>
+		<auxiliary auxtype="RMG_detector" auxvalue="optical">
+			<auxiliary auxtype="S01" auxvalue="001"/>
+			<auxiliary auxtype="S02" auxvalue="002"/>
+			<auxiliary auxtype="S03" auxvalue="003"/>
+		</auxiliary>
+	</userinfo>
+	<setup>
+	  <world ref="world" />
+	</setup>
+</gdml>

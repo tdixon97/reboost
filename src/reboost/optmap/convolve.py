@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 import legendoptics.scintillate as sc
 import numba
@@ -24,8 +25,8 @@ OPTMAP_SUM_CH = -2
 
 def open_optmap(optmap_fn: str):
     maps = lh5.ls(optmap_fn)
-    # TODO: rewrite logic to only accept _<number> instead of a blacklist
-    det_ntuples = [m for m in maps if m not in ("all", "_hitcounts", "_hitcounts_exp", "all_orig")]
+    # only accept _<number> (/all is read separately)
+    det_ntuples = [m for m in maps if re.match(r"_\d+$", m)]
     detids = np.array([int(m.lstrip("_")) for m in det_ntuples])
     detidx = np.arange(0, detids.shape[0])
 
@@ -53,17 +54,25 @@ def open_optmap(optmap_fn: str):
 
     # give this check some numerical slack.
     if np.any(
-        ow[OPTMAP_SUM_CH][ow[OPTMAP_ANY_CH] >= 0] - ow[OPTMAP_ANY_CH][ow[OPTMAP_ANY_CH] >= 0]
+        np.abs(
+            ow[OPTMAP_SUM_CH][ow[OPTMAP_ANY_CH] >= 0] - ow[OPTMAP_ANY_CH][ow[OPTMAP_ANY_CH] >= 0]
+        )
         < -1e-15
     ):
         msg = "optical map does not fulfill relation sum(p_i) >= p_any"
         raise ValueError(msg)
 
-    # get the exponent from the optical map file
-    optmap_multi_det_exp = lh5.read("/_hitcounts_exp", optmap_fn).value
-    assert isinstance(optmap_multi_det_exp, float)
+    try:
+        # check the exponent from the optical map file
+        optmap_multi_det_exp = lh5.read("/_hitcounts_exp", optmap_fn).value
+        assert isinstance(optmap_multi_det_exp, float)
+        if np.isfinite(optmap_multi_det_exp):
+            msg = f"found finite _hitcounts_exp {optmap_multi_det_exp} which is not supported any more"
+            raise RuntimeError(msg)
+    except KeyError:  # the _hitcounts_exp might not be always present.
+        pass
 
-    return detids, detidx, optmap_edges, ow, optmap_multi_det_exp
+    return detids, detidx, optmap_edges, ow
 
 
 def iterate_stepwise_depositions(
@@ -71,7 +80,7 @@ def iterate_stepwise_depositions(
     optmap_for_convolve,
     scint_mat_params: sc.ComputedScintParams,
     rng: np.random.Generator = None,
-    dist: str = "multinomial",
+    dist: str = "poisson",
     mode: str = "no-fano",
 ):
     # those np functions are not supported by numba, but needed for efficient array access below.
@@ -144,7 +153,6 @@ def _iterate_stepwise_depositions(
     detidx,
     optmap_edges,
     optmap_weights,
-    optmap_multi_det_exp,
     scint_mat_params: sc.ComputedScintParams,
     dist: str,
     mode: str,
@@ -223,8 +231,6 @@ def _iterate_stepwise_depositions(
                 # we detect this energy deposition; we should at least get one photon out here!
 
                 detsel_size = 1
-                if np.isfinite(optmap_multi_det_exp):
-                    detsel_size = rng.geometric(1 - np.exp(-optmap_multi_det_exp))
 
                 px_sum = optmap_weights[OPTMAP_SUM_CH, cur_bins[0], cur_bins[1], cur_bins[2]]
                 assert px_sum >= 0.0  # should not be negative.
@@ -238,7 +244,7 @@ def _iterate_stepwise_depositions(
                         detp[d] = 0.0
                 det_no_stats += had_det_no_stats
 
-                # should be equivalent to rng.choice(detidx, size=(detsel_size, p=detp)
+                # should be equivalent to rng.choice(detidx, size=detsel_size, p=detp)
                 detsel = detidx[
                     np.searchsorted(np.cumsum(detp), rng.random(size=(detsel_size,)), side="right")
                 ]
@@ -339,7 +345,7 @@ def convolve(
     material: str,
     output_file: str | None = None,
     buffer_len: int = int(1e6),
-    dist_mode: str = "multinomial+no-fano",
+    dist_mode: str = "poisson+no-fano",
 ):
     if material not in ["lar", "pen"]:
         msg = f"unknown material {material} for scintillation"
@@ -356,13 +362,18 @@ def convolve(
             (1 * pint.get_application_registry().ns),  # dummy!
         )
 
-    log.info("opening map %s", map_file)
-    optmap_for_convolve = open_optmap(map_file)
-
     # special handling of distributions and flags.
     dist, mode = dist_mode.split("+")
-    assert dist in ("multinomial", "poisson")
-    assert mode in ("", "no-fano")
+    if (
+        dist not in ("multinomial", "poisson")
+        or mode not in ("", "no-fano")
+        or (dist == "poisson" and mode != "no-fano")
+    ):
+        msg = f"unsupported statistical distribution {dist_mode} for scintillation emission"
+        raise ValueError(msg)
+
+    log.info("opening map %s", map_file)
+    optmap_for_convolve = open_optmap(map_file)
 
     log.info("opening energy deposition hit output %s", edep_file)
     it = LH5Iterator(edep_file, edep_path, buffer_len=buffer_len)

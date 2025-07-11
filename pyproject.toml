@@ -37,8 +37,9 @@ dependencies = [
     "numpy",
     "scipy",
     "numba",
-    "legend-pydataobj>=1.14",
-    "legend-pygeom-optics>=0.9.2",
+    "legend-pydataobj >=1.14",
+    "legend-pygeom-optics >=0.9.2",
+    "legend-pygeom-tools >=0.0.11",
     "hist",
     "dbetto",
     "particle",
@@ -75,10 +76,7 @@ test = [
     "pytest>=6.0",
     "pytest-cov",
     "legend-pygeom-hpges",
-    "legend-pygeom-tools",
-    "pyg4ometry",
     "pylegendtestdata>=0.6",
-
 ]
 
 [project.scripts]

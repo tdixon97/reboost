@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterable
+from collections.abc import Generator, Iterable
 from pathlib import Path
 
 import numpy as np
@@ -14,20 +14,18 @@ log = logging.getLogger(__name__)
 EVT_TABLE_NAME = "optmap_evt"
 
 
-def build_optmap_evt(
-    lh5_in_file: str, lh5_out_file: str, detectors: Iterable[str | int], buffer_len: int = int(5e6)
-) -> None:
+def generate_optmap_evt(
+    lh5_in_file: str, detectors: Iterable[str | int], buffer_len: int = int(5e6)
+) -> Generator[Table, None, None]:
     """Create a faster map for lookup of the hits in each detector, for each primary event."""
     log.info("reading file %s", lh5_in_file)
 
-    lh5_out_file = Path(lh5_out_file)
-    lh5_out_file_tmp = lh5_out_file.with_stem(".evt-tmp." + lh5_out_file.stem)
-    if lh5_out_file_tmp.exists():
-        msg = f"temporary output file {lh5_out_file_tmp} already exists"
-        raise RuntimeError(msg)
     vert_it = LH5Iterator(lh5_in_file, "vtx", buffer_len=buffer_len)
     opti_it = LH5Iterator(lh5_in_file, "stp/optical", buffer_len=buffer_len)
 
+    if len(detectors) == 0:
+        msg = "detector array cannot be empty for optmap-evt building"
+        raise ValueError(msg)
     detectors = [str(d) for d in detectors]
     for d in detectors:
         if not d.isnumeric():
@@ -35,11 +33,11 @@ def build_optmap_evt(
 
     vert_df = None
     vert_df_bounds = None
-    vert_it_count = 0
     hits_expected = 0
+    had_last_chunk = False
 
-    def _store_vert_df():
-        nonlocal vert_df
+    def _store_vert_df(last_chunk: bool) -> Generator[Table, None, None]:
+        nonlocal vert_df, had_last_chunk
         if vert_df is None:
             return
 
@@ -49,8 +47,8 @@ def build_optmap_evt(
             hits_sum += np.sum(vert_df[d])
         assert hits_sum == hits_expected
 
-        log.info("store evt file %s (%d)", lh5_out_file_tmp, vert_it_count - 1)
-        lh5.write(Table(vert_df), name=EVT_TABLE_NAME, lh5_file=lh5_out_file_tmp, wo_mode="append")
+        yield Table(vert_df)
+        had_last_chunk = last_chunk
         vert_df = None
 
     # helper function for "windowed join". while iterating the optical hits, we have to
@@ -59,8 +57,8 @@ def build_optmap_evt(
     # This function follows the assumption, that the output event ids are at least "somewhat"
     # monotonic, i.e. later chunks do not contain lower evtids than the previous chunk(s).
     # Going back is not implemented.
-    def _ensure_vert_df(vert_it: LH5Iterator, evtid: int) -> None:
-        nonlocal vert_df, vert_df_bounds, vert_it_count, hits_expected
+    def _ensure_vert_df(vert_it: LH5Iterator, evtid: int) -> Generator[Table, None, None]:
+        nonlocal vert_df, vert_df_bounds, hits_expected
 
         # skipping multiple chunks is possible in sparsely populated simulations.
         while vert_df_bounds is None or evtid > vert_df_bounds[1] or evtid < vert_df_bounds[0]:
@@ -74,9 +72,8 @@ def build_optmap_evt(
             # here, evtid > vert_df_bounds[1] (or vert_df_bounds is still None). We need to fetch
             # the next event table chunk.
 
-            vert_it_count += 1
             # we might have filled a dataframe, save it to disk.
-            _store_vert_df()
+            yield from _store_vert_df(last_chunk=False)
 
             # read the next vertex chunk into memory.
             vert_df = next(vert_it).view_as("pd")
@@ -98,17 +95,43 @@ def build_optmap_evt(
         log.info("build evt table (%d)", opti_it_count)
 
         for t in opti_df[["evtid", "det_uid"]].itertuples(name=None, index=False):
-            _ensure_vert_df(vert_it, t[0])
+            yield from _ensure_vert_df(vert_it, t[0])
             vert_df.loc[t[0], str(t[1])] += 1
             hits_expected += 1
 
-    _store_vert_df()  # store the last chunk.
+    yield from _store_vert_df(last_chunk=True)  # store the last chunk.
+
+    assert had_last_chunk, "did not reach last chunk in optmap-evt building"
+
+
+def build_optmap_evt(
+    lh5_in_file: str, lh5_out_file: str, detectors: Iterable[str | int], buffer_len: int = int(5e6)
+) -> None:
+    """Create a faster map for lookup of the hits in each detector, for each primary event."""
+    lh5_out_file = Path(lh5_out_file)
+    lh5_out_file_tmp = lh5_out_file.with_stem(".evt-tmp." + lh5_out_file.stem)
+    if lh5_out_file_tmp.exists():
+        msg = f"temporary output file {lh5_out_file_tmp} already exists"
+        raise RuntimeError(msg)
+
+    for vert_it_count, chunk in enumerate(generate_optmap_evt(lh5_in_file, detectors, buffer_len)):
+        log.info("store evt file %s (%d)", lh5_out_file_tmp, vert_it_count - 1)
+        lh5.write(Table(chunk), name=EVT_TABLE_NAME, lh5_file=lh5_out_file_tmp, wo_mode="append")
 
     # after finishing the output file, rename to the actual output file name.
     if lh5_out_file.exists():
         msg = f"output file {lh5_out_file_tmp} already exists after writing tmp output file"
         raise RuntimeError(msg)
     lh5_out_file_tmp.rename(lh5_out_file)
+
+
+def get_optical_detectors_from_geom(geom_fn) -> list[int]:
+    import pyg4ometry
+    import pygeomtools
+
+    geom_registry = pyg4ometry.gdml.Reader(geom_fn).getRegistry()
+    detectors = pygeomtools.get_all_sensvols(geom_registry)
+    return [d.uid for d in detectors.values() if d.detector_type == "optical"]
 
 
 def read_optmap_evt(lh5_file: str, buffer_len: int = int(5e6)) -> LH5Iterator:
