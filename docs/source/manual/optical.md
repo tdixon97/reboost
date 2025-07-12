@@ -65,46 +65,20 @@ Run remage with this macro to produce the (flat) output file:
 $ remage -g l200-geometry.gdml -o map.stp.lh5 --flat-output -- map.mac
 ```
 
-### 2. Convert stp to evt file
+### 2. Create the map
 
-Convert the step table output from remage to a more efficiently iterable form:
+with a map settings file (`map-settings.yaml`):
 
-```
-$ reboost-optical evt --detectors detectors.json map.stp.lh5 map.evt.lh5
-```
-
-:::{note}
-
-this step might be replaced with GLM iteration in the future.
-
-:::
-
-the `evt` step can be very well parallelized by just running it in parallel for different
-files. memory usage for each process should be minimal.
-
-### 3. Create the map
-
-with a map settings file (`map-settings.json`):
-
-```json
-{
-  "range_in_m": [
-    [-0.7, 0.7],
-    [-0.7, 0.7],
-    [-0.51, 1.89]
-  ],
-  "bins": [280, 280, 480]
-}
-```
-
-a list of the optical detector uids has to be provided in a second JSON file (`detectors.json`):
-
-```json
-[1052802, 1052803 /* ... */]
+```yaml
+range_in_m:
+  - [-0.7, 0.7]
+  - [-0.7, 0.7]
+  - [-0.51, 1.89]
+bins: [280, 280, 480]
 ```
 
 ```
-$ reboost-optical createmap --settings map-settings.json --detectors detectors.json map.evt.lh5 map.map.lh5
+$ reboost-optical createmap --settings map-settings.yaml --geom l200-geometry.gdml map.stp.lh5 map.map.lh5
 ```
 
 `createmap` can also work on multiple input files at once. Make sure that enough memory is
@@ -134,7 +108,7 @@ parallel. This means a total of 4096 remage output files can be read in parallel
 The 12-16 output files can then be combined into one with
 
 ```
-$ reboost-optical mergemap --settings map-settings.json map.map*.lh5 final-output-map.lh5
+$ reboost-optical mergemap --settings map-settings.yaml map.map*.lh5 final-output-map.lh5
 ```
 
 :::
@@ -145,15 +119,6 @@ $ reboost-optical mergemap --settings map-settings.json map.map*.lh5 final-outpu
 
 _reboost-optical_ is not yet integrated with the remaining _reboost_ stack. The optical
 response can be generated with the standalone command `reboost-optical convolve`.
-
-_reboost-optical_ currently **does not support the recent changes in remage output format**.
-It currently only works when the following macro commands are set:
-
-```
-/RMG/Output/Scintillator/StoreParticleVelocities
-/RMG/Output/Scintillator/StepPositionMode Both
-/RMG/Output/Scintillator/Cluster/PreClusterOutputs false
-```
 
 :::
 
