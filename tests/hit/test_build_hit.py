@@ -107,6 +107,24 @@ def test_reshape(test_gen_lh5_flat, tmptestdir):
     assert lh5.read("vtx", outfile) == Table({"evtid": Array([0, 1])})
 
 
+def test_only_forward(test_gen_lh5_flat, tmptestdir):
+    outfile = f"{tmptestdir}/basic_hit_foward_only.lh5"
+
+    for _ in range(2):  # test that overwriting the output file works.
+        reboost.build_hit(
+            f"{Path(__file__).parent}/configs/foward_only.yaml",
+            args={},
+            stp_files=test_gen_lh5_flat,
+            glm_files=None,
+            hit_files=outfile,
+            out_field="stp",
+            overwrite=True,
+        )
+
+    # check the outputs
+    assert lh5.read("vtx", outfile) == Table({"evtid": Array([0, 1])})
+
+
 def test_basic(test_gen_lh5, tmptestdir):
     outfile = f"{tmptestdir}/basic_hit.lh5"
 
