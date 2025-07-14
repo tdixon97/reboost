@@ -235,6 +235,7 @@ def build_hit(
     files = utils.get_file_dict(stp_files=stp_files, glm_files=glm_files, hit_files=hit_files)
 
     output_tables = {}
+    output_tables_names = set()
 
     # iterate over files
     for file_idx, (stp_file, glm_file) in enumerate(zip(files.stp, files.glm)):
@@ -390,6 +391,8 @@ def build_hit(
                                 hit_table, output_tables[out_detector]
                             )
 
+                        output_tables_names.add(out_detector)
+
         # forward some data, if requested
         # possible improvement: iterate over data if it's a lot
         if "forward" in config and files.hit[file_idx] is not None:
@@ -400,12 +403,22 @@ def build_hit(
 
             for obj in obj_list:
                 try:
+                    new_hit_file = (file_idx == 0) or (
+                        files.hit[file_idx] != files.hit[file_idx - 1]
+                    )
+                    wo_mode = (
+                        "overwrite_file"
+                        if overwrite and len(output_tables_names) == 0
+                        else "write_safe"
+                    )
+                    wo_mode = wo_mode if new_hit_file else "append"
                     lh5.write(
                         lh5.read(obj, stp_file),
                         obj,
                         files.hit[file_idx],
-                        wo_mode="write_safe" if file_idx == 0 else "append",
+                        wo_mode=wo_mode,
                     )
+                    output_tables_names.add(obj)
                 except LH5EncodeError as e:
                     msg = f"cannot forward object {obj} as it has been already processed by reboost"
                     raise RuntimeError(msg) from e
