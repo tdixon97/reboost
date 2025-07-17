@@ -364,16 +364,12 @@ def build_hit(
                         # now write
                         if files.hit[file_idx] is not None:
                             # get modes to write with
-                            new_hit_file = (file_idx == 0) or (
-                                files.hit[file_idx] != files.hit[file_idx - 1]
-                            )
-
                             wo_mode = utils.get_wo_mode(
                                 group=group_idx,
                                 out_det=out_det_idx,
                                 in_det=in_det_idx,
                                 chunk=chunk_idx,
-                                new_hit_file=new_hit_file,
+                                new_hit_file=utils.is_new_hit_file(files, file_idx),
                                 overwrite=overwrite,
                             )
                             # write the file
@@ -403,15 +399,9 @@ def build_hit(
 
             for obj in obj_list:
                 try:
-                    new_hit_file = (file_idx == 0) or (
-                        files.hit[file_idx] != files.hit[file_idx - 1]
+                    wo_mode = utils.get_wo_mode_forwarded(
+                        output_tables_names, utils.is_new_hit_file(files, file_idx), overwrite
                     )
-                    wo_mode = (
-                        "overwrite_file"
-                        if overwrite and len(output_tables_names) == 0
-                        else "write_safe"
-                    )
-                    wo_mode = wo_mode if new_hit_file else "append"
                     lh5.write(
                         lh5.read(obj, stp_file),
                         obj,

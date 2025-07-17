@@ -17,6 +17,7 @@ from reboost.utils import (
     get_function_string,
     get_table_names,
     get_wo_mode,
+    get_wo_mode_forwarded,
     merge_dicts,
 )
 
@@ -124,6 +125,13 @@ def test_wo_mode():
     assert get_wo_mode(0, 0, 1, 0, True, overwrite=False) == "append_column"
     assert get_wo_mode(0, 0, 1, 1, True, overwrite=False) == "append"
     assert get_wo_mode(0, 0, 1, 0, False, overwrite=False) == "append"
+
+    assert get_wo_mode_forwarded({}, True, overwrite=True) == "overwrite_file"
+    assert get_wo_mode_forwarded({"a"}, True, overwrite=True) == "write_safe"
+    assert get_wo_mode_forwarded({}, True, overwrite=False) == "write_safe"
+    assert get_wo_mode_forwarded({"a"}, True, overwrite=False) == "write_safe"
+    assert get_wo_mode_forwarded({}, False, overwrite=False) == "append"
+    assert get_wo_mode_forwarded({"a"}, False, overwrite=False) == "append"
 
 
 def test_get_files_dict():
