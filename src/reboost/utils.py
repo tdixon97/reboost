@@ -51,7 +51,9 @@ def get_wo_mode(
     chunk
         the chunk index
     new_hit_file
-        a flag of whether we are writing a new hit file
+        a flag of whether we are writing a new hit file. This does not indicate whether
+        the file already exists on disk, but whether the file name is different from the
+        last written chunk for this detector.
     overwrite
         a flag of whether to overwrite the old file.
 
@@ -73,6 +75,49 @@ def get_wo_mode(
     if is_ac and new_hit_file:
         return "append_column"
     return "append"
+
+
+def get_wo_mode_forwarded(
+    written_tables: set[str], new_hit_file: bool, overwrite: bool = False
+) -> str:
+    """Get the mode for lh5 file writing for forwarded tables tahat will be copied without chunking.
+
+    If we are writing a new output file and no other tables had been written yet, then
+    the mode "overwrite_file" is used if the overwrite flag is set, otherwise the mode
+    "write_safe" is used.
+
+    Otherwise "append" is used.
+
+    Parameters
+    ----------
+    written_tables
+        a set of already written table names, also including other table names of
+        non-forwarded (i.e. processed) tables.
+    new_hit_file
+        a flag of whether we are writing a new hit file. This does not indicate whether
+        the file already exists on disk, but whether the file name is different from the
+        last written chunk for this forwarded table.
+    overwrite
+        a flag of whether to overwrite the old file.
+
+    Returns
+    -------
+    the mode for IO
+    """
+    if not new_hit_file:
+        return "append"
+    if overwrite and len(written_tables) == 0:
+        return "overwrite_file"
+    return "write_safe"
+
+
+def is_new_hit_file(files: AttrsDict, file_idx: int) -> bool:
+    """Return whether the hit file with the given index is a "new" hit file.
+
+    A new file is either the first file written, or when the previous file index has a
+    different file name.
+    """
+    return (file_idx == 0) or (files.hit[file_idx] != files.hit[file_idx - 1])
 
 
 def get_file_dict(
