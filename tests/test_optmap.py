@@ -197,26 +197,28 @@ def test_optmap_rebin(tbl_evt_fns, tmptestdir):
 
 @pytest.fixture
 def tbl_edep(tmptestdir):
-    evt_count = 100
+    evt_count = 20
     rng = np.random.default_rng(1234)
-    loc = rng.uniform(size=(evt_count, 6))
+    edep_counts = rng.uniform(2, 8, size=evt_count).astype(np.int_)
+    edep_count = np.sum(edep_counts)
+    loc = rng.uniform(size=(edep_count, 6))
 
     evtids = np.arange(1, evt_count + 1)
 
     tbl_edep = Table(
         {
-            "evtid": Array(evtids),
-            "particle": Array(22 * np.ones(evt_count, dtype=np.int64)),
-            "edep": Array(rng.normal(loc=200, scale=2, size=evt_count)),
+            "evtid": Array(np.repeat(evtids, edep_counts)),
+            "particle": Array(22 * np.ones(edep_count, dtype=np.int64)),
+            "edep": Array(rng.normal(loc=200, scale=2, size=edep_count)),
             "xloc_pre": Array(loc[:, 0]),
             "yloc_pre": Array(loc[:, 1]),
             "zloc_pre": Array(loc[:, 2]),
             "xloc_post": Array(loc[:, 3]),
             "yloc_post": Array(loc[:, 4]),
             "zloc_post": Array(loc[:, 5]),
-            "time": Array(np.ones(evt_count)),
-            "v_pre": Array(60 * np.ones(evt_count)),
-            "v_post": Array(58 * np.ones(evt_count)),
+            "time": Array(np.ones(edep_count)),
+            "v_pre": Array(60 * np.ones(edep_count)),
+            "v_post": Array(58 * np.ones(edep_count)),
         }
     )
 

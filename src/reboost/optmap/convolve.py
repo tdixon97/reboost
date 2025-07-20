@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 
+import awkward as ak
 import legendoptics.scintillate as sc
 import numba
 import numpy as np
@@ -379,7 +380,7 @@ def convolve(
     it = LH5Iterator(edep_file, edep_path, buffer_len=buffer_len)
 
     for it_count, edep_lgdo in enumerate(it):
-        edep_df = edep_lgdo.view_as("pd").to_records()
+        edep_df = _reflatten_scint_vov(edep_lgdo.view_as("ak")).to_numpy()
 
         log.info("start event processing (%d)", it_count)
         output_map = iterate_stepwise_depositions(
@@ -393,3 +394,15 @@ def convolve(
         )
         if output_file is not None:
             lh5.write(tbl, "optical", lh5_file=output_file, group="stp", wo_mode="append")
+
+
+def _reflatten_scint_vov(arr: ak.Array) -> ak.Array:
+    if all(arr[f].ndim == 1 for f in ak.fields(arr)):
+        return arr
+
+    group_num = ak.num(arr["edep"]).to_numpy()
+    flattened = {
+        f: ak.flatten(arr[f]) if arr[f].ndim > 1 else np.repeat(arr[f].to_numpy(), group_num)
+        for f in ak.fields(arr)
+    }
+    return ak.Array(flattened)
