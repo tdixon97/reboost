@@ -162,7 +162,7 @@ def optical_cli() -> None:
     convolve_parser.add_argument(
         "--material",
         action="store",
-        choices=("lar", "pen", "fib"),
+        choices=("lar", "pen", "fiber"),
         default="lar",
         help="default: %(default)s",
     )

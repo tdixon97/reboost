@@ -7,13 +7,13 @@ import awkward as ak
 import legendoptics.scintillate as sc
 import numba
 import numpy as np
-import pint
-from legendoptics import lar
+from legendoptics import fibers, lar, pen
 from lgdo import lh5
 from lgdo.lh5 import LH5Iterator
 from lgdo.types import Array, Histogram, Table
 from numba import njit, prange
 from numpy.lib.recfunctions import structured_to_unstructured
+from pint import Quantity
 
 from .numba_pdg import numba_pdgid_funcs
 
@@ -343,15 +343,11 @@ def convolve(
     map_file: str,
     edep_file: str,
     edep_path: str,
-    material: str,
+    material: str | tuple[sc.ScintConfig, tuple[Quantity, ...]],
     output_file: str | None = None,
     buffer_len: int = int(1e6),
     dist_mode: str = "poisson+no-fano",
 ):
-    if material not in ["lar", "pen"]:
-        msg = f"unknown material {material} for scintillation"
-        raise ValueError(msg)
-
     if material == "lar":
         scint_mat_params = sc.precompute_scintillation_params(
             lar.lar_scintillation_params(),
@@ -359,9 +355,19 @@ def convolve(
         )
     elif material == "pen":
         scint_mat_params = sc.precompute_scintillation_params(
-            lar.pen_scintillation_params(),
-            (1 * pint.get_application_registry().ns),  # dummy!
+            pen.pen_scintillation_params(),
+            (pen.pen_scint_timeconstant(),),
         )
+    elif material == "fiber":
+        scint_mat_params = sc.precompute_scintillation_params(
+            fibers.fiber_core_scintillation_params(),
+            (fibers.fiber_wls_timeconstant(),),
+        )
+    elif isinstance(material, str):
+        msg = f"unknown material {material} for scintillation"
+        raise ValueError(msg)
+    else:
+        scint_mat_params = sc.precompute_scintillation_params(*material)
 
     # special handling of distributions and flags.
     dist, mode = dist_mode.split("+")
