@@ -7,10 +7,15 @@ A :func:`build_hit` to parse the following configuration file:
     # dictionary of objects useful for later computation. they are constructed with
     # auxiliary data (e.g. metadata). They can be accessed later as OBJECTS (all caps)
     objects:
-     lmeta: LegendMetadata(ARGS.legendmetadata)
+     lmeta: legendmeta.LegendMetadata(ARGS.legendmetadata)
      geometry: pyg4ometry.load(ARGS.gdml)
      user_pars: dbetto.TextDB(ARGS.par)
      dataprod_pars: dbetto.TextDB(ARGS.dataprod_cycle)
+
+     _spms: OBJECTS.lmeta.channelmap(on=ARGS.timestamp)
+        .group("system").spms
+        .map("name")
+     spms: "{name: spm.daq.rawid for name, spm in OBJECTS._spms.items()}"
 
     # processing chain is defined to act on a group of detectors
     processing_groups:
@@ -109,7 +114,7 @@ A :func:`build_hit` to parse the following configuration file:
             - tot_edep_wlsr
 
           operations:
-            tot_edep_wlsr: ak.sum(HITS[(HITS.__detuid == 0) & (HITS.__zloc < 3000)].__edep, axis=-1)
+            tot_edep_wlsr: ak.sum(HITS.edep[np.abs(HITS.zloc) < 3000], axis=-1)
 
         - name: spms
 
@@ -117,11 +122,8 @@ A :func:`build_hit` to parse the following configuration file:
           # same name as the current detector. This can be overridden for special processors
 
           detector_mapping:
-           - output: OBJECTS.lmeta.channelmap(on=ARGS.timestamp)
-                .group("system").spms
-                .group("analysis.status").on
-                .map("name").keys()
-            input: lar
+           - output: OBJECTS.spms.keys()
+             input: lar
 
           outputs:
             - t0
@@ -130,8 +132,9 @@ A :func:`build_hit` to parse the following configuration file:
 
           detector_objects:
              meta: pygeomtools.get_sensvol_metadata(OBJECTS.geometry, DETECTOR)
-             optmap_lar: lgdo.lh5.read(DETECTOR, "optmaps/pen", ARGS.optmap_path)
-             optmap_pen: lgdo.lh5.read(DETECTOR, "optmaps/lar", ARGS.optmap_path)
+             spm_uid: OBJECTS.spms[DETECTOR]
+             optmap_lar: reboost.spms.load_optmap(ARGS.optmap_path_pen, DETECTOR_OBJECTS.spm_uid)
+             optmap_pen: reboost.spms.load_optmap(ARGS.optmap_path_lar, DETECTOR_OBJECTS.spm_uid)
 
           hit_table_layout: reboost.shape.group_by_time(STEPS, window=10)
 
@@ -140,14 +143,14 @@ A :func:`build_hit` to parse the following configuration file:
                 HITS.edep, HITS.evtid, HITS.particle, HITS.time, HITS.xloc, HITS.yloc, HITS.zloc,
                 DETECTOR_OBJECTS.optmap_lar,
                 "lar",
-                DETECTOR
+                DETECTOR_OBJECTS.spm_uid
              )
 
             pe_times_pen: reboost.spms.detected_photoelectrons(
                 HITS.edep, HITS.evtid, HITS.particle, HITS.time, HITS.xloc, HITS.yloc, HITS.zloc,
                 DETECTOR_OBJECTS.optmap_pen,
                 "pen",
-                DETECTOR
+                DETECTOR_OBJECTS.spm_uid
              )
 
             pe_times: ak.concatenate([HITS.pe_times_lar, HITS.pe_times_pen], axis=-1)
