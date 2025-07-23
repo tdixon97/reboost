@@ -117,11 +117,11 @@ A :func:`build_hit` to parse the following configuration file:
           # same name as the current detector. This can be overridden for special processors
 
           detector_mapping:
-           - output: OBJECTS.lmeta.channglmap(on=ARGS.timestamp)
-            .group("system").spms
-            .group("analysis.status").on
-            .map("name").keys()
-           - input: lar
+           - output: OBJECTS.lmeta.channelmap(on=ARGS.timestamp)
+                .group("system").spms
+                .group("analysis.status").on
+                .map("name").keys()
+            input: lar
 
           outputs:
             - t0
@@ -137,15 +137,17 @@ A :func:`build_hit` to parse the following configuration file:
 
           operations:
             pe_times_lar: reboost.spms.detected_photoelectrons(
-                STEPS,
+                HITS.edep, HITS.evtid, HITS.particle, HITS.time, HITS.xloc, HITS.yloc, HITS.zloc,
                 DETECTOR_OBJECTS.optmap_lar,
-                0
+                "lar",
+                DETECTOR
              )
 
             pe_times_pen: reboost.spms.detected_photoelectrons(
-                STEPS,
+                HITS.edep, HITS.evtid, HITS.particle, HITS.time, HITS.xloc, HITS.yloc, HITS.zloc,
                 DETECTOR_OBJECTS.optmap_pen,
-                1
+                "pen",
+                DETECTOR
              )
 
             pe_times: ak.concatenate([HITS.pe_times_lar, HITS.pe_times_pen], axis=-1)
