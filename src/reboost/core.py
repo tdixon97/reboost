@@ -227,7 +227,9 @@ def get_global_objects(
     return AttrsDict(res)
 
 
-def get_detector_mapping(detector_mapping: dict, global_objects: AttrsDict) -> dict:
+def get_detector_mapping(
+    detector_mapping: dict, global_objects: AttrsDict, args: AttrsDict
+) -> dict:
     """Get all the detector mapping using :func:`get_one_detector_mapping`.
 
     Parameters
@@ -236,6 +238,8 @@ def get_detector_mapping(detector_mapping: dict, global_objects: AttrsDict) -> d
         dictionary of detector mapping
     global_objects
         dictionary of global objects to use in evaluating the mapping.
+    args
+        any arguments the expression can depend on, is passed as `locals` to `eval()`.
     """
     return utils.merge_dicts(
         [
@@ -243,6 +247,7 @@ def get_detector_mapping(detector_mapping: dict, global_objects: AttrsDict) -> d
                 mapping["output"],
                 input_detector_name=mapping.get("input", None),
                 objects=global_objects,
+                args=args,
             )
             for mapping in detector_mapping
         ]
@@ -253,6 +258,7 @@ def get_one_detector_mapping(
     output_detector_expression: str | list,
     objects: AttrsDict | None = None,
     input_detector_name: str | None = None,
+    args: AttrsDict | None = None,
 ) -> dict:
     """Extract the output detectors and the list of input to outputs by parsing the expressions.
 
@@ -282,7 +288,8 @@ def get_one_detector_mapping(
         dictionary of objects that can be referenced in the expression.
     input_detector_name
         Optional input detector name for all the outputs.
-
+    args
+        any arguments the expression can depend on, is passed as `locals` to `eval()`.
 
     Returns
     -------
@@ -318,7 +325,7 @@ def get_one_detector_mapping(
 
         # if no package was imported its just a name
         try:
-            objs = evaluate_object(expression_tmp, local_dict={"OBJECTS": objects})
+            objs = evaluate_object(expression_tmp, local_dict={"ARGS": args, "OBJECTS": objects})
             out_names.extend(objs)
         except Exception:
             out_names.append(expression_tmp)

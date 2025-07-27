@@ -257,7 +257,7 @@ def build_hit(
 
             # extract the output detectors and the mapping to input detectors
             detectors_mapping = core.get_detector_mapping(
-                proc_group.get("detector_mapping"), global_objects
+                proc_group.get("detector_mapping"), global_objects, args
             )
 
             # loop over detectors
