@@ -112,6 +112,7 @@ A :func:`build_hit` to parse the following configuration file:
           outputs:
             - evtid
             - tot_edep_wlsr
+            - num_scint_ph_lar
 
           operations:
             tot_edep_wlsr: ak.sum(HITS.edep[np.abs(HITS.zloc) < 3000], axis=-1)
@@ -125,6 +126,12 @@ A :func:`build_hit` to parse the following configuration file:
            - output: OBJECTS.spms.keys()
              input: lar
 
+          hit_table_layout: reboost.shape.group_by_time(STEPS, window=10)
+
+          pre_operations:
+            num_scint_ph_lar: reboost.spms.emitted_scintillation_photons(HITS.edep, HITS.particle, "lar")
+            # num_scint_ph_pen: ...
+
           outputs:
             - t0
             - evtid
@@ -136,18 +143,16 @@ A :func:`build_hit` to parse the following configuration file:
              optmap_lar: reboost.spms.load_optmap(ARGS.optmap_path_pen, DETECTOR_OBJECTS.spm_uid)
              optmap_pen: reboost.spms.load_optmap(ARGS.optmap_path_lar, DETECTOR_OBJECTS.spm_uid)
 
-          hit_table_layout: reboost.shape.group_by_time(STEPS, window=10)
-
           operations:
             pe_times_lar: reboost.spms.detected_photoelectrons(
-                HITS.edep, HITS.evtid, HITS.particle, HITS.time, HITS.xloc, HITS.yloc, HITS.zloc,
+                HITS.num_scint_ph_lar, HITS.particle, HITS.time, HITS.xloc, HITS.yloc, HITS.zloc,
                 DETECTOR_OBJECTS.optmap_lar,
                 "lar",
                 DETECTOR_OBJECTS.spm_uid
              )
 
             pe_times_pen: reboost.spms.detected_photoelectrons(
-                HITS.edep, HITS.evtid, HITS.particle, HITS.time, HITS.xloc, HITS.yloc, HITS.zloc,
+                HITS.num_scint_ph_pen, HITS.particle, HITS.time, HITS.xloc, HITS.yloc, HITS.zloc,
                 DETECTOR_OBJECTS.optmap_pen,
                 "pen",
                 DETECTOR_OBJECTS.spm_uid
@@ -310,6 +315,21 @@ def build_hit(
                     if time_dict is not None:
                         time_dict[proc_name].update_field("conv", start_time)
 
+                    if "hit_table_layout" in proc_group:
+                        hit_table_layouted = core.evaluate_hit_table_layout(
+                            copy.deepcopy(ak_obj),
+                            expression=proc_group["hit_table_layout"],
+                            time_dict=time_dict[proc_name],
+                        )
+                    else:
+                        hit_table_layouted = copy.deepcopy(stps)
+
+                    local_dict = {"OBJECTS": global_objects}
+                    for field, info in proc_group.get("pre_operations", {}).items():
+                        _evaluate_operation(
+                            hit_table_layouted, field, info, local_dict, time_dict[proc_name]
+                        )
+
                     # produce the hit table
                     for out_det_idx, out_detector in enumerate(out_detectors):
                         # loop over the rows
@@ -319,14 +339,12 @@ def build_hit(
                         # get the attributes
                         attrs = utils.copy_units(stps)
 
-                        if "hit_table_layout" in proc_group:
-                            hit_table = core.evaluate_hit_table_layout(
-                                copy.deepcopy(ak_obj),
-                                expression=proc_group["hit_table_layout"],
-                                time_dict=time_dict[proc_name],
-                            )
-                        else:
-                            hit_table = copy.deepcopy(stps)
+                        # if we have more than one output detector, make an independent copy.
+                        hit_table = (
+                            copy.deepcopy(hit_table_layouted)
+                            if len(out_detectors) > 1
+                            else hit_table_layouted
+                        )
 
                         local_dict = {
                             "DETECTOR_OBJECTS": det_objects[out_detector],
@@ -335,27 +353,9 @@ def build_hit(
                         }
                         # add fields
                         for field, info in proc_group.get("operations", {}).items():
-                            if isinstance(info, str):
-                                expression = info
-                                units = None
-                            else:
-                                expression = info["expression"]
-                                units = info.get("units", None)
-
-                            # evaluate the expression
-                            col = core.evaluate_output_column(
-                                hit_table,
-                                table_name="HITS",
-                                expression=expression,
-                                local_dict=local_dict,
-                                time_dict=time_dict[proc_name],
-                                name=field,
+                            _evaluate_operation(
+                                hit_table, field, info, local_dict, time_dict[proc_name]
                             )
-
-                            if units is not None:
-                                col.attrs["units"] = units
-
-                            core.add_field_with_nesting(hit_table, field, col)
 
                         # remove unwanted fields
                         if "outputs" in proc_group:
@@ -425,3 +425,29 @@ def build_hit(
         output_tables = None
 
     return output_tables, time_dict
+
+
+def _evaluate_operation(
+    hit_table, field: str, info: str | dict, local_dict: dict, time_dict: ProfileDict
+) -> None:
+    if isinstance(info, str):
+        expression = info
+        units = None
+    else:
+        expression = info["expression"]
+        units = info.get("units", None)
+
+    # evaluate the expression
+    col = core.evaluate_output_column(
+        hit_table,
+        table_name="HITS",
+        expression=expression,
+        local_dict=local_dict,
+        time_dict=time_dict,
+        name=field,
+    )
+
+    if units is not None:
+        col.attrs["units"] = units
+
+    core.add_field_with_nesting(hit_table, field, col)

@@ -1,0 +1,30 @@
+objects:
+  spms: "{'S001': 11, 'S002': 12}"
+
+processing_groups:
+  - name: spms
+
+    detector_mapping:
+      - output: OBJECTS.spms.keys()
+        input: det001
+
+    outputs:
+      - t0
+      - evtid
+      - edep
+      - pe_times
+      - pe_times_lar
+
+    pre_operations:
+      num_scint_ph: reboost.spms.emitted_scintillation_photons(HITS.edep, HITS.particle, "lar")
+
+    detector_objects:
+      optmap_lar: reboost.spms.load_optmap(ARGS.optmap_path, OBJECTS.spms[DETECTOR])
+
+    operations:
+      pe_times_lar: reboost.spms.detected_photoelectrons(
+        HITS.num_scint_ph, HITS.particle, HITS.time, HITS.xloc, HITS.yloc, HITS.zloc,
+        DETECTOR_OBJECTS.optmap_lar,
+        "lar",
+        OBJECTS.spms[DETECTOR]
+        )

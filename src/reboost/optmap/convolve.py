@@ -81,7 +81,7 @@ def open_optmap(optmap_fn: str) -> OptmapForConvolve:
         if np.isfinite(optmap_multi_det_exp):
             msg = f"found finite _hitcounts_exp {optmap_multi_det_exp} which is not supported any more"
             raise RuntimeError(msg)
-    except KeyError:  # the _hitcounts_exp might not be always present.
+    except lh5.exceptions.LH5DecodeError:  # the _hitcounts_exp might not be always present.
         pass
 
     return OptmapForConvolve(detids, detidx, optmap_edges, ow)
@@ -95,7 +95,7 @@ def open_optmap_single(optmap_fn: str, spm_det_uid: int) -> OptmapForConvolve:
         if np.isfinite(optmap_multi_det_exp):
             msg = f"found finite _hitcounts_exp {optmap_multi_det_exp} which is not supported any more"
             raise RuntimeError(msg)
-    except KeyError:  # the _hitcounts_exp might not be always present.
+    except lh5.exceptions.LH5DecodeError:  # the _hitcounts_exp might not be always present.
         pass
 
     optmap = lh5.read(f"/_{spm_det_uid}/p_det", optmap_fn)
@@ -163,22 +163,26 @@ def iterate_stepwise_depositions(
 
 
 def iterate_stepwise_depositions_pois(
-    edep_df: ak.Array,
+    edep_hits: ak.Array,
     optmap: OptmapForConvolve,
     scint_mat_params: sc.ComputedScintParams,
     det_uid: int,
-    rng: np.random.Generator = None,
-    mode: str = "no-fano",
+    map_scaling: float = 1,
+    rng: np.random.Generator | None = None,
 ):
+    if edep_hits.particle.ndim == 1:
+        msg = "the pe processors only support already reshaped output"
+        raise ValueError(msg)
+
     rng = np.random.default_rng() if rng is None else rng
     res, output_list = _iterate_stepwise_depositions_pois(
-        edep_df,
+        edep_hits,
         rng,
         np.where(optmap.detids == det_uid)[0][0],
+        map_scaling,
         optmap.edges,
         optmap.weights,
         scint_mat_params,
-        mode,
     )
 
     # convert the numba result back into an awkward array.
@@ -205,6 +209,28 @@ def iterate_stepwise_depositions_pois(
         res["hits"],
         (res["hits"] / res["vuv_primary"]) * 100,
     )
+    return builder.snapshot()
+
+
+def iterate_stepwise_depositions_scintillate(
+    edep_hits: ak.Array,
+    scint_mat_params: sc.ComputedScintParams,
+    rng: np.random.Generator | None = None,
+    mode: str = "no-fano",
+):
+    if edep_hits.particle.ndim == 1:
+        msg = "the pe processors only support already reshaped output"
+        raise ValueError(msg)
+
+    rng = np.random.default_rng() if rng is None else rng
+    output_list = _iterate_stepwise_depositions_scintillate(edep_hits, rng, scint_mat_params, mode)
+
+    # convert the numba result back into an awkward array.
+    builder = ak.ArrayBuilder()
+    for r in output_list:
+        with builder.list():
+            builder.extend(r)
+
     return builder.snapshot()
 
 
@@ -411,115 +437,62 @@ def _iterate_stepwise_depositions(
 # - the output dictionary is not threadsafe, so parallel=True is not working with it.
 @njit(parallel=False, nogil=True, cache=True)
 def _iterate_stepwise_depositions_pois(
-    edep_df,
+    edep_hits,
     rng,
     detidx: int,
+    map_scaling: float,
     optmap_edges,
     optmap_weights,
     scint_mat_params: sc.ComputedScintParams,
-    mode: str,
 ):
     pdgid_map = {}
     oob = ib = ph_cnt = ph_det2 = det_no_stats = 0  # for statistics
     output_list = []
 
-    for rowid in prange(len(edep_df)):  # iterate hits
-        hit = edep_df[rowid]
+    for rowid in range(len(edep_hits)):  # iterate hits
+        hit = edep_hits[rowid]
         hit_output = []
 
+        assert len(hit.particle) == len(hit.num_scint_ph)
         # iterate steps inside the hit
         for si in range(len(hit.particle)):
+            loc = np.array([hit.xloc[si], hit.yloc[si], hit.zloc[si]])
+            # coordinates -> bins of the optical map.
+            bins = np.empty(3, dtype=np.int64)
+            for j in range(3):
+                bins[j] = np.digitize(loc[j], optmap_edges[j])
+                # normalize all out-of-bounds bins just to one end.
+                if bins[j] == optmap_edges[j].shape[0]:
+                    bins[j] = 0
+
+            # note: subtract 1 from bins, to account for np.digitize output.
+            cur_bins = (bins[0] - 1, bins[1] - 1, bins[2] - 1)
+            if cur_bins[0] == -1 or cur_bins[1] == -1 or cur_bins[2] == -1:
+                oob += 1
+                continue  # out-of-bounds of optmap
+            ib += 1
+
+            # get probabilities from map.
+            detp = optmap_weights[detidx, cur_bins[0], cur_bins[1], cur_bins[2]] * map_scaling
+            if detp < 0.0:
+                det_no_stats += 1
+                continue
+
+            pois_cnt = rng.poisson(lam=hit.num_scint_ph[si] * detp)
+            ph_cnt += hit.num_scint_ph[si]
+            ph_det2 += pois_cnt
+
             # get the particle information.
             particle = hit.particle[si]
             if particle not in pdgid_map:
                 pdgid_map[particle] = (_pdgid_to_particle(particle), _pdg_func.charge(particle))
-            part, charge = pdgid_map[particle]
+            part, _charge = pdgid_map[particle]
 
-            # do the scintillation.
-            # if we have both pre and post step points use them
-            # else pass as None
-            scint_times = sc.scintillate(
-                scint_mat_params,
-                np.array([hit.xloc[si], hit.yloc[si], hit.zloc[si]]),
-                None,
-                None,
-                None,
-                hit.time[si],
-                part,
-                charge,
-                hit.edep[si],
-                rng,
-                emission_term_model=("poisson" if mode == "no-fano" else "normal_fano"),
-            )
-            if scint_times.shape[0] == 0:  # short-circuit if we have no photons at all.
-                continue
-            ph_cnt += scint_times.shape[0]
+            # get time spectrum.
+            # note: we assume "immediate" propagation after scintillation.
+            scint_times = sc.scintillate_times(scint_mat_params, part, pois_cnt, rng) + hit.time[si]
 
-            # coordinates -> bins of the optical map.
-            bins = np.empty((scint_times.shape[0], 3), dtype=np.int64)
-            for j in range(3):
-                bins[:, j] = np.digitize(scint_times[:, j + 1], optmap_edges[j])
-                # normalize all out-of-bounds bins just to one end.
-                bins[:, j][bins[:, j] == optmap_edges[j].shape[0]] = 0
-
-            # there are _much_ less unique bins, unfortunately np.unique(..., axis=n) does not work
-            # with numba; also np.sort(..., axis=n) also does not work.
-
-            counts_per_bin = numba.typed.Dict.empty(
-                key_type=__counts_per_bin_key_type,
-                value_type=np.int64,
-            )
-
-            # get probabilities from map.
-            hitcount = np.zeros(bins.shape[0], dtype=np.int64)
-            for j in prange(bins.shape[0]):
-                # note: subtract 1 from bins, to account for np.digitize output.
-                cur_bins = (bins[j, 0] - 1, bins[j, 1] - 1, bins[j, 2] - 1)
-                if cur_bins[0] == -1 or cur_bins[1] == -1 or cur_bins[2] == -1:
-                    oob += 1
-                    continue  # out-of-bounds of optmap
-                ib += 1
-
-                # store the photon count in each bin, to sample them all at once below.
-                if cur_bins not in counts_per_bin:
-                    counts_per_bin[cur_bins] = 1
-                else:
-                    counts_per_bin[cur_bins] += 1
-
-            for j, (cur_bins, ph_counts_to_poisson) in enumerate(counts_per_bin.items()):
-                detp = optmap_weights[detidx, cur_bins[0], cur_bins[1], cur_bins[2]]
-                if detp < 0.0:
-                    det_no_stats += 1
-                    continue
-                pois_cnt = rng.poisson(lam=ph_counts_to_poisson * detp)
-                hitcount[j] += pois_cnt
-                ph_det2 += pois_cnt
-
-            assert scint_times.shape[0] >= hitcount.shape[0]  # TODO: use the right assertion here.
-            out_hits_len = np.sum(hitcount)
-            if out_hits_len > 0:
-                out_times = np.empty(out_hits_len, dtype=np.float64)
-                out_idx = 0
-
-                hc_d_plane_max = np.max(hitcount[:])
-                # untangle the hitcount array in "planes" that only contain the given number of hits per
-                # channel. example: assume a "histogram" of hits per channel:
-                #     x |   |    <-- this is plane 2 with 1 hit ("max plane")
-                #     x |   | x  <-- this is plane 1 with 2 hits
-                # ch: 1 | 2 | 3
-                for hc_d_plane_cnt in range(1, hc_d_plane_max + 1):
-                    hc_d_plane = hitcount[:] >= hc_d_plane_cnt
-                    hc_d_plane_len = np.sum(hc_d_plane)
-                    if hc_d_plane_len == 0:
-                        continue
-
-                    # note: we assume "immediate" propagation after scintillation. Here, a single timestamp
-                    # might be coipied to output/"detected" twice.
-                    out_times[out_idx : out_idx + hc_d_plane_len] = scint_times[hc_d_plane, 0]
-                    out_idx += hc_d_plane_len
-
-                assert out_idx == out_hits_len  # ensure that all of out_{det,times} is filled.
-                hit_output.append(out_times)
+            hit_output.append(scint_times)
 
         output_list.append(hit_output)
 
@@ -531,6 +504,43 @@ def _iterate_stepwise_depositions_pois(
         "det_no_stats": det_no_stats,
     }
     return stats, output_list
+
+
+# - run with NUMBA_FULL_TRACEBACKS=1 NUMBA_BOUNDSCHECK=1 for testing/checking
+# - cache=True does not work with outer prange, i.e. loading the cached file fails (numba bug?)
+@njit(parallel=False, nogil=True, cache=True)
+def _iterate_stepwise_depositions_scintillate(
+    edep_hits, rng, scint_mat_params: sc.ComputedScintParams, mode: str
+):
+    pdgid_map = {}
+    output_list = []
+
+    for rowid in range(len(edep_hits)):  # iterate hits
+        hit = edep_hits[rowid]
+        hit_output = []
+
+        # iterate steps inside the hit
+        for si in range(len(hit.particle)):
+            # get the particle information.
+            particle = hit.particle[si]
+            if particle not in pdgid_map:
+                pdgid_map[particle] = (_pdgid_to_particle(particle), _pdg_func.charge(particle))
+            part, _charge = pdgid_map[particle]
+
+            # do the scintillation.
+            num_phot = sc.scintillate_numphot(
+                scint_mat_params,
+                part,
+                hit.edep[si],
+                rng,
+                emission_term_model=("poisson" if mode == "no-fano" else "normal_fano"),
+            )
+            hit_output.append(num_phot)
+
+        assert len(hit_output) == len(hit.particle)
+        output_list.append(hit_output)
+
+    return output_list
 
 
 def get_output_table(output_map):
