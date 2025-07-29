@@ -19,7 +19,7 @@ def test_gen_lh5(tmptestdir):
     stp_path = str(tmptestdir / "basic.lh5")
 
     data = {}
-    data["evtid"] = VectorOfVectors([[0, 0], [1, 1, 1]])
+    data["evtid"] = Array([0, 1])
     data["edep"] = VectorOfVectors([[100, 200], [10, 20, 300]])  # keV
     data["time"] = VectorOfVectors([[0, 1.5], [0.1, 2.1, 3.7]])  # ns
 
@@ -180,8 +180,8 @@ def test_basic(test_gen_lh5, tmptestdir):
 
     assert ak.all(hits.energy == [300, 330])
     assert ak.all(hits.t0 == [0, 0.1])
-    assert ak.all(hits.evtid[0] == [0, 0])
-    assert ak.all(hits.evtid[1] == [1, 1, 1])
+    assert hits.evtid[0] == 0
+    assert hits.evtid[1] == 1
 
     assert len(hits) == 2
 
@@ -208,7 +208,7 @@ def test_basic(test_gen_lh5, tmptestdir):
         "expressions",
     }
     assert set(time_dict["geds"]["read"].keys()) == {"stp"}
-    assert set(time_dict["geds"]["expressions"].keys()) == {"t0", "first_evtid", "energy"}
+    assert set(time_dict["geds"]["expressions"].keys()) == {"t0", "energy"}
 
 
 def test_file_merging(test_gen_lh5, tmptestdir):
