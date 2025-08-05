@@ -4,8 +4,7 @@
 
 :::{warning}
 
-Work in progress, more will be added later! _reboost-optical_ is also not integrated with
-the remaining _reboost_ stack.
+Work in progress, more will be added later!
 
 :::
 
@@ -13,8 +12,8 @@ the remaining _reboost_ stack.
 
 ### 1. Running remage simulations to get stp file
 
-The map generation is performed directly with _remage_(_reboost_ is not involved in this
-step). An example macro to showcase the required settings (`map.mac`):
+The map generation is performed directly with _remage_(_reboost_ is not involved
+in this step). An example macro to showcase the required settings (`map.mac`):
 
 ```
 /RMG/Processes/OpticalPhysics true
@@ -81,29 +80,32 @@ bins: [280, 280, 480]
 $ reboost-optical createmap --settings map-settings.yaml --geom l200-geometry.gdml map.stp.lh5 map.map.lh5
 ```
 
-`createmap` can also work on multiple input files at once. Make sure that enough memory is
-available; the map object is _fully_ stored in memory. In this example: For the 58
-hardware channels, the example above would require
+`createmap` can also work on multiple input files at once. Make sure that enough
+memory is available; the map object is _fully_ stored in memory. In this
+example: For the 58 hardware channels, the example above would require
 
 ```{math}
 \text{memory} = 8 \cdot n_x \cdot n_y \cdot n_z \cdot (n_\text{ch} + 4) = 8 \cdot 280 \cdot 280 \cdot 480 \cdot (58 + 4) = 19\times10^{9} \text{[bytes]}
 ```
 
-but peak memory usage might be higher. The input buffer will also use some memory.
+but peak memory usage might be higher. The input buffer will also use some
+memory.
 
-For parallelization, `createmap` supports a `-N <n_cpu>` argument. However, this cannot be
-scaled indefinitely. Be aware of the memory configuration of the compute node used (i.e.,
-performance may suffer when using more processors than in a NUMA domain). `createmap`
-internally uses locks to access one _shared memory_ instance of the to-be-created map. The
-more CPUs are used for the task, the more lock contention might happen.
+For parallelization, `createmap` supports a `-N <n_cpu>` argument. However, this
+cannot be scaled indefinitely. Be aware of the memory configuration of the
+compute node used (i.e., performance may suffer when using more processors than
+in a NUMA domain). `createmap` internally uses locks to access one _shared
+memory_ instance of the to-be-created map. The more CPUs are used for the task,
+the more lock contention might happen.
 
 :::{note}
 
-In practice, a specific scheme has been shown to be working for large LEGEND maps. 16 cores
-on a NERSC perlmutter node work quite fine to produce a map from a set of input files. To
-use more of the available resources, 256 input files are used for one `createmap` task; up
-to 16 (typically only 12 to have some spare memory for the peaks) such tasks are run in
-parallel. This means a total of 4096 remage output files can be read in parallel.
+In practice, a specific scheme has been shown to be working for large LEGEND
+maps. 16 cores on a NERSC perlmutter node work quite fine to produce a map from
+a set of input files. To use more of the available resources, 256 input files
+are used for one `createmap` task; up to 16 (typically only 12 to have some
+spare memory for the peaks) such tasks are run in parallel. This means a total
+of 4096 remage output files can be read in parallel.
 
 The 12-16 output files can then be combined into one with
 
@@ -115,15 +117,55 @@ $ reboost-optical mergemap --settings map-settings.yaml map.map*.lh5 final-outpu
 
 ## Applying optical maps to physics simulations
 
+### Integration into build-hit
+
+_reboost-optical_ is integrated with the remaining _reboost_ stack. The
+map-based production of the optical response is divided into multiple steps:
+
+1. generation of primary emitted photon counts (the same for all detecting
+   channels)
+
+   ```{math}
+   n_\mathrm{emitted}(E_j) \sim \mathcal{P}(Y\, E_j)
+   ```
+
+   This is implemented in the processor
+   {func}`reboost.spms.pe.emitted_scintillation_photons`.
+
+2. sampling of the actually detected photons (individually per channel)
+
+   ```{math}
+    n_c(E_j) \sim \mathcal{P}\left(
+        n_\mathrm{emitted}(E_j)
+        \, \cdot\, \ \xi_c(x_j)\, \epsilon_c
+    \right)
+   ```
+
+   where {math}`\xi_c` is the loaded optical map, and {math}`\epsilon_c` is an
+   arbitrary user-supplied scaling factor for the channel {math}`c`.
+
+   This is implemented in the processor
+   {func}`reboost.spms.pe.detected_photoelectrons`.
+
+The used statistical model are developed and described in more detail in M.
+Huber's master thesis.
+
+An example using all these processors can be seen in the documentation of
+{mod}`reboost.build_hit`. Especially note the usage of `pre_operations` and
+`detector_mapping` to convert a single input table of type scintillator to
+multiple optical output tables.
+
+### Standalone tool `reboost-optical convolve` (deprecated)
+
 :::{important}
 
-_reboost-optical_ is not yet integrated with the remaining _reboost_ stack. The optical
-response can be generated with the standalone command `reboost-optical convolve`.
+This old standalone method is deprecated and will be removed in a future version
+of reboost.
 
 :::
 
-If the liquid argon volume is registered as a `Scintillator` detector with uid 1, the
-optical response can be created with:
+If the liquid argon volume is registered as a `Scintillator` detector with uid
+1, the optical response can be created with:
 
 ```
 reboost-optical convolve --material lar --map map.lh5 --edep remage-output.lh5 --edep-lgdo /stp/det001 --output optical-response.lh5
