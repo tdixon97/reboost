@@ -42,6 +42,23 @@ def units_convfact(data: Any, target_units: pint.Units) -> float:
     return 1
 
 
+def units_conv_ak(data: Any, target_units: pint.Units) -> float:
+    """Calculate numeric conversion factor to reach `target_units`, and apply to data converted to ak.
+
+    Parameters
+    ----------
+    data
+        starting data structure. If an LGDO, try to determine units by peeking
+        into its attributes. Otherwise, just return 1.
+    target_units
+        units you wish to convert data to.
+    """
+    fact = units_convfact(data, target_units)
+    if isinstance(data, LGDO) and fact != 1:
+        return data.view_as("ak") * fact
+    return data.view_as("ak") if isinstance(data, LGDO) else data
+
+
 def unwrap_lgdo(data: Any, library: str = "ak") -> tuple(Any, pint.Unit | None):
     """Return a view of the data held by the LGDO and its physical units.
 

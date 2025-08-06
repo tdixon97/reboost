@@ -6,6 +6,7 @@ import awkward as ak
 from lgdo import VectorOfVectors
 
 from ..optmap import convolve
+from ..units import units_conv_ak
 
 log = logging.getLogger(__name__)
 
@@ -32,8 +33,7 @@ def detected_photoelectrons(
     spm_detector_uid: int,
     map_scaling: float = 1,
 ) -> VectorOfVectors:
-    """Derive the number of detected photoelectrons (p.e.) from scintillator hits using
-    an optical map.
+    """Derive the number of detected photoelectrons (p.e.) from scintillator hits using an optical map.
 
     Parameters
     ----------
@@ -63,10 +63,10 @@ def detected_photoelectrons(
         {
             "num_scint_ph": num_scint_ph,
             "particle": particle,
-            "time": time,
-            "xloc": xloc,
-            "yloc": yloc,
-            "zloc": zloc,
+            "time": units_conv_ak(time, "ns"),
+            "xloc": units_conv_ak(xloc, "m"),
+            "yloc": units_conv_ak(yloc, "m"),
+            "zloc": units_conv_ak(zloc, "m"),
         }
     )
 
@@ -75,8 +75,6 @@ def detected_photoelectrons(
         hits, optmap, scint_mat_params, spm_detector_uid, map_scaling
     )
 
-    # TODO: better unit handling. the input unit is stripped, so we just have to trust
-    # that everything is alright here.
     return VectorOfVectors(pe, attrs={"units": "ns"})
 
 
@@ -94,7 +92,7 @@ def emitted_scintillation_photons(
     material
         scintillating material name.
     """
-    hits = ak.Array({"edep": edep, "particle": particle})
+    hits = ak.Array({"edep": units_conv_ak(edep, "keV"), "particle": particle})
 
     scint_mat_params = convolve._get_scint_params(material)
     ph = convolve.iterate_stepwise_depositions_scintillate(hits, scint_mat_params)
