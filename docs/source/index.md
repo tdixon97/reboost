@@ -52,6 +52,6 @@ Package API reference <api/modules>
 - [legend-pygeom-l200](https://github.com/legend-exp/legend-pygeom-l200):
   Implementation of the LEGEND-200 experiment,
 - [legend-pygeom-l1000](https://github.com/legend-exp/legend-pygeom-l200):
-  Implementation of the LEGEND-1000 experiment (**private**),
+  Implementation of the LEGEND-1000 experiment,
 - [revertex](https://github.com/legend-exp/revertex/): Generation of vertices
   for simulations.
