@@ -30,10 +30,39 @@ def test_units_convfact():
     arr = Array([1, 2, 3], attrs={"units": "m"})
     assert units.units_convfact(arr, "mm") == 1000
 
+    # also test this with ak.Array as input (as in Table.eval).
+    arr = ak.Array([1, 2, 3])
+    arr = ak.with_parameter(arr, "units", "m")
+    assert units.units_convfact(arr, "mm") == 1000
+
+
+def test_units_conv_ak():
+    assert units.units_conv_ak(1, "m") == 1
+
+    arr = Array([1, 2, 3], attrs={"units": "m"})
+    assert ak.all(units.units_conv_ak(arr, "mm") == ak.Array([1000, 2000, 3000]))
+
+    # also test this with ak.Array as input (as in Table.eval).
+    arr = ak.Array([1, 2, 3])
+    arr = ak.with_parameter(arr, "units", "m")
+    assert ak.all(units.units_conv_ak(arr, "mm") == ak.Array([1000, 2000, 3000]))
+
 
 def test_unwrap_lgdo():
     arr = Array([1, 2, 3], attrs={"units": "m"})
 
+    arr_view, unit = units.unwrap_lgdo(arr, "ak")
+    assert isinstance(arr_view, ak.Array)
+    assert isinstance(unit, pint.Unit)
+    assert unit == u.m
+
+    arr_view_2, unit = units.unwrap_lgdo(arr_view, "ak")
+    assert arr_view_2 is arr_view
+    assert unit is None
+
+    # also test this with ak.Array as input (as in Table.eval).
+    arr = ak.Array([1, 2, 3])
+    arr = ak.with_parameter(arr, "units", "m")
     arr_view, unit = units.unwrap_lgdo(arr, "ak")
     assert isinstance(arr_view, ak.Array)
     assert isinstance(unit, pint.Unit)

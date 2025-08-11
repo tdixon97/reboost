@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import logging
 import time
 from typing import Any
@@ -145,11 +146,12 @@ def evaluate_output_column(
     if globals_dict == {}:
         globals_dict = None
 
+    ctx = contextlib.nullcontext()
     if globals_dict is not None and "pyg4ometry" in globals_dict:
-        with utils.filter_logging(logging.CRITICAL):
-            res = hit_table.eval(func_call, local_dict, modules=globals_dict)
-    else:
-        res = hit_table.eval(func_call, local_dict, modules=globals_dict)
+        ctx = utils.filter_logging(logging.CRITICAL)
+
+    with ctx:
+        res = hit_table.eval(func_call, local_dict, modules=globals_dict, with_units=True)
 
     # how long did it take
     if time_dict is not None:

@@ -60,6 +60,7 @@ intersphinx_mapping = {
     "scipy": ("https://docs.scipy.org/doc/scipy", None),
     "pandas": ("https://pandas.pydata.org/docs", None),
     "matplotlib": ("https://matplotlib.org/stable", None),
+    "awkward": ("https://awkward-array.org/doc/stable", None),
     "pint": ("https://pint.readthedocs.io/en/stable", None),
     "pyg4ometry": ("https://pyg4ometry.readthedocs.io/en/stable", None),
     "legendmeta": ("https://pylegendmeta.readthedocs.io/en/stable/", None),
