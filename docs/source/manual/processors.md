@@ -53,6 +53,9 @@ return either an {class}`lgdo.LGDO` object, or an {class}`awkward.Array`. These
 processors should not change the length of the object, i.e. they should only act
 on axes more than 1.
 
+The input parameters for processors should also be accepted as
+{class}`lgdo.LGDO` object, or an {class}`awkward.Array`
+
 Documentation describing the various processors is contained in the API
 documentation. You can then import these functions and use them in your python
 scripts for simple post-processing!

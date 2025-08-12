@@ -151,7 +151,9 @@ def evaluate_output_column(
         ctx = utils.filter_logging(logging.CRITICAL)
 
     with ctx:
-        res = hit_table.eval(func_call, local_dict, modules=globals_dict, with_units=True)
+        res = hit_table.eval(
+            func_call, local_dict, modules=globals_dict, library="ak", with_units=True
+        )
 
     # how long did it take
     if time_dict is not None:
