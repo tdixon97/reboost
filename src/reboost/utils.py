@@ -9,6 +9,7 @@ from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
 from pathlib import Path
 
+import h5py
 from dbetto import AttrsDict
 from lgdo import lh5
 from lgdo.types import Struct, Table, VectorOfVectors
@@ -442,3 +443,61 @@ def write_lh5(
         )
     if time_dict is not None:
         time_dict.update_field("write", start_time)
+
+
+def get_remage_detector_uids(h5file: str | Path) -> dict:
+    """Get mapping of detector names to UIDs from a remage output file.
+
+    The remage LH5 output files contain a link structure that lets the user
+    access detector tables by UID. For example:
+
+    .. code-block:: text
+
+        ├── stp · struct{det1,det2,optdet1,optdet2,scint1,scint2}
+        └── __by_uid__ · struct{det001,det002,det011,det012,det101,det102}
+            ├── det001 -> /stp/scint1
+            ├── det002 -> /stp/scint2
+            ├── det011 -> /stp/det1
+            ├── det012 -> /stp/det2
+            ├── det101 -> /stp/optdet1
+            └── det102 -> /stp/optdet2
+
+    This function analyzes this structure and returns:
+
+    .. code-block:: text
+
+        {1: 'scint1',
+         2: 'scint2',
+         11: 'det1',
+         12: 'det2',
+         101: 'optdet1',
+         102: 'optdet2'g
+
+    Parameters
+    ----------
+    h5file
+        path to remage output file.
+    """
+    if isinstance(h5file, Path):
+        h5file = h5file.as_posix()
+
+    out = {}
+    with h5py.File(h5file, "r") as f:
+        g = f["/stp/__by_uid__"]
+        # loop over links
+        for key in g:
+            # is this a link?
+            link = g.get(key, getlink=True)
+            if isinstance(link, h5py.SoftLink):
+                m = re.fullmatch(r"det(\d+)", key)
+                if m is None:
+                    msg = rf"'{key}' is not formatted as expected, i.e. 'det(\d+)', skipping"
+                    log.warning(msg)
+                    continue
+
+                # get the name of the link target without trailing groups (to
+                # i.e. remove /stp)
+                name = link.path.split("/")[-1]
+
+                out[int(m.group(1))] = name
+    return out
