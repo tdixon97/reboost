@@ -22,7 +22,7 @@ def tmptestdir_global():
 @pytest.fixture(scope="session")
 def legendtestdata():
     ldata = LegendTestData()
-    ldata.checkout("1d069f1")
+    ldata.checkout("0a56ff3")
     return ldata
 
 

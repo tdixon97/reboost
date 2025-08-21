@@ -9,6 +9,7 @@ import yaml
 from lgdo.types import Array, Table, VectorOfVectors
 
 import reboost
+from reboost import utils
 from reboost.shape import group
 from reboost.utils import (
     assign_units,
@@ -233,3 +234,9 @@ def test_table_names():
     table_names = get_table_names(tcm)
     assert table_names["det001"] == 0
     assert table_names["det002"] == 1
+
+
+def test_get_rmg_detector_uids(legendtestdata):
+    out = utils.get_remage_detector_uids(legendtestdata["remage/th228-full-optional-v0_13.lh5"])
+    assert isinstance(out, dict)
+    assert out == {1: "scint1", 2: "scint2", 11: "det1", 12: "det2", 101: "optdet1", 102: "optdet2"}
