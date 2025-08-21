@@ -39,7 +39,7 @@ And run the _remage_ (from inside the remage container / after installation
 simulation with:
 
 ```console
-$ remage --threads 1 --gdml-files geometry.gdml --output stp_out.lh5 -- th228.mac
+$ remage --threads 1 --gdml-files geometry.gdml --output-file stp_out.lh5 -- th228.mac
 ```
 
 This should take about 10 minutes to run.
@@ -131,7 +131,7 @@ The only requirements are:
   `LGDO.ArrayOfEqualSizedArrays`
   [[docs]](https://legend-pydataobj.readthedocs.io/en/latest/api/lgdo.types.html)
   object, or something able to be converted to this (awkward arrays for example),
-- the returned object should have the same length as the original hits table,
+- the returned object should have the same length as the original stp table,
   i.e. the processors act on every row but they cannot add, remove or merge
   rows.
 
@@ -152,13 +152,13 @@ of the HPGe detector
 
 ```python
 dist_all = reboost.hpge.surface.distance_to_surface(
-    hits.xloc * 1000, hits.yloc * 1000, hits.zloc * 1000, hpge_pyobj, position
+    stp.xloc * 1000, stp.yloc * 1000, stp.zloc * 1000, hpge_pyobj, position
 ).view_as("ak")
 
 dist_nplus = reboost.hpge.surface.distance_to_surface(
-    hits.xloc * 1000,
-    hits.yloc * 1000,
-    hits.zloc * 1000,
+    stp.xloc * 1000,
+    stp.yloc * 1000,
+    stp.zloc * 1000,
     hpge_pyobj,
     position,
     surface_type="nplus",
@@ -170,11 +170,9 @@ We make a plot of the distance of the steps to the n+ electrode compared to the 
 ```python
 # extract r and z
 r = ak.flatten(
-    np.sqrt(
-        (hits.xloc * 1000 - position[0]) ** 2 + (hits.yloc * 1000 - position[1]) ** 2
-    )
+    np.sqrt((stp.xloc * 1000 - position[0]) ** 2 + (stp.yloc * 1000 - position[1]) ** 2)
 )
-z = ak.flatten(hits.zloc * 1000 - position[2])
+z = ak.flatten(stp.zloc * 1000 - position[2])
 rng = np.random.default_rng()
 r = rng.choice([-1, 1], p=[0.5, 0.5], size=len(r)) * r
 
@@ -249,8 +247,8 @@ activeness = reboost.math.functions.piecewise_linear_activeness(
 )
 
 # compute the energy
-total_energy = ak.sum(hits.edep, axis=-1)
-corr_energy = ak.sum(hits.edep * activeness, axis=-1)
+total_energy = ak.sum(stp.edep, axis=-1)
+corr_energy = ak.sum(stp.edep * activeness, axis=-1)
 
 
 # make a plot
@@ -324,7 +322,7 @@ This can be computed with a simple `reboost` processor: {func}`.hpge.psd.r90`.
 
 ```python
 r90 = reboost.hpge.psd.r90(
-    hits.edep, hits.xloc * 1000, hits.yloc * 1000, hits.zloc * 1000
+    stp.edep, stp.xloc * 1000, stp.yloc * 1000, stp.zloc * 1000
 ).view_as("ak")
 
 # make a plot
@@ -395,20 +393,20 @@ heuristics are able to reproduce better the features of experimental data!
 We can save the data to disk by appending the fields to the hit table.
 
 ```python
-hits_tbl = Table(hits)
+stp_tbl = Table(stp)
 
 # add fields
-hits_tbl.add_field("energy", Array(energy_smeared))
-hits_tbl.add_field("r90", Array(r90))
-hits_tbl.add_field("evtid", Array(ak.fill_none(ak.firsts(hits.evtid), np.nan)))
-hits_tbl.add_field("t0", Array(ak.fill_none(ak.firsts(hits.time), np.nan)))
+stp_tbl.add_field("energy", Array(energy_smeared))
+stp_tbl.add_field("r90", Array(r90))
+stp_tbl.add_field("evtid", Array(ak.fill_none(ak.firsts(stp.evtid), np.nan)))
+stp_tbl.add_field("t0", Array(ak.fill_none(ak.firsts(stp.time), np.nan)))
 
 for field in ["particle", "edep", "time", "xloc", "yloc", "zloc", "dist_to_surf"]:
-    hits_tbl.remove_field(field)
+    stp_tbl.remove_field(field)
 ```
 
 ```python
-lh5.write(hits_tbl, "hit/det001", "hit_out.lh5")
+lh5.write(stp_tbl, "hit/det001", "hit_out.lh5")
 ```
 
 Now we have a hit tier file for further analysis!
