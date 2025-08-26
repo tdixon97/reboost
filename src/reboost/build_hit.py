@@ -199,6 +199,7 @@ def build_hit(
     out_field: str = "hit",
     buffer: int = int(5e6),
     overwrite: bool = False,
+    allow_missing: bool = True,
 ) -> None | ak.Array:
     """Build the hit tier from the remage step files.
 
@@ -225,6 +226,8 @@ def build_hit(
         buffer size for use in the `LH5Iterator`.
     overwrite
         flag to overwrite the existing output.
+    allow_missing
+        Boolean flag to allow missing input detectors, usually when there were no registered events.
     """
     # extract the config file
     if isinstance(config, str):
@@ -288,18 +291,24 @@ def build_hit(
                 if lh5_group is None:
                     lh5_group = "/"
 
-                # begin iterating over the glm
-                iterator = GLMIterator(
-                    glm_file,
-                    stp_file,
-                    lh5_group=in_detector,
-                    start_row=start_evtid,
-                    stp_field=lh5_group,
-                    n_rows=n_evtid,
-                    buffer=buffer,
-                    time_dict=time_dict[proc_name],
-                    reshaped_files="hit_table_layout" not in proc_group,
-                )
+                # check if the in_detector is in the file
+                if f"{lh5_group}/{in_detector}" in lh5.ls(stp_file, f"{lh5_group}"):
+                    iterator = GLMIterator(
+                        glm_file,
+                        stp_file,
+                        lh5_group=in_detector,
+                        start_row=start_evtid,
+                        stp_field=lh5_group,
+                        n_rows=n_evtid,
+                        buffer=buffer,
+                        time_dict=time_dict[proc_name],
+                        reshaped_files="hit_table_layout" not in proc_group,
+                    )
+                elif allow_missing:
+                    continue
+                else:
+                    msg = f"Requested input detector {in_detector} is not present in the group {lh5_group} and missing inputs were not allowed"
+                    raise ValueError(msg)
 
                 for stps, chunk_idx, _ in iterator:
                     # converting to awkward
