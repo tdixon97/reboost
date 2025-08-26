@@ -292,7 +292,7 @@ def build_hit(
                     lh5_group = "/"
 
                 # check if the in_detector is in the file
-                if f"{lh5_group}/{in_detector}" in lh5.ls(stp_file, f"{lh5_group}"):
+                if f"{lh5_group}/{in_detector}" in lh5.ls(stp_file, f"{lh5_group}/"):
                     iterator = GLMIterator(
                         glm_file,
                         stp_file,
