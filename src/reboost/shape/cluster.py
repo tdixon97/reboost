@@ -97,9 +97,9 @@ def cluster_by_step_length(
 
     pos = np.vstack(
         [
-            ak.flatten(pos_x).to_numpy(),
-            ak.flatten(pos_y).to_numpy(),
-            ak.flatten(pos_z).to_numpy(),
+            ak.flatten(pos_x).to_numpy().astype(np.float64),
+            ak.flatten(pos_y).to_numpy().astype(np.float64),
+            ak.flatten(pos_z).to_numpy().astype(np.float64),
         ]
     ).T
 
@@ -164,7 +164,7 @@ def cluster_by_distance_numba(
         return np.sqrt(np.sum((a - b) ** 2))
 
     n = len(local_index)
-    out = np.zeros(n, dtype=numba.int32)
+    out = np.zeros((n,), dtype=numba.int32)
 
     trackid_prev = -1
     pos_prev = np.zeros(3, dtype=numba.float64)
