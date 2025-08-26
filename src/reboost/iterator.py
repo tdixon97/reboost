@@ -107,7 +107,10 @@ class GLMIterator:
             glm_n_rows = self.sto.read_n_rows(f"glm/{self.lh5_group}", self.glm_file)
 
         # get the number of stp rows
-        stp_n_rows = self.sto.read_n_rows(f"{self.stp_field}/{self.lh5_group}", self.stp_file)
+        try:
+            stp_n_rows = self.sto.read_n_rows(f"{self.stp_field}/{self.lh5_group}", self.stp_file)
+        except Exception:
+            stp_n_rows = 0
 
         # heuristics for a good buffer length
         if self.use_glm:

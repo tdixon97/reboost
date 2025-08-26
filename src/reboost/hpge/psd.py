@@ -133,7 +133,6 @@ def drift_time(
         np.sqrt(xloc**2 + yloc**2),
         zloc,
     )
-
     return VectorOfVectors(
         dt_values,
         attrs={"units": units.unit_to_lh5_attr(dt_map.φ_units)},
@@ -239,7 +238,7 @@ def _drift_time_heuristic_impl(
     return dt_heu
 
 
-@numba.njit(cache=True)
+@numba.njit
 def _vectorized_erf(x: ArrayLike) -> NDArray:
     """Error function that can take in a numpy array."""
     out = np.empty_like(x)
@@ -250,16 +249,24 @@ def _vectorized_erf(x: ArrayLike) -> NDArray:
 
 @numba.njit(cache=True)
 def _current_pulse_model(
-    times: ArrayLike, Amax: float, mu: float, sigma: float, tail_fraction: float, tau: float
+    times: ArrayLike,
+    Amax: float,
+    mu: float,
+    sigma: float,
+    tail_fraction: float,
+    tau: float,
+    high_tail_fraction: float = 0,
+    high_tau: float = 0,
 ) -> NDArray:
     r"""Analytic model for the current pulse in a Germanium detector.
 
-    Consists of a Gaussian and an exponential tail:
+    Consists of a Gaussian a high side exponential tail and a low side tail:
 
      .. math::
 
-       A(t) = A_{max}\times (1-p)\times \text{Gauss}(t,\mu,\sigma)+ A \times p (1-\text{Erf}((t-\mu)/sigma))\times
-        \frac{e^{(t/\tau)}}{2e^{\mu/\tau}}
+       A(t) = A_{max}\times (1-p-p_h)\times \text{Gauss}(t,\mu,\sigma)+ A \times p (1-\text{Erf}((t-\mu)/sigma_i))\times
+        \frac{e^{( t/\tau)}}{2e^{\mu/\tau}} + A \times p_h (1-\text{Erf}(-(t-\mu)/sigma_i))\times
+        \frac{e^{-( t/\tau)}}{2}
 
     Parameters
     ----------
@@ -275,18 +282,50 @@ def _current_pulse_model(
         Fraction of the tail in the pulse.
     tau
         Time constant of the low time tail.
+    high__tail_fraction
+        Fraction of the high tail in the pulse.
+    high_tau
+        Time constant of the high time tail.
 
     Returns
     -------
     The predicted current waveform for this energy deposit.
     """
     norm = 2 * exp(mu / tau)
+    norm_high = 2
 
     dx = times - mu
-    term1 = Amax * (1 - tail_fraction) * np.exp(-(dx * dx) / (2 * sigma * sigma))
+    term1 = (
+        Amax * (1 - tail_fraction - high_tail_fraction) * np.exp(-(dx * dx) / (2 * sigma * sigma))
+    )
     term2 = Amax * tail_fraction * (1 - _vectorized_erf(dx / sigma)) * np.exp(times / tau) / norm
+    term3 = (
+        Amax
+        * high_tail_fraction
+        * (1 - _vectorized_erf(-dx / sigma))
+        * np.exp(-(times - mu) / high_tau)
+        / norm_high
+    )
 
-    return term1 + term2
+    return term1 + term2 + term3
+
+
+@numba.njit(cache=True)
+def _interpolate_pulse_model(
+    template: Array, time: float, start: float, end: float, dt: float, mu: float
+) -> NDArray:
+    """Interpolate to extract the pulse model given a particular mu."""
+    local_time = time - mu - start
+
+    if (local_time < start) or (int(local_time) > end):
+        return 0
+
+    sample = int(local_time / dt)
+    A_before = template[sample]
+    A_after = template[sample + 1]
+
+    frac = (local_time - int(local_time)) / dt
+    return A_before + frac * (A_after - A_before)
 
 
 def convolve_surface_response(surf_current: np.ndarray, bulk_pulse: np.ndarray) -> NDArray:
@@ -339,7 +378,7 @@ def get_current_waveform(
     drift_time
         Array of drift times for each step
     template
-        array of the template for the current waveforms, with 1 ns binning.
+        array of the template for the current waveforms
     start
         first time value of the template
     dt
@@ -354,22 +393,17 @@ def get_current_waveform(
     n = len(template)
 
     times = np.arange(n) * dt + start
-    y = np.zeros_like(times)
+    y = np.zeros_like(times, dtype=np.float64)
 
     for i in range(len(edep)):
         E = edep[i]
         mu = drift_time[i]
-        shift = int(mu / dt)
 
-        # Add scaled template starting at index `shift`
         for j in range(n):
-            if (
-                (shift + j) >= n
-                or (times[shift + j] < range_t[0])
-                or (times[shift + j] > range_t[1])
-            ):
+            time = start + dt * j
+            if (time < range_t[0]) or (time > (range_t[1] - dt)):
                 continue
-            y[shift + j] += E * template[j]
+            y[j] += E * _interpolate_pulse_model(template, time, start, start + dt * n, dt, mu)
 
     return times, y
 
@@ -378,9 +412,12 @@ def get_current_waveform(
 def _estimate_current_impl(
     edep: ak.Array,
     dt: ak.Array,
+    mu: float,
     sigma: float,
     tail_fraction: float,
     tau: float,
+    high_tail_fraction: float,
+    high_tau: float,
     mean_AoE: float = 0,
 ) -> tuple[NDArray, NDArray]:
     """Estimate the maximum current that would be measured in the HPGe detector.
@@ -391,14 +428,20 @@ def _estimate_current_impl(
     ----------
     edep
         Array of energies for each step.
-    drift_time
+    dt
         Array of drift times for each step.
+    mu
+        Centroid position parameter.
     sigma
-        Sigma parameter of the current pulse model.
+        Gaussian width parameter.
     tail_fraction
-        Tail-fraction parameter of the current pulse.
+        Tail fraction parameter
     tau
-        Tail parameter of the current pulse
+        Low side tail time constant parameter.
+    high_tail_fraction
+        High side tail fraction.
+    high_tau
+        High side time constant.
     mean_AoE
         The mean AoE value for this detector (to normalise current pulses).
     """
@@ -412,11 +455,30 @@ def _estimate_current_impl(
     # make a template with 1 ns binning so
     # template[(i-start)/dt] = _current_pulse_model(x,1,i,...)
 
-    template_coarse = _current_pulse_model(x_coarse, 1, 0, sigma, tail_fraction, tau)
+    template_coarse = _current_pulse_model(
+        x_coarse,
+        Amax=1,
+        mu=mu,
+        sigma=sigma,
+        tail_fraction=tail_fraction,
+        tau=tau,
+        high_tail_fraction=high_tail_fraction,
+        high_tau=high_tau,
+    )
+
     template_coarse /= np.max(template_coarse)
     template_coarse *= mean_AoE
 
-    template_fine = _current_pulse_model(x_fine, 1, 0, sigma, tail_fraction, tau)
+    template_fine = _current_pulse_model(
+        x_fine,
+        Amax=1,
+        mu=mu,
+        sigma=sigma,
+        tail_fraction=tail_fraction,
+        tau=tau,
+        high_tail_fraction=high_tail_fraction,
+        high_tau=high_tau,
+    )
     template_fine /= np.max(template_fine)
     template_fine *= mean_AoE
 
@@ -426,14 +488,14 @@ def _estimate_current_impl(
 
         # first pass
         times_coarse, W = get_current_waveform(
-            e, t, template=template_coarse, start=-1000, dt=20, range_t=(-1000, 3000)
+            e, t, template=template_coarse, start=-1000, dt=20.0, range_t=(-1000, 3000)
         )
 
         max_t = times_coarse[np.argmax(W)]
 
         # fine scan
         times, W = get_current_waveform(
-            e, t, template=template_fine, start=-1000, dt=1, range_t=(max_t - 50, max_t + 50)
+            e, t, template=template_fine, start=-1000, dt=1.0, range_t=(max_t - 50, max_t + 50)
         )
 
         A[i] = np.max(W)
@@ -446,9 +508,12 @@ def maximum_current(
     edep: ArrayLike,
     drift_time: ArrayLike,
     *,
+    mu: float,
     sigma: float,
     tail_fraction: float,
     tau: float,
+    high_tail_fraction: float,
+    high_tau: float,
     mean_AoE: float = 0,
     get_timepoint: bool = False,
 ) -> Array:
@@ -466,6 +531,10 @@ def maximum_current(
         Tail-fraction parameter of the current pulse.
     tau
         Tail parameter of the current pulse
+    high_tail_fraction
+        High tail-fraction parameter of the current pulse.
+    high_tau
+        High tail parameter of the current pulse
     mean_AoE
         The mean AoE value for this detector (to normalise current pulses).
     get_timepoint
@@ -476,16 +545,23 @@ def maximum_current(
     An Array of the maximum current for each hit.
     """
     # extract LGDO data and units
-    drift_time, _ = units.unwrap_lgdo(drift_time)
 
+    drift_time, _ = units.unwrap_lgdo(drift_time)
     edep, _ = units.unwrap_lgdo(edep)
+
+    if not ak.all(ak.num(edep, axis=-1) == ak.num(drift_time, axis=-1)):
+        msg = "edep and drift time must have the same shape"
+        raise ValueError(msg)
 
     curr, time = _estimate_current_impl(
         ak.Array(edep),
         ak.Array(drift_time),
+        mu=mu,
         sigma=sigma,
         tail_fraction=tail_fraction,
         tau=tau,
+        high_tail_fraction=high_tail_fraction,
+        high_tau=high_tau,
         mean_AoE=mean_AoE,
     )
 

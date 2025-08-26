@@ -199,6 +199,7 @@ def build_hit(
     out_field: str = "hit",
     buffer: int = int(5e6),
     overwrite: bool = False,
+    allow_missing_inputs=True,
 ) -> None | ak.Array:
     """Build the hit tier from the remage step files.
 
@@ -225,6 +226,8 @@ def build_hit(
         buffer size for use in the `LH5Iterator`.
     overwrite
         flag to overwrite the existing output.
+    allow_missing_inputs
+        Flag to allow an input table to be missing, generally when there were no events.
     """
     # extract the config file
     if isinstance(config, str):
@@ -289,17 +292,24 @@ def build_hit(
                     lh5_group = "/"
 
                 # begin iterating over the glm
-                iterator = GLMIterator(
-                    glm_file,
-                    stp_file,
-                    lh5_group=in_detector,
-                    start_row=start_evtid,
-                    stp_field=lh5_group,
-                    n_rows=n_evtid,
-                    buffer=buffer,
-                    time_dict=time_dict[proc_name],
-                    reshaped_files="hit_table_layout" not in proc_group,
-                )
+                # check if the in_detector is in the file
+                if f"{lh5_group}/{in_detector}" in lh5.ls(stp_file, f"{lh5_group}/"):
+                    iterator = GLMIterator(
+                        glm_file,
+                        stp_file,
+                        lh5_group=in_detector,
+                        start_row=start_evtid,
+                        stp_field=lh5_group,
+                        n_rows=n_evtid,
+                        buffer=buffer,
+                        time_dict=time_dict[proc_name],
+                        reshaped_files="hit_table_layout" not in proc_group,
+                    )
+                elif allow_missing_inputs:
+                    continue
+                else:
+                    msg = f"Requested input detector {in_detector} is not present in the group {lh5_group} and missing inputs were not allowed"
+                    raise ValueError(msg)
 
                 for stps, chunk_idx, _ in iterator:
                     # converting to awkward
@@ -419,7 +429,7 @@ def build_hit(
                     raise RuntimeError(msg) from e
 
     # return output table or nothing
-    log.debug(time_dict)
+    log.info(time_dict)
 
     if output_tables == {}:
         output_tables = None
