@@ -191,3 +191,4 @@ def cli(args=None) -> None:
             buffer=args.buffer,
             overwrite=args.overwrite,
         )
+        log.info("successfully finished post-processing")

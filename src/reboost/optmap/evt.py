@@ -25,7 +25,7 @@ def build_optmap_evt(
     if lh5_out_file_tmp.exists():
         msg = f"temporary output file {lh5_out_file_tmp} already exists"
         raise RuntimeError(msg)
-    vert_it = LH5Iterator(lh5_in_file, "vtx", buffer_len=buffer_len)
+    vert_it = LH5Iterator(lh5_in_file, "stp/vertices", buffer_len=buffer_len)
     opti_it = LH5Iterator(lh5_in_file, "stp/optical", buffer_len=buffer_len)
 
     detectors = [str(d) for d in detectors]
