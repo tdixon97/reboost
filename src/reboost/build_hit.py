@@ -199,7 +199,7 @@ def build_hit(
     out_field: str = "hit",
     buffer: int = int(5e6),
     overwrite: bool = False,
-    allow_missing_inputs = True,
+    allow_missing_inputs=True,
 ) -> None | ak.Array:
     """Build the hit tier from the remage step files.
 
@@ -293,7 +293,7 @@ def build_hit(
 
                 # begin iterating over the glm
                 # check if the in_detector is in the file
-                if (f"{lh5_group}/{in_detector}" in lh5.ls(stp_file,f"{lh5_group}"):
+                if f"{lh5_group}/{in_detector}" in lh5.ls(stp_file, f"{lh5_group}/"):
                     iterator = GLMIterator(
                         glm_file,
                         stp_file,
@@ -305,12 +305,11 @@ def build_hit(
                         time_dict=time_dict[proc_name],
                         reshaped_files="hit_table_layout" not in proc_group,
                     )
+                elif allow_missing_inputs:
+                    continue
                 else:
-                    if (allow_missing_inputs):
-                        continue
-                    else:
-                        msg = f"Requested input detector {in_detector} is not present in the group {lh5_group} and missing inputs were not allowed"
-                        raise ValueError(msg)
+                    msg = f"Requested input detector {in_detector} is not present in the group {lh5_group} and missing inputs were not allowed"
+                    raise ValueError(msg)
 
                 for stps, chunk_idx, _ in iterator:
                     # converting to awkward
