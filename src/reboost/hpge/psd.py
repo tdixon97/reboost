@@ -317,7 +317,6 @@ def _interpolate_pulse_model(
     """Interpolate to extract the pulse model given a particular mu."""
     local_time = time - mu - start
 
-    
     if (local_time < start) or (int(local_time) > end):
         return 0
 
@@ -394,7 +393,7 @@ def get_current_waveform(
     n = len(template)
 
     times = np.arange(n) * dt + start
-    y = np.zeros_like(times, dtype = np.float64)
+    y = np.zeros_like(times, dtype=np.float64)
 
     for i in range(len(edep)):
         E = edep[i]
@@ -489,14 +488,14 @@ def _estimate_current_impl(
 
         # first pass
         times_coarse, W = get_current_waveform(
-            e, t, template=template_coarse, start=-1000, dt=20., range_t=(-1000, 3000)
+            e, t, template=template_coarse, start=-1000, dt=20.0, range_t=(-1000, 3000)
         )
 
         max_t = times_coarse[np.argmax(W)]
 
         # fine scan
         times, W = get_current_waveform(
-            e, t, template=template_fine, start=-1000, dt=1., range_t=(max_t - 50, max_t + 50)
+            e, t, template=template_fine, start=-1000, dt=1.0, range_t=(max_t - 50, max_t + 50)
         )
 
         A[i] = np.max(W)
