@@ -49,7 +49,7 @@ def open_optmap(optmap_fn: str) -> OptmapForConvolve:
     ow = np.empty((detidx.shape[0] + 2, *optmap_all.weights.nda.shape), dtype=np.float64)
     # 0, ..., len(detidx)-1 AND OPTMAP_ANY_CH might be negative.
     ow[OPTMAP_ANY_CH] = optmap_all.weights.nda
-    for i, nt in zip(detidx, det_ntuples):
+    for i, nt in zip(detidx, det_ntuples, strict=True):
         optmap = lh5.read(f"/{nt}/p_det", optmap_fn)
         assert isinstance(optmap, Histogram)
         ow[i] = optmap.weights.nda

@@ -112,7 +112,7 @@ class OpticalMap:
         idx = np.zeros(xyz.shape[1], np.int64)  # bin indices for flattened array
         oor_mask = np.ones(xyz.shape[1], np.bool_)  # mask to remove out of range values
         dims = range(xyz.shape[0])
-        for col, ax, s, dim in zip(xyz, self.binning, self._single_stride, dims):
+        for col, ax, s, dim in zip(xyz, self.binning, self._single_stride, dims, strict=True):
             assert ax.is_range
             assert ax.closedleft
             oor_mask &= (ax.first <= col) & (col < ax.last)
@@ -326,4 +326,4 @@ class OpticalMap:
         assert all(isinstance(b, np.ndarray) for b in e1)
         assert all(isinstance(b, np.ndarray) for b in e2)
 
-        return len(e1) == len(e2) and all(np.all(x1 == x2) for x1, x2 in zip(e1, e2))
+        return all(np.all(x1 == x2) for x1, x2 in zip(e1, e2, strict=True))

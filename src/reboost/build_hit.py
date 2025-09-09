@@ -248,7 +248,7 @@ def build_hit(
     output_tables_names = set()
 
     # iterate over files
-    for file_idx, (stp_file, glm_file) in enumerate(zip(files.stp, files.glm)):
+    for file_idx, (stp_file, glm_file) in enumerate(zip(files.stp, files.glm, strict=True)):
         msg = (
             f"starting processing of {stp_file} to {files.hit[file_idx]} "
             if files.hit[file_idx] is not None

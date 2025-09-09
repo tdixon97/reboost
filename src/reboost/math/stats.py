@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 import awkward as ak
 import numpy as np
@@ -111,7 +111,7 @@ def gaussian_sample(mu: ArrayLike, sigma: ArrayLike | float, *, seed: int | None
         sigma = sigma.view_as("np")
     elif isinstance(sigma, ak.Array):
         sigma = sigma.to_numpy()
-    elif not isinstance(sigma, (float, int, np.ndarray)):
+    elif not isinstance(sigma, float | int | np.ndarray):
         sigma = np.array(sigma)
 
     rng = np.random.default_rng(seed=seed)  # Create a random number generator

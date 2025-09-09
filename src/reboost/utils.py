@@ -165,7 +165,7 @@ def get_file_dict(
     files = {}
 
     for file_type, file_list in zip(
-        ["stp", "glm", "hit"], [stp_files, glm_files_list, hit_files_list]
+        ["stp", "glm", "hit"], [stp_files, glm_files_list, hit_files_list], strict=True
     ):
         if isinstance(file_list, str):
             files[file_type] = [file_list]

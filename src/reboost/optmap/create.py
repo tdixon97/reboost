@@ -4,8 +4,9 @@ import copy
 import gc
 import logging
 import multiprocessing as mp
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 import numpy as np
 import scipy.optimize
