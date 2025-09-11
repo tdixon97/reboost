@@ -12,7 +12,17 @@ def test_maximum_current():
         ak.Array([[400, 500, 700], [800, 0, 1500], [700]], attrs={"unit": "ns"})
     )
 
-    curr = psd.maximum_current(edep, times, sigma=100, tau=100, tail_fraction=0.65, mean_AoE=0.5)
+    curr = psd.maximum_current(
+        edep,
+        times,
+        mu=250,
+        sigma=100,
+        tau=100,
+        tail_fraction=0.65,
+        mean_AoE=0.5,
+        high_tail_fraction=0.5,
+        high_tau=10,
+    )
     assert isinstance(curr, Array)
 
     assert len(curr) == 3

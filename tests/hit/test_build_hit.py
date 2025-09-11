@@ -318,9 +318,7 @@ def test_full_chain(test_gen_lh5, tmptestdir):
         "active_energy",
         "smeared_energy",
     }
-
     # also check the processing of the vtx table
-
     assert hits["vtx"] == Table({"evtid": Array([0, 1])})
 
 

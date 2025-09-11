@@ -289,11 +289,14 @@ def build_hit(
 
                 lh5_group = proc_group.get("lh5_group", "stp")
                 if lh5_group is None:
-                    lh5_group = "/"
+                    lh5_group = ""
+                    table = in_detector
+                else:
+                    table = f"{lh5_group}/{in_detector}"
 
                 # begin iterating over the glm
                 # check if the in_detector is in the file
-                if f"{lh5_group}/{in_detector}" in lh5.ls(stp_file, f"{lh5_group}/"):
+                if table in lh5.ls(stp_file, lh5_group + "/"):
                     iterator = GLMIterator(
                         glm_file,
                         stp_file,
