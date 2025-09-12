@@ -14,6 +14,7 @@ def run_daq_non_sparse(
     *,
     tau_preamp: float = 500,
     noise_threshold: float = 5,
+    baseline_slope_threshold: float = 0.05,
     trigger_threshold: float = 25,
     waveform_length: float = 100,
     trigger_position: float = 50,
@@ -60,8 +61,9 @@ def run_daq_non_sparse(
         where :math:`E_i` is the energy of the signal and :math:`t_i` is the
         time it occurred.
     noise_threshold
-        threshold (in keV) for a signal or baseline slope to be "visible" above
-        noise.
+        threshold (in keV) for a signal to be "visible" above noise.
+    baseline_slope_threshold
+        threshold (in keV/us) on the baseline slope to be tagged as not flat.
     trigger_threshold
         amplitude (in keV) needed for the DAQ to trigger on a signal.
     waveform_length
@@ -86,9 +88,9 @@ def run_daq_non_sparse(
     daq_records = _run_daq_non_sparse_impl(
         evt,
         channel_ids,
-        rng,
         tau_preamp,
         noise_threshold,
+        baseline_slope_threshold,
         trigger_threshold,
         waveform_length,
         trigger_position,
@@ -107,6 +109,7 @@ def _run_daq_non_sparse_impl(
     chids: list,
     tau_preamp: float,
     noise_threshold: float,
+    baseline_slope_threshold: float,
     trigger_threshold: float,
     waveform_length: float,
     trigger_position: float,
@@ -164,7 +167,7 @@ def _run_daq_non_sparse_impl(
             # then continue to the next event.
             dt = ev.t0 - o_timestamp[r_idx - 1]
             if dt < (waveform_length - trigger_position):
-                for rawid, ene in zip(ev.geds_rawid_active, ev.geds_energy_active, strict=False):
+                for rawid, ene in zip(ev.geds_rawid_active, ev.geds_energy_active):  # noqa: B905
                     if ene >= noise_threshold:
                         o_has_post_pulse[r_idx, chids.index(rawid)] = True
                 continue
@@ -180,7 +183,7 @@ def _run_daq_non_sparse_impl(
         # check if we have a trigger by checking energy in each detector against
         # the trigger_threshold. if not, continue to the next event
         triggered_rawids = []
-        for rawid, ene in zip(ev.geds_rawid_active, ev.geds_energy_active, strict=False):
+        for rawid, ene in zip(ev.geds_rawid_active, ev.geds_energy_active):  # noqa: B905
             if ene >= trigger_threshold:
                 triggered_rawids.append(int(rawid))
 
@@ -203,26 +206,25 @@ def _run_daq_non_sparse_impl(
         # now we need to peek into the event_buffer to check if the baseline is
         # affected by the tails of previous events (soft pile-up) or includes a
         # small in-trace signal (pre-hard-pileup). to take a decision, we use the
-        # noise threshold
+        # baseline slope threshold
         for rawid in chids:
-            # compute the baseline at t0
-            baseline = 0
+            abs_baseline_slope = 0
             for j in evt_idx_buffer:
                 _ev = evt[j]
 
                 # for each event in the buffer get timestamp and energy
                 tj = _ev.t0
                 ej = 0
-                for k, e in zip(_ev.geds_rawid_active, _ev.geds_energy_active, strict=False):
+                for k, e in zip(_ev.geds_rawid_active, _ev.geds_energy_active):  # noqa: B905
                     if k == rawid:
                         ej = e
                         break
 
                 # if the event occurred before the current waveform window, we
                 # account for its tail in the baseline of the current waveform
-                # the baseline is calculated at the start of the waveform
+                # the baseline slope is calculated at the start of the waveform
                 if tj <= t0_start:
-                    baseline += ej * np.exp(-(t0_start - tj) / tau_preamp)
+                    abs_baseline_slope += ej / tau_preamp * np.exp(-(t0_start - tj) / tau_preamp)
 
                 # if there was any energy in a channel that occurred less than
                 # (timestamp - trigger_position) ago, this channel has a hard
@@ -232,7 +234,7 @@ def _run_daq_non_sparse_impl(
 
             # now we have computed the baseline and we can check against the the
             # noise threshold if it's significantly non-flat
-            if baseline >= noise_threshold:
+            if abs_baseline_slope >= baseline_slope_threshold:
                 o_has_slope[r_idx, chids.index(rawid)] = True
 
     # the timestamp should refer to the start of the waveform, like in our DAQ
