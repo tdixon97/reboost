@@ -260,7 +260,7 @@ def _current_pulse_model(
 ) -> NDArray:
     r"""Analytic model for the current pulse in a Germanium detector.
 
-    Consists of a Gaussian a high side exponential tail and a low side tail:
+    Consists of a Gaussian, a high side exponential tail and a low side tail:
 
      .. math::
 
@@ -440,10 +440,10 @@ def get_current_waveform(
     return times, y
 
 
-# @numba.njit(cache=True)
+@numba.njit(cache=True)
 def _get_waveform_value_surface(
     idx: int,
-    edep: np.array,
+    edep: NDArray,
     drift_time: np.array,
     dist_to_nplus: np.array,
     bulk_template: ArrayLike,
@@ -484,6 +484,7 @@ def _get_waveform_value_surface(
     n = len(bulk_template)
     out = 0
     etmp = 0
+
     for i in range(len(edep)):
         E = edep[i]
         mu = drift_time[i]
@@ -561,7 +562,7 @@ def _get_waveform_value(
 def get_current_template(
     low: float = -1000, high: float = 4000, step: float = 1, mean_aoe: float = 1, **kwargs
 ) -> tuple[NDArray, NDArray]:
-    """Build the current template from the analytic model, defined by `reboost.hpge.psd._current_pulse_model`.
+    """Build the current template from the analytic model, defined by :func:`_current_pulse_model`.
 
     Parameters
     ----------
@@ -574,7 +575,7 @@ def get_current_template(
     mean_aoe
         The mean AoE value for this detector (to normalise current pulses).
     **kwargs
-        Other keyword arguments passed to `reboost.hpge.psd._current_pulse_model`.
+        Other keyword arguments passed to :func:`_current_pulse_model`.
 
     Returns
     -------
@@ -592,7 +593,72 @@ def get_current_template(
     return template, x
 
 
-# @numba.njit(cache=True)
+@numba.njit(cache=True)
+def _get_waveform_maximum_impl(
+    t: ArrayLike,
+    e: ArrayLike,
+    dist: ArrayLike,
+    template: ArrayLike,
+    templates_surface: ArrayLike,
+    activeness_surface: ArrayLike,
+    tmin: float,
+    tmax: float,
+    start: float,
+    fccd: float,
+    n: int,
+    time_step: int,
+    surface_step_in_um: float,
+    include_surface_effects: bool,
+):
+    """Basic implementation to get the maximum of the waveform.
+
+    Parameters
+    ----------
+    t
+        drift time for each step.
+    e
+        energy for each step.
+    dist
+        distance to surface for each step.
+    """
+    max_a = 0
+    max_t = 0
+    energy = np.sum(e)
+
+    for j in range(0, n, time_step):
+        time = start + j
+
+        # skip anything not in the range tmin to tmax (for surface affects this can be later)
+        has_surface_hit = include_surface_effects and np.any(dist < fccd)
+
+        if time < tmin or (time > (tmax + time_step)):
+            continue
+
+        if not has_surface_hit:
+            val_tmp = _get_waveform_value(j, e, t, template, start=start, dt=1.0)
+        else:
+            val_tmp, energy = _get_waveform_value_surface(
+                j,
+                e,
+                t,
+                dist,
+                template,
+                templates_surface,
+                activeness_surface,
+                distance_step_in_um=surface_step_in_um,
+                fccd=fccd,
+                start=start,
+                dt=1.0,
+            )
+
+        if val_tmp > max_a:
+            max_t = time
+            max_a = val_tmp
+
+    return max_t, max_a, energy
+
+
+@numba.njit(cache=True)
 def _estimate_current_impl(
     edep: ak.Array,
     dt: ak.Array,
@@ -625,9 +691,9 @@ def _estimate_current_impl(
     maximum_t = np.zeros(len(dt))
     energy = np.zeros(len(dt))
 
+    time_step = 1
     n = len(template)
     start = times[0]
-    step = np.diff(times)[0]
 
     # make the convolved surface library
     if include_surface_effects:
@@ -637,49 +703,47 @@ def _estimate_current_impl(
 
         templates_surface = _make_convolved_surface_library(template, surface_library)
         activeness_surface = surface_library[:, -1]
+    else:
+        # pass empty arrays to keep numba happy
+        templates_surface = np.zeros((1, len(template)))
+        activeness_surface = np.zeros(len(template))
 
     for i in range(len(dt)):
         t = np.asarray(dt[i])
-
-        tmin = float(np.min(t))
-        tmax = float(np.max(t))
-
         e = np.asarray(edep[i])
-        e_tmp = np.sum(e)
 
-        if include_surface_effects:
-            dist = np.asarray(dist_to_nplus[i])
+        # get dist
+        dist = (
+            np.asarray(dist_to_nplus[i])
+            if include_surface_effects
+            else np.zeros(len(t), dtype=np.float64)
+        )
 
-        for j in range(n):
-            time = start + j
+        tmax = float(np.max(t)) if not include_surface_effects else t[-1]
+        tmin = float(np.min(t))
 
-            # skip anything not in the range tmin to tmax (for surface affects this can be later)
-            has_surface_hit = include_surface_effects and np.any(dist < fccd)
-            if time < tmin or (time > (tmax + 1.0) and not has_surface_hit):
-                continue
+        for time_step in [20, 1]:
+            if time_step == 1:
+                tmin = int(maximum_t[i] - 50)
+                tmax = int(maximum_t[i] + 50)
 
-            if not has_surface_hit:
-                val_tmp = _get_waveform_value(j, e, t, template, start=start, dt=step)
-            else:
-                val_tmp, e_tmp = _get_waveform_value_surface(
-                    j,
-                    e,
-                    t,
-                    dist,
-                    template,
-                    templates_surface,
-                    activeness_surface,
-                    distance_step_in_um=surface_step_in_um,
-                    fccd=fccd,
-                    start=start,
-                    dt=step,
-                )
-
-            energy[i] = e_tmp
-
-            if val_tmp > A[i]:
-                maximum_t[i] = time
-                A[i] = val_tmp
+            # get the value
+            maximum_t[i], A[i], energy[i] = _get_waveform_maximum_impl(
+                t,
+                e,
+                dist,
+                template,
+                templates_surface,
+                activeness_surface,
+                tmin=tmin,
+                tmax=tmax,
+                start=start,
+                fccd=fccd,
+                n=n,
+                time_step=time_step,
+                surface_step_in_um=surface_step_in_um,
+                include_surface_effects=include_surface_effects,
+            )
 
     return A, maximum_t, energy
 
@@ -691,7 +755,7 @@ def maximum_current(
     *,
     template: np.array,
     times: np.array,
-    fccd: float = 0,
+    fccd_in_um: float = 0,
     surface_library: ArrayLike | None = None,
     surface_step_in_um: float = 10,
     return_mode: str = "current",
@@ -715,7 +779,7 @@ def maximum_current(
     surface_library
         2D array (distance, time) of the rate of charge arriving at the p-n junction. Each row
         should be an array of length 10000 giving the charge arriving at the p-n junction for each timestep
-        (in ns). This is produced by `reboost.hpge.surface.get_surface_response` or other libraries.
+        (in ns). This is produced by :func:`.hpge.surface.get_surface_response` or other libraries.
     surface_step_in_um
         Distance step for the surface library.
     return_mode
@@ -735,17 +799,21 @@ def maximum_current(
     else:
         dist_to_nplus = ak.full_like(edep, np.nan)
 
+        if surface_library is not None:
+            msg = "Surface effects requested but distance not provided"
+            raise ValueError(msg)
+
     if not ak.all(ak.num(edep, axis=-1) == ak.num(drift_time, axis=-1)):
         msg = "edep and drift time must have the same shape"
         raise ValueError(msg)
 
     curr, time, energy = _estimate_current_impl(
-        ak.Array(edep),
-        ak.Array(drift_time),
-        ak.Array(dist_to_nplus) * 1000,
+        ak.values_astype(ak.Array(edep), np.float64),
+        ak.values_astype(ak.Array(drift_time), np.float64),
+        ak.values_astype(ak.Array(dist_to_nplus) * 1000.0, np.float64),
         template=template,
         times=times,
-        fccd=fccd,
+        fccd=fccd_in_um,
         include_surface_effects=surface_library is not None,
         surface_library=surface_library if surface_library is not None else np.array([[]]),
         surface_step_in_um=surface_step_in_um,

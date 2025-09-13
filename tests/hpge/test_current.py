@@ -131,41 +131,52 @@ def test_with_cluster(test_model):
 def test_maximum_current_surface(test_model):
     model, x = test_model
 
-    edep = VectorOfVectors(
-        ak.Array([[100.0, 300.0, 50.0], [10.0, 0.0, 100.0], [500.0]]), attrs={"unit": "keV"}
-    )
-    times = VectorOfVectors(
-        ak.Array([[400, 500, 700], [800, 0, 1500], [700]], attrs={"unit": "ns"})
-    )
+    # test for both input types
+    for dtype in [np.float64, np.float32]:
+        edep = VectorOfVectors(
+            ak.values_astype(ak.Array([[100.0, 300.0, 50.0], [10.0, 0.0, 100.0], [500.0]]), dtype),
+            attrs={"unit": "keV"},
+        )
 
-    dist = VectorOfVectors(ak.Array([[50, 40, 0.2], [300, 0.4, 0.2], [0.8]], attrs={"unit": "ns"}))
+        times = VectorOfVectors(
+            ak.values_astype(
+                ak.Array([[400, 500, 700], [800, 0, 1500], [700]], attrs={"unit": "ns"}), dtype
+            )
+        )
 
-    surface_models = surface.get_surface_library(1002, 10)
+        dist = VectorOfVectors(
+            ak.values_astype(
+                ak.Array([[50, 40, 0.2], [300, 0.4, 0.2], [0.8]], attrs={"unit": "ns"}), dtype
+            )
+        )
 
-    assert np.shape(surface_models)[0] == 10000
-    assert np.shape(surface_models)[1] == 100
+        surface_models = surface.get_surface_library(1002, 10)
 
-    curr_surf = psd.maximum_current(
-        edep,
-        times,
-        dist,
-        template=model,
-        fccd=1002,
-        surface_library=surface_models,
-        times=x,
-        return_mode="current",
-    ).view_as("np")
+        assert np.shape(surface_models)[0] == 10000
+        assert np.shape(surface_models)[1] == 100
 
-    curr_bulk = psd.maximum_current(
-        edep,
-        times,
-        template=model,
-        times=x,
-        return_mode="current",
-    ).view_as("np")
-    # check shape
+        curr_surf = psd.maximum_current(
+            edep,
+            times,
+            dist,
+            template=model,
+            fccd_in_um=1002,
+            surface_library=surface_models,
+            times=x,
+            return_mode="current",
+        ).view_as("np")
 
-    assert len(curr_surf) == 3
+        curr_bulk = psd.maximum_current(
+            edep,
+            times,
+            dist,
+            template=model,
+            times=x,
+            return_mode="current",
+        ).view_as("np")
+        # check shape
 
-    # surface effects reduce the current
-    assert np.all(curr_surf < curr_bulk)
+        assert len(curr_surf) == 3
+
+        # surface effects reduce the current
+        assert np.all(curr_surf < curr_bulk)
