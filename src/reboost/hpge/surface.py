@@ -185,10 +185,38 @@ def _compute_diffusion_impl(
     return collected_charge
 
 
+def get_surface_library(fccd: float, dist_step_in_um: float, **kwargs):
+    """Build the surface response library by calling `reboost.hpge.surface.get_surface_response`.
+
+    Parameters
+    ----------
+    fccd
+        The value of the FCCD
+    dist_step_in_um
+        The distance steps to use in building the library
+    **kwargs
+        Other keyword arguments to `reboost.hpge.surface.get_surface_response`.
+
+    Returns
+    -------
+    2D array of the cumulative-charge arriving at the p-n junction as a function
+    of time, for each distance.
+    """
+    steps = int(fccd / dist_step_in_um)
+
+    out = np.zeros((10000, steps))
+
+    for step in range(steps):
+        out[:, step] = get_surface_response(fccd, init=step * dist_step_in_um, **kwargs)
+
+    return out
+
+
 def get_surface_response(
     fccd: float,
-    recomb_depth: float,
     init: float = 0,
+    *,
+    recomb_depth: float = 500,
     recomb: float = 0.002,
     init_size: float = 0.0,
     factor: float = 0.29,
@@ -196,6 +224,11 @@ def get_surface_response(
     delta_x: float = 10,
 ):
     """Extract the surface response current pulse based on diffusion.
+
+    This extracts the amount of charge arrived (cumulative) at the p-n
+    junction as a function of time, based on diffusion. The final
+    induced waveform on the p-n contact is obtained from convolution
+    with the bulk pulse.
 
     Parameters
     ----------

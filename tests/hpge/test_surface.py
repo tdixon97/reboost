@@ -9,7 +9,7 @@ from legendtestdata import LegendTestData
 from lgdo import types
 from lgdo.types import VectorOfVectors
 
-from reboost.hpge.surface import distance_to_surface
+from reboost.hpge.surface import distance_to_surface, get_surface_response
 
 
 @pytest.fixture(scope="session")
@@ -67,3 +67,10 @@ def test_distance_to_surface(test_data_configs):
     assert ak.all(dist[2] == dist_full[2])
 
     assert np.isnan(dist[1][0])
+
+
+def test_surface_response():
+    response = get_surface_response(fccd=1000, init=500, get_current=True)
+
+    # should be 10000 samples
+    assert len(response) == 10000

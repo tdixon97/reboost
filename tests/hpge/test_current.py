@@ -1,31 +1,136 @@
 from __future__ import annotations
 
 import awkward as ak
+import numpy as np
+import pytest
 from lgdo import Array, VectorOfVectors
 
-from reboost.hpge import psd
+from reboost.hpge import psd, surface
 
 
-def test_maximum_current():
-    edep = VectorOfVectors(ak.Array([[100, 300, 50], [10, 0, 100], [500]]), attrs={"unit": "keV"})
+@pytest.fixture(scope="module")
+def test_model():
+    # test getting the model
+    model, x = psd.get_current_template(
+        -1000,
+        3000,
+        1.0,
+        amax=1,
+        mean_aoe=1,
+        mu=0,
+        sigma=100,
+        tau=100,
+        tail_fraction=0.65,
+        high_tail_fraction=0.1,
+        high_tau=10,
+    )
+
+    mu = -x[np.argmax(model)]
+
+    # with fixed mu
+    model, x = psd.get_current_template(
+        -1000,
+        3000,
+        1.0,
+        amax=1,
+        mean_aoe=0.5,
+        mu=mu,
+        sigma=100,
+        tau=100,
+        tail_fraction=0.65,
+        high_tail_fraction=0.1,
+        high_tau=10,
+    )
+
+    return model, x
+
+
+def test_maximum_current(test_model):
+    model, x = test_model
+
+    edep = VectorOfVectors(
+        ak.Array([[100.0, 300.0, 50.0], [10.0, 0.0, 100.0], [500.0]]), attrs={"unit": "keV"}
+    )
     times = VectorOfVectors(
         ak.Array([[400, 500, 700], [800, 0, 1500], [700]], attrs={"unit": "ns"})
     )
 
-    curr = psd.maximum_current(
-        edep,
-        times,
-        mu=250,
-        sigma=100,
-        tau=100,
-        tail_fraction=0.65,
-        mean_AoE=0.5,
-        high_tail_fraction=0.5,
-        high_tau=10,
-    )
+    curr = psd.maximum_current(edep, times, template=model, times=x)
     assert isinstance(curr, Array)
 
     assert len(curr) == 3
 
     # should be close to 250 (could be some differences due to the discretisation)
     assert abs(curr[2] - 250) < 0.1
+
+    # test other return modes
+    max_t = psd.maximum_current(
+        edep,
+        times,
+        template=model,
+        times=x,
+        return_mode="max_time",
+    )
+
+    assert isinstance(max_t, Array)
+    assert len(max_t) == 3
+
+    # should be close to 250 (could be some differences due to the discretisation)
+    assert abs(max_t[2] - 700) < 2
+
+    energy = psd.maximum_current(
+        edep,
+        times,
+        template=model,
+        times=x,
+        return_mode="energy",
+    )
+
+    assert isinstance(energy, Array)
+    assert len(energy) == 3
+
+    # should be close to 250 (could be some differences due to the discretisation)
+    assert abs(energy[2] - 500.0) < 2
+
+
+def test_maximum_current_surface(test_model):
+    model, x = test_model
+
+    edep = VectorOfVectors(
+        ak.Array([[100.0, 300.0, 50.0], [10.0, 0.0, 100.0], [500.0]]), attrs={"unit": "keV"}
+    )
+    times = VectorOfVectors(
+        ak.Array([[400, 500, 700], [800, 0, 1500], [700]], attrs={"unit": "ns"})
+    )
+
+    dist = VectorOfVectors(ak.Array([[50, 40, 0.2], [300, 0.4, 0.2], [0.8]], attrs={"unit": "ns"}))
+
+    surface_models = surface.get_surface_library(1002, 10)
+
+    assert np.shape(surface_models)[0] == 10000
+    assert np.shape(surface_models)[1] == 100
+
+    curr_surf = psd.maximum_current(
+        edep,
+        times,
+        dist,
+        template=model,
+        fccd=1002,
+        surface_library=surface_models,
+        times=x,
+        return_mode="current",
+    ).view_as("np")
+
+    curr_bulk = psd.maximum_current(
+        edep,
+        times,
+        template=model,
+        times=x,
+        return_mode="current",
+    ).view_as("np")
+    # check shape
+
+    assert len(curr_surf) == 3
+
+    # surface effects reduce the current
+    assert np.all(curr_surf < curr_bulk)
