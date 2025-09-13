@@ -6,6 +6,7 @@ import pytest
 from lgdo import Array, VectorOfVectors
 
 from reboost.hpge import psd, surface
+from reboost.shape import cluster
 
 
 @pytest.fixture(scope="module")
@@ -91,6 +92,40 @@ def test_maximum_current(test_model):
 
     # should be close to 250 (could be some differences due to the discretisation)
     assert abs(energy[2] - 500.0) < 2
+
+
+def test_with_cluster(test_model):
+    model, x = test_model
+
+    edep = VectorOfVectors(
+        ak.Array([[100.0, 300.0, 50.0], [10.0, 1.0, 100.0], [500.0]]), attrs={"unit": "keV"}
+    )
+    times = VectorOfVectors(
+        ak.Array([[400, 410, 420], [800, 0, 1500], [700]], attrs={"unit": "ns"})
+    )
+    xloc = VectorOfVectors(ak.Array([[1, 1.1, 1.2], [0, 50, 80], [100]], attrs={"unit": "mm"}))
+
+    dist = VectorOfVectors(ak.Array([[50, 40, 0.2], [300, 0.4, 0.2], [0.8]], attrs={"unit": "ns"}))
+
+    yloc = ak.full_like(xloc, 0.0)
+    zloc = ak.full_like(xloc, 0.0)
+    trackid = ak.full_like(xloc, 0)
+
+    clusters = cluster.cluster_by_step_length(
+        trackid, xloc, yloc, zloc, dist, threshold=1, threshold_surf=1, surf_cut=0
+    )
+    cluster_edep = cluster.apply_cluster(clusters, edep).view_as("ak")
+    cluster_times = cluster.apply_cluster(clusters, times).view_as("ak")
+
+    e = ak.sum(cluster_edep, axis=-1)
+    t = ak.sum(cluster_edep * cluster_times, axis=-1) / e
+    curr = psd.maximum_current(e, t, template=model, times=x)
+
+    assert isinstance(curr, Array)
+    assert len(curr) == 3
+
+    # should be close to 250 (could be some differences due to the discretisation)
+    assert abs(curr[0] - 225) < 0.1
 
 
 def test_maximum_current_surface(test_model):
