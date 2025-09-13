@@ -70,7 +70,7 @@ def test_distance_to_surface(test_data_configs):
 
 
 def test_surface_response():
-    response = get_surface_response(fccd=1000, init=500, get_current=True)
+    response = get_surface_response(fccd=1000, init=500)
 
     # should be 10000 samples
     assert len(response) == 10000
