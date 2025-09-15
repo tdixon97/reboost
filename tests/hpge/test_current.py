@@ -154,6 +154,8 @@ def test_maximum_current_surface(test_model):
 
         assert np.shape(surface_models)[0] == 10000
         assert np.shape(surface_models)[1] == 100
+        surface_templates = psd.make_convolved_surface_library(model, surface_models)
+        surface_activeness = surface_models[:, -1]
 
         curr_surf = psd.maximum_current(
             edep,
@@ -161,7 +163,8 @@ def test_maximum_current_surface(test_model):
             dist,
             template=model,
             fccd_in_um=1002,
-            surface_library=surface_models,
+            templates_surface=surface_templates,
+            activeness_surface=surface_activeness,
             times=x,
             return_mode="current",
         ).view_as("np")

@@ -238,8 +238,8 @@ def _drift_time_heuristic_impl(
     return dt_heu
 
 
-@numba.njit
-def _vectorized_erf(x: ArrayLike) -> NDArray:
+@numba.njit(cache=True)
+def _njit_erf(x: ArrayLike) -> NDArray:
     """Error function that can take in a numpy array."""
     out = np.empty_like(x)
     for i in range(x.size):
@@ -298,11 +298,11 @@ def _current_pulse_model(
     term1 = (
         amax * (1 - tail_fraction - high_tail_fraction) * np.exp(-(dx * dx) / (2 * sigma * sigma))
     )
-    term2 = amax * tail_fraction * (1 - _vectorized_erf(dx / sigma)) * np.exp(times / tau) / norm
+    term2 = amax * tail_fraction * (1 - _njit_erf(dx / sigma)) * np.exp(times / tau) / norm
     term3 = (
         amax
         * high_tail_fraction
-        * (1 - _vectorized_erf(-dx / sigma))
+        * (1 - _njit_erf(-dx / sigma))
         * np.exp(-(times - mu) / high_tau)
         / norm_high
     )
@@ -328,8 +328,7 @@ def _interpolate_pulse_model(
     return A_before + frac * (A_after - A_before)
 
 
-@numba.njit(cache=True)
-def _make_convolved_surface_library(bulk_template: np.array, surface_library: np.array) -> NDArray:
+def make_convolved_surface_library(bulk_template: np.array, surface_library: np.array) -> NDArray:
     """Make the convolved surface library out of the template.
 
     This convolves every row of the surface_library with the template and reshapes the output
@@ -363,7 +362,6 @@ def _make_convolved_surface_library(bulk_template: np.array, surface_library: np
     return templates
 
 
-@numba.njit(cache=True)
 def convolve_surface_response(surf_current: np.ndarray, bulk_pulse: np.ndarray) -> NDArray:
     """Convolve the surface response pulse with the bulk current pulse.
 
@@ -484,23 +482,22 @@ def _get_waveform_value_surface(
     n = len(bulk_template)
     out = 0
     etmp = 0
+    time = start + dt * idx
 
     for i in range(len(edep)):
         E = edep[i]
         mu = drift_time[i]
         dist = dist_to_nplus[i]
 
-        time = start + dt * idx
-
         if dist < fccd:
             dist_bin = int(dist / distance_step_in_um)
 
             # get two values (to allow linear interpolation)
             value_low = _interpolate_pulse_model(
-                templates_surface[:, dist_bin], time, start, start + dt * n, dt, mu
+                templates_surface[dist_bin], time, start, start + dt * n, dt, mu
             )
             value_high = _interpolate_pulse_model(
-                templates_surface[:, dist_bin + 1], time, start, start + dt * n, dt, mu
+                templates_surface[dist_bin + 1], time, start, start + dt * n, dt, mu
             )
 
             # interpolate between distance bins
@@ -549,13 +546,14 @@ def _get_waveform_value(
     """
     n = len(template)
     out = 0
+    time = start + dt * idx
 
     for i in range(len(edep)):
         E = edep[i]
         mu = drift_time[i]
 
-        time = start + dt * idx
         out += E * _interpolate_pulse_model(template, time, start, start + dt * n, dt, mu)
+
     return out
 
 
@@ -629,9 +627,9 @@ def _get_waveform_maximum_impl(
         time = start + j
 
         # skip anything not in the range tmin to tmax (for surface affects this can be later)
-        has_surface_hit = include_surface_effects and np.any(dist < fccd)
+        has_surface_hit = include_surface_effects
 
-        if time < tmin or (time > (tmax + time_step)):
+        if time < tmin or (time > (tmax + time_step) and not has_surface_hit):
             continue
 
         if not has_surface_hit:
@@ -643,7 +641,7 @@ def _get_waveform_maximum_impl(
                 t,
                 dist,
                 template,
-                templates_surface,
+                templates_surface.T,
                 activeness_surface,
                 distance_step_in_um=surface_step_in_um,
                 fccd=fccd,
@@ -667,7 +665,8 @@ def _estimate_current_impl(
     times: np.array,
     include_surface_effects: bool,
     fccd: float,
-    surface_library: np.array,
+    templates_surface: np.array,
+    activeness_surface: np.array,
     surface_step_in_um: float,
 ) -> tuple[NDArray, NDArray, NDArray]:
     """Estimate the maximum current that would be measured in the HPGe detector.
@@ -696,30 +695,16 @@ def _estimate_current_impl(
     start = times[0]
 
     # make the convolved surface library
-    if include_surface_effects:
-        if np.diff(times)[0] != 1.0:
-            msg = "The surface convolution requires a template with 1 ns binning"
-            raise ValueError(msg)
-
-        templates_surface = _make_convolved_surface_library(template, surface_library)
-        activeness_surface = surface_library[:, -1]
-    else:
-        # pass empty arrays to keep numba happy
-        templates_surface = np.zeros((1, len(template)))
-        activeness_surface = np.zeros(len(template))
+    if include_surface_effects and np.diff(times)[0] != 1.0:
+        msg = "The surface convolution requires a template with 1 ns binning"
+        raise ValueError(msg)
 
     for i in range(len(dt)):
         t = np.asarray(dt[i])
         e = np.asarray(edep[i])
+        dist = np.asarray(dist_to_nplus[i])
 
-        # get dist
-        dist = (
-            np.asarray(dist_to_nplus[i])
-            if include_surface_effects
-            else np.zeros(len(t), dtype=np.float64)
-        )
-
-        tmax = float(np.max(t)) if not include_surface_effects else t[-1]
+        tmax = float(np.max(t))
         tmin = float(np.min(t))
 
         for time_step in [20, 1]:
@@ -756,7 +741,8 @@ def maximum_current(
     template: np.array,
     times: np.array,
     fccd_in_um: float = 0,
-    surface_library: ArrayLike | None = None,
+    templates_surface: ArrayLike | None = None,
+    activeness_surface: ArrayLike | None = None,
     surface_step_in_um: float = 10,
     return_mode: str = "current",
 ) -> Array:
@@ -793,15 +779,24 @@ def maximum_current(
 
     drift_time, _ = units.unwrap_lgdo(drift_time)
     edep, _ = units.unwrap_lgdo(edep)
+    dist_to_nplus, _ = units.unwrap_lgdo(dist_to_nplus)
 
-    if dist_to_nplus is not None:
-        dist_to_nplus, _ = units.unwrap_lgdo(dist_to_nplus)
-    else:
-        dist_to_nplus = ak.full_like(edep, np.nan)
+    include_surface_effects = False
 
-        if surface_library is not None:
+    if templates_surface is not None:
+        if dist_to_nplus is None:
             msg = "Surface effects requested but distance not provided"
             raise ValueError(msg)
+
+        include_surface_effects = True
+    else:
+        # convert types to keep numba happy
+        templates_surface = np.zeros((1, len(template)))
+        dist_to_nplus = ak.full_like(edep, np.nan)
+
+    # convert types for numba
+    if activeness_surface is None:
+        activeness_surface = np.zeros(len(template))
 
     if not ak.all(ak.num(edep, axis=-1) == ak.num(drift_time, axis=-1)):
         msg = "edep and drift time must have the same shape"
@@ -810,12 +805,13 @@ def maximum_current(
     curr, time, energy = _estimate_current_impl(
         ak.values_astype(ak.Array(edep), np.float64),
         ak.values_astype(ak.Array(drift_time), np.float64),
-        ak.values_astype(ak.Array(dist_to_nplus) * 1000.0, np.float64),
+        ak.values_astype(ak.Array(dist_to_nplus), np.float64),
         template=template,
         times=times,
         fccd=fccd_in_um,
-        include_surface_effects=surface_library is not None,
-        surface_library=surface_library if surface_library is not None else np.array([[]]),
+        include_surface_effects=include_surface_effects,
+        templates_surface=templates_surface,
+        activeness_surface=activeness_surface,
         surface_step_in_um=surface_step_in_um,
     )
 
