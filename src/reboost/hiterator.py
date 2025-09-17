@@ -31,7 +31,8 @@ class Hiterator:
         input_files: str | list[str],
         glm_files: str | list[str] | None,
         reshaped_files: bool = True,
-        detectors_mapping: dict[str, list[str]],
+        input_detector: str = "",
+        output_detectors: str | list = "",
         input_hdf5_group: str = "stp",
         start_hit: int = 0,
         max_n_hits: int | None = None,
@@ -41,8 +42,9 @@ class Hiterator:
         self.files = utils.get_file_dict(stp_files=input_files, glm_files=glm_files)
         self.reshaped_files = reshaped_files
 
-        self.detectors_mapping = detectors_mapping
         self.input_hdf5_group = input_hdf5_group
+        self.input_detector = input_detector
+        self.output_detectors = output_detectors
 
         self.start_hit = start_hit
         self.max_n_hits = max_n_hits
@@ -64,33 +66,31 @@ class Hiterator:
                 msg = f"starting processing of {stp_file}"
                 log.info(msg)
 
-            # now loop over detectors
-            for in_detector, out_detectors in self.detectors_mapping.items():
-                msg = f"processing {in_detector} (to {out_detectors})"
-                log.debug(msg)
+            msg = f"processing {self.input_detector} (to {self.output_detectors})"
+            log.debug(msg)
 
-                iterator = GLMIterator(
-                    glm_file,
-                    stp_file,
-                    lh5_group=in_detector,
-                    start_row=self.start_hit,
-                    stp_field=self.input_hdf5_group,
-                    n_rows=self.max_n_hits,
-                    buffer=self.buffer_size_rows,
-                    time_dict=self.time_dict,
-                    reshaped_files=self.reshaped_files,
-                )
+            iterator = GLMIterator(
+                glm_file,
+                stp_file,
+                lh5_group=self.input_detector,
+                start_row=self.start_hit,
+                stp_field=self.input_hdf5_group,
+                n_rows=self.max_n_hits,
+                buffer=self.buffer_size_rows,
+                time_dict=self.time_dict,
+                reshaped_files=self.reshaped_files,
+            )
 
-                for data, _, _ in iterator:
-                    if data is None:
-                        continue
+            for data, _, _ in iterator:
+                if data is None:
+                    continue
 
-                    self.time_dict.update_field("conv", time.time())
+                self.time_dict.update_field("conv", time.time())
 
-                    for out_detector in out_detectors:
-                        yield HitContext(
-                            data=data,
-                            in_detector=in_detector,
-                            out_detector=out_detector,
-                            time_dict=self.time_dict,
-                        )
+                for out_detector in self.output_detectors:
+                    yield HitContext(
+                        data=data,
+                        in_detector=self.input_detector,
+                        out_detector=out_detector,
+                        time_dict=self.time_dict,
+                    )
