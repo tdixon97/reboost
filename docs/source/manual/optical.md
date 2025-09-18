@@ -1,6 +1,6 @@
 (optics)=
 
-# Using optical map
+# Using optical maps
 
 :::{warning}
 
@@ -10,9 +10,9 @@ Work in progress, more will be added later!
 
 ## Creating optical maps
 
-### 1. Running remage simulations to get stp file
+### 1. Running remage simulations to get an stp file
 
-The map generation is performed directly with _remage_(_reboost_ is not involved
+The map generation is performed directly with _remage_ (_reboost_ is not involved
 in this step). An example macro to showcase the required settings (`map.mac`):
 
 ```
@@ -52,7 +52,7 @@ in this step). An example macro to showcase the required settings (`map.mac`):
 /gps/ene/mono     9.68 eV # 128nm (VUV) LAr scintillation
 /gps/ene/sigma    0.22 eV # gaussian width
 /gps/ang/type     iso
-# use random polariztation (this emits warnings that can be ignored)
+# use random polarization (this emits warnings that can be ignored)
 #/gps/polarization 1 1 1
 
 /run/beamOn 80000000
@@ -85,7 +85,7 @@ memory is available; the map object is _fully_ stored in memory. In this
 example: For the 58 hardware channels, the example above would require
 
 ```{math}
-\text{memory} = 8 \cdot n_x \cdot n_y \cdot n_z \cdot (n_\text{ch} + 4) = 8 \cdot 280 \cdot 280 \cdot 480 \cdot (58 + 4) = 19\times10^{9} \text{[bytes]}
+\text{memory} = 8 \cdot n_x \cdot n_y \cdot n_z \cdot (n_\text{ch} + 4) = 8 \cdot 280 \cdot 280 \cdot 480 \cdot (58 + 4) = 19 \times 10^{9} \, \text{bytes}
 ```
 
 but peak memory usage might be higher. The input buffer will also use some

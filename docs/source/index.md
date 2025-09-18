@@ -51,7 +51,7 @@ Package API reference <api/modules>
   Tools to handle creating simulated geometries in python.
 - [legend-pygeom-l200](https://github.com/legend-exp/legend-pygeom-l200):
   Implementation of the LEGEND-200 experiment,
-- [legend-pygeom-l1000](https://github.com/legend-exp/legend-pygeom-l200):
+- [legend-pygeom-l1000](https://github.com/legend-exp/legend-pygeom-l1000):
   Implementation of the LEGEND-1000 experiment,
 - [revertex](https://github.com/legend-exp/revertex/): Generation of vertices
   for simulations.

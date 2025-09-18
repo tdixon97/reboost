@@ -4,8 +4,8 @@ Simple post-processing of _remage_ simulations can be done in a python script
 or notebook. This has some limitations but is very useful for simple tasks.
 For more complicated tasks we have created a config file interface (see the
 next tutorial). This tutorial builds on the [_remage_
-tutorial](https://remage.readthedocs.io/en/stable/tutorial.html)) of two
-Germanium detectors in a LAr orb with a source. It describes how to run
+tutorial](https://remage.readthedocs.io/en/stable/tutorial.html) of two
+germanium detectors in a liquid-argon (LAr) orb with a source. It describes how to run
 a simple post-processing with reboost tools, and explains the usual steps.
 
 For this example we simulate $^{228}$Th in the source. We use the following
@@ -35,7 +35,7 @@ macro file (saved as `th228.mac`):
 ```
 
 And run the _remage_ (from inside the remage container / after installation
-[[instructions]](https://remage.readthedocs.io/en/stable/manual/install.html))
+[instructions](https://remage.readthedocs.io/en/stable/manual/install.html)
 simulation with:
 
 ```console
@@ -84,11 +84,13 @@ using the [legend-pygeom-tools](https://legend-pygeom-tools.readthedocs.io) pack
 This metadata can be used to create a python object describing the HPGe
 detectors using the
 [legend-pygeom-hpges](https://legend-pygeom-hpges.readthedocs.io) package.
-Among other things them HPGe object from this package has methods to compute
+Among other things, the HPGe object from this package has methods to compute
 detector properties (mass, surface area etc.) and to compute the distance of
 points from the detector surface.
 
-In this example we extract the _pyg4ometry.geant4.Registry_ object describing the geometry (see [[docs]](https://pyg4ometry.readthedocs.io/en/stable/autoapi/pyg4ometry/geant4/Registry/index.html#pyg4ometry.geant4.Registry.Registry), the _legend-pygeom-hpges_ HPGe python object [[docs]](https://legend-pygeom-hpges.readthedocs.io/en/stable/api/legendhpges.html#legendhpges.base.HPGe) and finally we extract the position of the BEGe detector (which we focus on for this analysis).
+In this example we extract the _pyg4ometry.geant4.Registry_ object describing the geometry (see the [pyg4ometry documentation](https://pyg4ometry.readthedocs.io/en/stable/autoapi/pyg4ometry/geant4/Registry/index.html#pyg4ometry.geant4.Registry.Registry)),
+the _legend-pygeom-hpges_ HPGe python object (see the [legend-pygeom-hpges documentation](https://legend-pygeom-hpges.readthedocs.io/en/stable/api/legendhpges.html#legendhpges.base.HPGe)),
+and finally we extract the position of the BEGe detector (which we focus on for this analysis).
 
 ```python
 reg = pyg4ometry.gdml.Reader("geometry.gdml").getRegistry()
@@ -99,15 +101,17 @@ position = reg.physicalVolumeDict["BEGe"].position.eval()
 ## Read the data
 
 Next we can read the data using the
-[[lgdo]](https://legend-pydataobj.readthedocs.io/en/stable/) package.
+[lgdo](https://legend-pydataobj.readthedocs.io/en/stable/) package.
 
 :::{warning}
+
 If the simulations files are large this approach can cause memory issues, in
 that case it is possible to iterate over the files instead using the
 GLMIterator (see the next tutorial).
+
 :::
 
-We use the [[awkward]](https://awkward-array.org/doc/main/) package to view the
+We use the [awkward](https://awkward-array.org/doc/main/) package to view the
 data, ideal for working with data with a "jagged" structure, i.e. many vectors
 of different lengths.
 
@@ -118,7 +122,9 @@ stp = lh5.read_as("stp/det001", "stp_out.lh5", "ak")
 ## Processors
 
 :::{note}
+
 If the _remage_ flat output file is used an additional step of "step-grouping" is required.
+
 :::
 Now we can compute some quantities based on our simulation. This is based on
 "processors" (see the User manual for more details). This is just any
@@ -129,7 +135,7 @@ The only requirements are:
 
 - the function should return an `LGDO.VectorOfVectors`, `LGDO.Array` or
   `LGDO.ArrayOfEqualSizedArrays`
-  [[docs]](https://legend-pydataobj.readthedocs.io/en/latest/api/lgdo.types.html)
+  [documentation](https://legend-pydataobj.readthedocs.io/en/latest/api/lgdo.types.html)
   object, or something able to be converted to this (awkward arrays for example),
 - the returned object should have the same length as the original stp table,
   i.e. the processors act on every row but they cannot add, remove or merge
@@ -148,7 +154,7 @@ thickness of inactive (commonly called "dead" layer).
 
 _reboost_ contains a function to compute the distance of points to the surface
 of the HPGe detector
-[[docs]](https://reboost.readthedocs.io/en/stable/api/reboost.hpge.html#reboost-hpge-surface-module).
+[documentation](https://reboost.readthedocs.io/en/stable/api/reboost.hpge.html#reboost-hpge-surface-module).
 
 ```python
 dist_all = reboost.hpge.surface.distance_to_surface(
@@ -285,7 +291,7 @@ energy (due to interactions in the dead-layer).
 
 The remage simulations do not include the effect of the energy resolution. To
 do this there is a reboost processor to sample from a Gaussian distribution
-[[docs]](https://reboost.readthedocs.io/en/stable/api/reboost.math.html#module-reboost.math.stats).
+[documentation](https://reboost.readthedocs.io/en/stable/api/reboost.math.html#module-reboost.math.stats).
 
 We demonstrate this with a sigma of 0.5 keV.
 
