@@ -3,8 +3,10 @@
 # Efficient iteration over remage files
 
 :::{note}
+
 This step is only relevant for applications involving large simulation
 files, or where the reboost configuration file option is used.
+
 :::
 
 Simulation files are often very large. This poses a challenge in processing the
@@ -13,7 +15,7 @@ memory.
 
 In addition, not every simulated event will lead to energy deposits in the
 detectors, and each simulated event will have multiple rows in the output file
-(corresponding to the different) steps. This introduces a challenge in iterating
+(corresponding to the different steps). This introduces a challenge in iterating
 over the files, since a naive iteration could cause a simulated event to be
 split between two chunks.
 
@@ -32,7 +34,8 @@ The _geant4 event lookup map_ (or **glm**) is a solution to these issues. The
 
 - This object should be computed once per output table (detector).
 - Geant4 events that do not lead to rows in the output file are still included.
-  :::
+
+:::
 
 The **glm** can be build from the remage outputs using the
 {func}`reboost.build_glm.build_glm` function. A command line interface has also

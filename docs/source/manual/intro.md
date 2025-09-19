@@ -7,15 +7,15 @@ _reboost_ contains both:
   configuration files,
 - a dedicated tool for computing and using scintillation optical maps.
 
-"{ref}`processors`" describes a _reboost_ processors and how to use these for a
+{ref}`processors` describes _reboost_ processors and how to use these for a
 simple simulation post-processing in a python script.
 
-Next "{ref}`config`" explains how to run the full "hit-tier" (more details
-later) post-processing with a configuration file, in a very simple way to data
+Next {ref}`config` explains how to run the full "hit-tier" (more details
+later) post-processing with a configuration file, in a way very similar to data
 processing with pygama. This provides a method to make a generic and customised
 simulation post-processing. This depends on generic and efficient iteration over
-the remage files described in "{ref}`iteration`". Finally, the information from
-multiple systems can be combined to build events (described in "{ref}`event`").
+the remage files described in {ref}`iteration`. Finally, the information from
+multiple systems can be combined to build events (described in {ref}`event`).
 
 ## Tiers in _reboost_
 
@@ -33,7 +33,7 @@ those in pygama:
   depend on only a single detector.
 - **tcm**: Or "time-coincidence-map" a mapping of which hits happened
   simultaneously (within the detector time resolution) between different
-  detector.
+  detectors.
 - **evt**: Or "event" the final output file combining the information from the
   various detectors/ subsystems.
 
