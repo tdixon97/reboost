@@ -118,8 +118,8 @@ def _run_daq_non_sparse_impl(
     o_evtid = np.full(len(evt), dtype=np.int64, fill_value=-1)
     o_timestamp = np.full(len(evt), dtype=np.float64, fill_value=-1)
 
-    def _init_data():
-        return np.zeros((len(evt), len(chids)), dtype=np.bool)
+    def _init_data(dtype=np.bool_):
+        return np.zeros((len(evt), len(chids)), dtype=dtype)
 
     o_has_trigger = _init_data()
     o_has_pre_pulse = _init_data()
@@ -165,7 +165,7 @@ def _run_daq_non_sparse_impl(
             # energy deposited is above the noise_threshold. if yes, get the last
             # trigger and set the hard_post_pileup flag of that channel to true.
             # then continue to the next event.
-            dt = ev.t0 - o_timestamp[r_idx - 1]
+            dt = ev.t0 - o_timestamp[r_idx]
             if dt < (waveform_length - trigger_position):
                 for rawid, ene in zip(ev.geds_rawid_active, ev.geds_energy_active):  # noqa: B905
                     if ene >= noise_threshold:
