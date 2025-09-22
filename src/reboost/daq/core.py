@@ -14,7 +14,7 @@ def run_daq_non_sparse(
     *,
     tau_preamp: float = 500,
     noise_threshold: float = 5,
-    baseline_slope_threshold: float = 0.05,
+    baseline_slope_threshold: float = 0.01,
     trigger_threshold: float = 25,
     waveform_length: float = 100,
     trigger_position: float = 50,
@@ -25,6 +25,10 @@ def run_daq_non_sparse(
     Return a table where each row represents an event that was actually
     recorded by the DAQ. for each event and each channel, determine the
     characteristics of the waveform.
+
+    Warning
+    -------
+    This code assumes that the simulated events are time-independent.
 
     The returned Awkward array (the table) has the following fields:
 
@@ -61,9 +65,14 @@ def run_daq_non_sparse(
         where :math:`E_i` is the energy of the signal and :math:`t_i` is the
         time it occurred.
     noise_threshold
-        threshold (in keV) for a signal to be "visible" above noise.
+        threshold (in keV) for a signal to be "visible" above noise. In
+        LEGEND-200, the "energy" of forced trigger events is
+        gauss-distributed around 0.5 keV with a standard deviation of about
+        0.5 keV.
     baseline_slope_threshold
         threshold (in keV/us) on the baseline slope to be tagged as not flat.
+        in LEGEND-200, the slope of waveforms in force-triggered events is
+        gauss-distributed around 0 with a standard deviation of about 2 keV/ms.
     trigger_threshold
         amplitude (in keV) needed for the DAQ to trigger on a signal.
     waveform_length
