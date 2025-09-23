@@ -110,6 +110,7 @@ def iterate_stepwise_depositions_pois(
     scint_mat_params: sc.ComputedScintParams,
     det_uid: int,
     map_scaling: float = 1,
+    map_scaling_sigma: float = 0,
     rng: np.random.Generator | None = None,
 ):
     if edep_hits.particle.ndim == 1:
@@ -122,6 +123,7 @@ def iterate_stepwise_depositions_pois(
         rng,
         np.where(optmap.detids == det_uid)[0][0],
         map_scaling,
+        map_scaling_sigma,
         optmap.edges,
         optmap.weights,
         scint_mat_params,
@@ -205,6 +207,7 @@ def _iterate_stepwise_depositions_pois(
     rng,
     detidx: int,
     map_scaling: float,
+    map_scaling_sigma: float,
     optmap_edges,
     optmap_weights,
     scint_mat_params: sc.ComputedScintParams,
@@ -216,6 +219,10 @@ def _iterate_stepwise_depositions_pois(
     for rowid in range(len(edep_hits)):  # iterate hits
         hit = edep_hits[rowid]
         hit_output = []
+
+        map_scaling_evt = map_scaling
+        if map_scaling_sigma > 0:
+            map_scaling_evt = rng.normal(loc=map_scaling, scale=map_scaling_sigma)
 
         assert len(hit.particle) == len(hit.num_scint_ph)
         # iterate steps inside the hit
@@ -237,7 +244,7 @@ def _iterate_stepwise_depositions_pois(
             ib += 1
 
             # get probabilities from map.
-            detp = optmap_weights[detidx, cur_bins[0], cur_bins[1], cur_bins[2]] * map_scaling
+            detp = optmap_weights[detidx, cur_bins[0], cur_bins[1], cur_bins[2]] * map_scaling_evt
             if detp < 0.0:
                 det_no_stats += 1
                 continue

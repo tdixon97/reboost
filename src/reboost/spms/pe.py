@@ -32,6 +32,7 @@ def detected_photoelectrons(
     material: str,
     spm_detector_uid: int,
     map_scaling: float = 1,
+    map_scaling_sigma: float = 0,
 ) -> VectorOfVectors:
     """Derive the number of detected photoelectrons (p.e.) from scintillator hits using an optical map.
 
@@ -58,6 +59,9 @@ def detected_photoelectrons(
         SiPM detector uid as used in the optical map.
     map_scaling
         scale the detection probability in the map for this detector by this factor.
+    map_scaling_sigma
+        if larger than zero, sample the used scaling factor for each (reshaped) event
+        from a normal distribution with this standard deviation.
     """
     hits = ak.Array(
         {
@@ -72,7 +76,7 @@ def detected_photoelectrons(
 
     scint_mat_params = convolve._get_scint_params(material)
     pe = convolve.iterate_stepwise_depositions_pois(
-        hits, optmap, scint_mat_params, spm_detector_uid, map_scaling
+        hits, optmap, scint_mat_params, spm_detector_uid, map_scaling, map_scaling_sigma
     )
 
     return VectorOfVectors(pe, attrs={"units": "ns"})
