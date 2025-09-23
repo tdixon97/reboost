@@ -6,7 +6,6 @@ import numpy as np
 import pytest
 from lgdo import Array, Table, lh5
 
-from reboost.optmap.convolve import convolve
 from reboost.optmap.create import (
     check_optical_map,
     create_optical_maps,
@@ -227,34 +226,6 @@ def tbl_edep(tmptestdir):
     return evt_file
 
 
-@pytest.mark.filterwarnings("ignore::scipy.optimize._optimize.OptimizeWarning")
-def test_optmap_convolve(tbl_evt_fns, tbl_edep, tmptestdir):
-    settings = {
-        "range_in_m": [[0, 1], [0, 1], [0, 1]],
-        "bins": [2, 2, 2],
-    }
-
-    map_fn = str(tmptestdir / "map-convolve.lh5")
-    create_optical_maps(
-        tbl_evt_fns,
-        settings,
-        chfilter=("001"),
-        output_lh5_fn=map_fn,
-        is_stp_file=False,
-    )
-
-    out_fn = str(tmptestdir / "convolved.lh5")
-    convolve(
-        map_fn,
-        str(tbl_edep),
-        "/stp/x",
-        material="lar",
-        output_file=out_fn,
-        buffer_len=10,
-    )
-
-
-@pytest.mark.filterwarnings("ignore::scipy.optimize._optimize.OptimizeWarning")
 def test_optmap_save_and_load(tmptestdir, tbl_evt_fns):
     settings = {
         "range_in_m": [[0, 1], [0, 1], [0, 1]],

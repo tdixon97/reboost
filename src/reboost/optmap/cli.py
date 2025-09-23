@@ -180,45 +180,6 @@ def optical_cli() -> None:
     checkmap_parser = subparsers.add_parser("checkmap", help="check optical maps")
     checkmap_parser.add_argument("input", help="input map LH5 file", metavar="INPUT_MAP")
 
-    # STEP 3: convolve with hits from non-optical simulations
-    convolve_parser = subparsers.add_parser(
-        "convolve", help="convolve non-optical hits with optical map"
-    )
-    convolve_parser.add_argument(
-        "--material",
-        action="store",
-        choices=("lar", "pen", "fiber"),
-        default="lar",
-        help="default: %(default)s",
-    )
-    convolve_parser.add_argument(
-        "--map",
-        action="store",
-        required=True,
-        metavar="INPUT_MAP",
-        help="input map LH5 file",
-    )
-    convolve_parser.add_argument(
-        "--edep",
-        action="store",
-        required=True,
-        metavar="INPUT_EDEP",
-        help="input non-optical LH5 hit file",
-    )
-    convolve_parser.add_argument(
-        "--edep-lgdo",
-        action="store",
-        required=True,
-        metavar="LGDO_PATH",
-        help="path to LGDO inside non-optical LH5 hit file (e.g. /stp/detXX)",
-    )
-    convolve_parser.add_argument(
-        "--dist-mode",
-        action="store",
-        default="poisson+no-fano",
-    )
-    convolve_parser.add_argument("--output", help="output hit LH5 file", metavar="OUTPUT_HIT")
-
     # STEP X: rebin maps
     rebin_parser = subparsers.add_parser("rebin", help="rebin optical maps")
     rebin_parser.add_argument("input", help="input map LH5 files", metavar="INPUT_MAP")
@@ -312,22 +273,6 @@ def optical_cli() -> None:
 
         _check_input_file(parser, args.input)
         check_optical_map(args.input)
-
-    # STEP 3: convolve with hits from non-optical simulations
-    if args.command == "convolve":
-        from .convolve import convolve
-
-        _check_input_file(parser, [args.map, args.edep])
-        _check_output_file(parser, args.output, optional=True)
-        convolve(
-            args.map,
-            args.edep,
-            args.edep_lgdo,
-            args.material,
-            args.output,
-            args.bufsize,
-            dist_mode=args.dist_mode,
-        )
 
     # STEP X: rebin maps
     if args.command == "rebin":
