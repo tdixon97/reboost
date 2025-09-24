@@ -134,10 +134,7 @@ def drift_time(
         np.sqrt(xloc**2 + yloc**2),
         zloc,
     )
-    return ak.Array(
-        dt_values,
-        attrs={"units": units.unit_to_lh5_attr(dt_map.φ_units)},
-    )
+    return units.attach_units(ak.Array(dt_values), units.unit_to_lh5_attr(dt_map.φ_units))
 
 
 def drift_time_heuristic(
@@ -165,7 +162,7 @@ def drift_time_heuristic(
     if t_units is not None and e_units is not None:
         attrs["units"] = units.unit_to_lh5_attr(t_units / e_units)
 
-    return units.units_conv_ak(
+    return units.attach_units(
         ak.Array(_drift_time_heuristic_impl(drift_time, edep)), attrs["units"]
     )
 
@@ -820,12 +817,12 @@ def maximum_current(
 
     # return
     if return_mode == "max_time":
-        return ak.Array(time, attrs={"units": "ns"})
+        return units.attach_units(ak.Array(time), "ns")
     if return_mode == "current":
         # current has no unit (depends on the template)
         return ak.Array(curr)
     if return_mode == "energy":
-        return ak.Array(energy, attrs={"units": "kev"})
+        return units.attach_units(ak.Array(energy), "keV")
 
     msg = f"Return mode {return_mode} is not implemented."
     raise ValueError(msg)

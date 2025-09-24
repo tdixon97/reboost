@@ -42,7 +42,7 @@ gamma_stp = ak.Array({
                 [-0.0162, -0.0224, -0.0224, -0.0224, -0.0224, -0.0224, -0.0224, -0.0224, -0.022, -0.022, -0.022, -0.022, -0.022, -0.022, -0.022],
             ],
 
-        ), "mm"),
+        ), "m"),
         "yloc": units.attach_units(ak.Array(
             [
                 [-0.00951, -0.0201, -0.0199, -0.014, -0.00924, -0.0092],
@@ -56,7 +56,7 @@ gamma_stp = ak.Array({
                 [-0.000536, -0.000655, -0.00369],
                 [-0.00355, -0.0134, -0.0134, -0.0134, -0.0134, -0.0134, -0.0134, -0.0134, -0.0133, -0.0133, -0.0133, -0.0133, -0.0133, -0.0133, -0.0133],
             ],
-        ),"mm"),
+        ),"m"),
         "zloc": units.attach_units(ak.Array(
             [
                 [0.0281, 0.0124, 0.0112, 0.00313, 0.0052, 0.00495],
@@ -70,7 +70,7 @@ gamma_stp = ak.Array({
                 [0.0197, 0.0195, 0.0117],
                 [0.0029, 0.00108, 0.00108, 0.00107, 0.00106, 0.00106, 0.00106, 0.00106, 0.00128, 0.00128, 0.00129, 0.0013, 0.0013, 0.0013, 0.0013],
             ],
-        ), "mm"),
+        ), "m"),
     }
 )
 # fmt: on
@@ -124,9 +124,9 @@ def test_drift_time_dummy(dt_map_dummy):
     gamma_stp_shift = ak.Array(
         {
             "edep": gamma_stp.edep,
-            "xloc": ak.Array(gamma_stp.xloc + 10, attrs={"units": "m"}),
-            "yloc": ak.Array(gamma_stp.yloc + 10, attrs={"units": "m"}),
-            "zloc": ak.Array(gamma_stp.zloc + 10, attrs={"units": "m"}),
+            "xloc": ak.Array(gamma_stp.xloc + 10),
+            "yloc": ak.Array(gamma_stp.yloc + 10),
+            "zloc": ak.Array(gamma_stp.zloc + 10),
         }
     )
 
@@ -176,10 +176,10 @@ def test_drift_time(dt_map):
     )
 
     dt_values, unit = units.unwrap_lgdo(dt_values)
+
     assert isinstance(dt_values, ak.Array)
     assert dt_values.ndim == 2
-
-    assert unit == "ns"
+    assert units.unit_to_lh5_attr(unit) == "ns"
 
 
 def test_drift_time_heuristics(dt_map):
@@ -197,4 +197,4 @@ def test_drift_time_heuristics(dt_map):
     dt_heu, unit = units.unwrap_lgdo(dt_heu)
     assert isinstance(dt_heu, ak.Array)
 
-    assert unit == "ns/keV"
+    assert units.unit_to_lh5_attr(unit) == "ns/keV"
