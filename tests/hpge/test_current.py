@@ -90,6 +90,38 @@ def test_maximum_current(test_model):
     assert abs(energy[2] - 500.0) < 2
 
 
+def test_units(test_model):
+    # standard units
+    model, x = test_model
+
+    edep = units.attach_units(ak.Array([[100.0, 300.0, 50.0], [10.0, 0.0, 100.0], [500.0]]), "keV")
+    times = units.attach_units(ak.Array([[400, 500, 700], [800, 0, 1500], [700]]), "ns")
+
+    energy = psd.maximum_current(edep, times, template=model, times=x, return_mode="energy")
+    unit = units.get_unit_str(energy)
+
+    assert unit == "keV"
+
+    # try for time
+    time = psd.maximum_current(edep, times, template=model, times=x, return_mode="max_time")
+
+    unit = units.get_unit_str(time)
+    assert unit == "ns"
+
+    # try with different units and check the result is the same
+    times_us = units.attach_units(
+        ak.Array([[0.400, 0.500, 0.700], [0.800, 0, 1.500], [0.700]]), "us"
+    )
+    max_time_us = psd.maximum_current(
+        edep, times_us, template=model, times=x, return_mode="max_time"
+    )
+
+    unit = units.get_unit_str(max_time_us)
+    assert unit == "ns"
+
+    assert ak.all(time == max_time_us)
+
+
 def test_with_cluster(test_model):
     model, x = test_model
 

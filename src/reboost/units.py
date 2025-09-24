@@ -112,6 +112,25 @@ def unwrap_lgdo(data: Any | LGDO | ak.Array, library: str = "ak") -> tuple[Any, 
     return ret_data, ret_units
 
 
+def get_unit_str(data: ak.Array) -> str:
+    """Get the units as a string for an awkward array with attached units.
+
+    Parameters
+    ----------
+    data
+        the array with attached units
+
+    Returns
+    -------
+    a string of the units.
+    """
+    attrs = ak.parameters(data)
+
+    if "units" in attrs:
+        return attrs["units"]
+    return None
+
+
 def unit_to_lh5_attr(unit: pint.Unit) -> str:
     """Convert Pint unit to a string that can be used as attrs["units"] in an LGDO."""
     # TODO: we should check if this can be always parsed by Unitful.jl

@@ -6,9 +6,13 @@ import awkward as ak
 import legendhpges
 import numba
 import numpy as np
+import pint
+import pyg4ometry
 from lgdo.types import LGDO
 from numpy.typing import NDArray
 from scipy import stats
+
+from reboost.units import ureg as u
 
 from .. import units
 
@@ -20,7 +24,7 @@ def distance_to_surface(
     positions_y: ak.Array,
     positions_z: ak.Array,
     hpge: legendhpges.base.HPGe,
-    det_pos: ak.Array,
+    det_pos: pint.Quantity | pyg4ometry.gdml.Position | tuple = (0, 0, 0) * u.m,
     *,
     surface_type: str | None = None,
     distances_precompute: ak.Array | None = None,
@@ -44,7 +48,8 @@ def distance_to_surface(
     hpge
         HPGe object.
     det_pos
-        position of the detector origin, must be a 3 component array corresponding to `(x,y,z)`.
+        position of the detector origin, must be a 3 component array corresponding to `(x,y,z)`. If no units
+        are specified mm is assumed.
     surface_type
         string of which surface to use, can be `nplus`, `pplus` `passive` or None (in which case the distance to any surface is calculated).
     unit
@@ -66,8 +71,13 @@ def distance_to_surface(
     pos = []
     sizes = []
 
+    if not isinstance(det_pos, pint.Quantity | pyg4ometry.gdml.Position):
+        det_pos = det_pos * u.mm
+
+    det_pos = units.pg4_to_pint(det_pos)
+
     for idx, pos_tmp in enumerate([positions_x, positions_y, positions_z]):
-        local_pos_tmp = units.units_conv_ak(pos_tmp, "mm") - det_pos[idx]
+        local_pos_tmp = units.units_conv_ak(pos_tmp, "mm") - det_pos[idx].to("mm").m
         local_pos_flat_tmp = ak.flatten(local_pos_tmp).to_numpy()
         pos.append(local_pos_flat_tmp)
         sizes.append(ak.num(local_pos_tmp, axis=1))
