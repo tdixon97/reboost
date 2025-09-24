@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import awkward as ak
 import numpy as np
 import pytest
 from dbetto import AttrsDict
-from lgdo import Array, Table, VectorOfVectors, lh5
+from lgdo import Table, VectorOfVectors, lh5
 from scipy.interpolate import RegularGridInterpolator
 
 from reboost.hpge import psd, utils
@@ -11,9 +12,8 @@ from reboost.units import ureg as u
 
 # data from remage sim in ./simulation
 # fmt: off
-gamma_stp = Table(
-    {
-        "edep": VectorOfVectors(
+gamma_stp = ak.Array({
+        "edep": ak.Array(
             [
                 [763, 20.1, 30.2, 40.5, 36.5, 110],
                 [0.0158, 526, 111],
@@ -28,7 +28,7 @@ gamma_stp = Table(
             ],
             attrs={"units": "keV"},
         ),
-        "xloc": VectorOfVectors(
+        "xloc": ak.Array(
             [
                 [-0.0022, 0.0115, 0.0141, 0.0169, 0.0165, 0.0165],
                 [0.0106, 0.0104, 0.0103],
@@ -43,7 +43,7 @@ gamma_stp = Table(
             ],
             attrs={"units": "m"},
         ),
-        "yloc": VectorOfVectors(
+        "yloc": ak.Array(
             [
                 [-0.00951, -0.0201, -0.0199, -0.014, -0.00924, -0.0092],
                 [-0.0264, -0.0264, -0.0264],
@@ -58,7 +58,7 @@ gamma_stp = Table(
             ],
             attrs={"units": "m"},
         ),
-        "zloc": VectorOfVectors(
+        "zloc": ak.Array(
             [
                 [0.0281, 0.0124, 0.0112, 0.00313, 0.0052, 0.00495],
                 [0.029, 0.0292, 0.0293],
@@ -176,20 +176,9 @@ def test_drift_time(dt_map):
         gamma_stp.zloc,
         dt_map,
     )
-    assert isinstance(dt_values, VectorOfVectors)
+    assert isinstance(dt_values, ak.Array)
     assert dt_values.ndim == 2
     assert dt_values.attrs["units"] == "ns"
-
-    # test whether this works with non-LGDOs
-    data = gamma_stp.view_as("ak")
-    dt_values_nolgdo = psd.drift_time(
-        data.xloc,  # units should match the dt map units -> meters
-        data.yloc,
-        data.zloc,
-        dt_map,
-    )
-    assert isinstance(dt_values_nolgdo, VectorOfVectors)
-    assert dt_values_nolgdo == dt_values
 
 
 def test_drift_time_heuristics(dt_map):
@@ -205,5 +194,5 @@ def test_drift_time_heuristics(dt_map):
         gamma_stp.edep,
     )
 
-    assert isinstance(dt_heu, Array)
+    assert isinstance(dt_heu, ak.Array)
     assert dt_heu.attrs["units"] == "ns/keV"

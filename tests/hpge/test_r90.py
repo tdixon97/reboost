@@ -134,4 +134,4 @@ def test_r90():
     )
 
     r90_output = r90(data.edep, data.xloc, data.yloc, data.zloc)
-    assert round(r90_output.nda[0], 7) == gamma_r90
+    assert round(r90_output[0], 7) == gamma_r90

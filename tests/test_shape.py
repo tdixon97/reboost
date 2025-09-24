@@ -118,7 +118,7 @@ def test_cluster_basic():
 
     runs = ak.run_lengths(trackid)
     assert ak.all(
-        cluster.apply_cluster(runs, trackid).view_as("ak")
+        cluster.apply_cluster(runs, trackid)
         == ak.Array([[[1, 1, 1], [2, 2], [3, 3], [7]], [[2, 2, 2], [3, 3, 3]], [[1]]])
     )
 
@@ -132,7 +132,7 @@ def test_cluster_by_step_length():
     dist = ak.Array([[0.1, 0.1, 0.1, 0.1, 2, 2, 2, 2], [2, 2, 2, 2, 2, 2], [0.3]])
 
     clusters = cluster.cluster_by_step_length(
-        trackid, x, y, z, dist, threshold=0.2, threshold_surf=0.02, surf_cut=0.15
+        trackid, x, y, z, dist, threshold_in_mm=0.2, threshold_surf_in_mm=0.02, surf_cut=0.15
     )
 
     assert ak.all(clusters.view_as("ak") == ak.Array([[1, 1, 1, 1, 3, 1], [1, 1, 1, 2, 1], [1]]))
@@ -140,7 +140,7 @@ def test_cluster_by_step_length():
     # test without surface region
 
     clusters = cluster.cluster_by_step_length(trackid, x, y, z, threshold=0.2)
-    assert ak.all(clusters.view_as("ak") == ak.Array([[2, 1, 1, 3, 1], [1, 1, 1, 2, 1], [1]]))
+    assert ak.all(clusters == ak.Array([[2, 1, 1, 3, 1], [1, 1, 1, 2, 1], [1]]))
 
 
 def test_step_length():
@@ -151,11 +151,11 @@ def test_step_length():
 
     run = ak.run_lengths(trackid)
 
-    x_cluster = cluster.apply_cluster(run, x).view_as("ak")
-    y_cluster = cluster.apply_cluster(run, y).view_as("ak")
-    z_cluster = cluster.apply_cluster(run, z).view_as("ak")
+    x_cluster = cluster.apply_cluster(run, x)
+    y_cluster = cluster.apply_cluster(run, y)
+    z_cluster = cluster.apply_cluster(run, z)
 
-    steps = cluster.step_lengths(x_cluster, y_cluster, z_cluster).view_as("ak")
+    steps = cluster.step_lengths(x_cluster, y_cluster, z_cluster)
 
     for idx, sub_array in enumerate(steps):
         assert ak.all(sub_array == ak.Array([[[0, 1], [1], [1], []], [[1, 3], [0, 1.0]], []])[idx])

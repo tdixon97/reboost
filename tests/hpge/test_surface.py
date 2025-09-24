@@ -7,7 +7,6 @@ import pytest
 from legendhpges import make_hpge
 from legendtestdata import LegendTestData
 from lgdo import types
-from lgdo.types import VectorOfVectors
 
 from reboost.hpge.surface import distance_to_surface, get_surface_response
 
@@ -51,17 +50,17 @@ def test_distance_to_surface(test_data_configs):
 
     # check skipping the calculation for points > 5 mm
     dist = distance_to_surface(
-        VectorOfVectors(pos.xloc),
-        VectorOfVectors(pos.yloc),
-        VectorOfVectors(pos.zloc),
+        pos.xloc,
+        pos.yloc,
+        pos.zloc,
         gedet,
         det_pos=dist,
         surface_type=None,
-        distances_precompute=VectorOfVectors(pos.distance_to_surface),
+        distances_precompute=pos.distance_to_surface,
         precompute_cutoff=5,
     )
 
-    assert isinstance(dist, types.LGDO)
+    assert isinstance(dist, ak.Array)
 
     assert ak.all(dist[0] == dist_full[0])
     assert ak.all(dist[2] == dist_full[2])

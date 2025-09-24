@@ -12,7 +12,9 @@ def test_hpge_activeness():
     # test with VectorOfVectors and ak.Array input
     distances = ak.Array([[0.2], [0.6], [2]])
 
-    activeness = functions.piecewise_linear_activeness(VectorOfVectors(distances), fccd=1, dlf=0.4)
+    activeness = functions.piecewise_linear_activeness(
+        VectorOfVectors(distances), fccd_in_mm=1, dlf=0.4
+    )
 
     # first point should be 0
     assert activeness[0][0] == 0
@@ -85,19 +87,19 @@ def test_vectorised_activeness():
 def test_sample():
     # list inputs
     samples = stats.gaussian_sample([1, 2, 3], [0.1, 0.1, 0.1])
-    assert isinstance(samples, Array)
+    assert isinstance(samples, ak.Array)
 
     # LGDO inputs
     samples = stats.gaussian_sample(Array(np.array([1, 2, 3])), Array(np.array([0.1, 0.1, 0.1])))
-    assert isinstance(samples, Array)
+    assert isinstance(samples, ak.Array)
 
     # ak inputs
     samples = stats.gaussian_sample(ak.Array([1, 2, 3]), ak.Array([1, 2, 3]))
-    assert isinstance(samples, Array)
+    assert isinstance(samples, ak.Array)
 
     # sigma float
     samples = stats.gaussian_sample([1, 2, 3], 0.1)
-    assert isinstance(samples, Array)
+    assert isinstance(samples, ak.Array)
 
 
 def test_energy_res():

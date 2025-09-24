@@ -67,7 +67,9 @@ def test_get_function_string():
 
     # try a reboost package
 
-    expression = "reboost.math.functions.piecewise_linear_activeness(distances,fccd=1,dlf=0.5)"
+    expression = (
+        "reboost.math.functions.piecewise_linear_activeness(distances,fccd_in_mm=1,dlf=0.5)"
+    )
     func_string, globals_dict = get_function_string(expression)
 
     assert func_string == expression
