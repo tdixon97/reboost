@@ -31,11 +31,10 @@ example:
 
 ```yaml
 processing_groups:
-    - name: geds
-
+  - name: geds
     detector_mapping:
-        - output: det001
-        - output: det002
+      - output: det001
+      - output: det002
 ```
 
 Since if no "input" key is supplied to the dictionary it is assumed the input
@@ -49,11 +48,10 @@ table name. For example:
 
 ```yaml
 processing_groups:
-    - name: sipms
-
+  - name: sipms
     detector_mapping:
-        - output: det003
-          input: LAr
+      - output: det003
+        input: LAr
 ```
 
 Next for every detector we have the option to define (generically) a set of
@@ -89,11 +87,13 @@ outputs:
 ```
 
 :::{note}
+
 If the "outputs" key is not present all fields will be included!
+
 :::
 
 In case the flat output file option for _remage_ was used we need to
-define the the step grouping function (i.e. we create our hits). Here
+define the step grouping function (i.e. we create our hits). Here
 "STEPS" is a special keyword corresponding to the remage data.
 
 ```yaml

@@ -628,7 +628,7 @@ def _get_waveform_maximum_impl(
         # skip anything not in the range tmin to tmax (for surface affects this can be later)
         has_surface_hit = include_surface_effects
 
-        if time < tmin or (time > (tmax + time_step) and not has_surface_hit):
+        if time < tmin or (time > (tmax + time_step)):
             continue
 
         if not has_surface_hit:
@@ -693,6 +693,9 @@ def _estimate_current_impl(
     n = len(template)
     start = times[0]
 
+    if include_surface_effects:
+        offsets = times[np.argmax(templates_surface, axis=0)]
+
     # make the convolved surface library
     if include_surface_effects and np.diff(times)[0] != 1.0:
         msg = "The surface convolution requires a template with 1 ns binning"
@@ -703,8 +706,23 @@ def _estimate_current_impl(
         e = np.asarray(edep[i])
         dist = np.asarray(dist_to_nplus[i])
 
+        # get the expected maximum
         tmax = float(np.max(t))
         tmin = float(np.min(t))
+
+        # correct the maximum expected time for surface sims
+        if include_surface_effects:
+            ncols = templates_surface.shape[1]
+
+            for j, d in enumerate(dist):
+                dtmp = int(d / surface_step_in_um)
+
+                # Use branchless selection
+                use_offset = dtmp <= ncols
+                offset_val = offsets[dtmp] if use_offset else 0.0
+                time_tmp = t[j] + offset_val * use_offset
+
+                tmax = max(tmax, time_tmp)
 
         for time_step in [20, 1]:
             if time_step == 1:

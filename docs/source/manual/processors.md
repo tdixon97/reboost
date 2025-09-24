@@ -19,8 +19,10 @@ output into a jagged structure, where each row corresponds to a "hit" and the
 fields are variable length vectors containing information on the steps in each
 hit.
 :::{note}
+
 This is only relevant if the "flat" output structure of _remage_ files is
 used.
+
 :::
 
 Currently two step-grouping options are implemented. Once the remage output is
@@ -40,7 +42,7 @@ hits_by_time = group_by_time(data, window=10)  # unit is us
 
 ## Other processors
 
-Additional _reboost_ processors compute further quantities of interesting, this
+Additional _reboost_ processors compute further quantities of interest. This
 can consist of:
 
 - reduction (e.g. summing over steps),
@@ -48,13 +50,13 @@ can consist of:
   adding a dimension),
 - computing other quantities (eg. PSD heuristics etc.).
 
-The only prescriptiion for a _reboost_ processor is that the function should
+The only prescription for a _reboost_ processor is that the function should
 return either an {class}`lgdo.LGDO` object, or an {class}`awkward.Array`. These
 processors should not change the length of the object, i.e. they should only act
 on axes more than 1.
 
 The input parameters for processors should also be accepted as
-{class}`lgdo.LGDO` object, or an {class}`awkward.Array`
+{class}`lgdo.LGDO` objects, or as {class}`awkward.Array` instances.
 
 Documentation describing the various processors is contained in the API
 documentation. You can then import these functions and use them in your python

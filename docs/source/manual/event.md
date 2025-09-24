@@ -29,8 +29,10 @@ or an older version of reboost is used this can be computed with
 {func}`pygama.evt.build_tcm`.
 
 :::{warning}
+
 In case a non-trivial table mapping is used in {func}`reboost.build_hit.build_hit`
 the TCM to describe the hit files may be different.
+
 :::
 
 ## Gathering data from other fields
@@ -47,7 +49,7 @@ written processors.
 One useful functionality is to select groups of channels. To do this the function
 {func}`reboost.shape.group.get_isin_group` can be used. This will return an awkward
 array with the same shape as the channels input of booleans indicating if a given
-channel was part of the group>
+channel was part of the group.
 
 # Full event tier post-processing
 
