@@ -7,12 +7,12 @@ import numba
 import numpy as np
 from lgdo import VectorOfVectors
 
+from .. import units
+
 log = logging.getLogger(__name__)
 
 
-def apply_cluster(
-    cluster_run_lengths: VectorOfVectors | ak.Array, field: ak.Array | VectorOfVectors
-) -> VectorOfVectors:
+def apply_cluster(cluster_run_lengths: ak.Array, field: ak.Array) -> ak.Array:
     """Apply clustering to a field.
 
     Parameters
@@ -32,18 +32,18 @@ def apply_cluster(
     clusters = ak.unflatten(ak.flatten(field), ak.flatten(cluster_run_lengths))
 
     # reshape into cluster oriented
-    return VectorOfVectors(ak.unflatten(clusters, n_cluster))
+    return ak.Array(ak.unflatten(clusters, n_cluster), attrs=field.attrs)
 
 
 def cluster_by_step_length(
-    trackid: ak.Array | VectorOfVectors,
-    pos_x: ak.Array | VectorOfVectors,
-    pos_y: ak.Array | VectorOfVectors,
-    pos_z: ak.Array | VectorOfVectors,
-    dist: ak.Array | VectorOfVectors | None = None,
+    trackid: ak.Array,
+    pos_x: ak.Array,
+    pos_y: ak.Array,
+    pos_z: ak.Array,
+    dist: ak.Array | None = None,
     surf_cut: float | None = None,
-    threshold: float = 0.1,
-    threshold_surf: float | None = None,
+    threshold_in_mm: float = 0.1,
+    threshold_surf_in_mm: float | None = None,
 ) -> VectorOfVectors:
     """Perform clustering based on the step length.
 
@@ -59,20 +59,20 @@ def cluster_by_step_length(
     Parameters
     ----------
     trackid
-        index of the track.
+        index of the tracks.
     pos_x
-        x position of the step.
+        x position of the steps.
     pos_y
-        y position of the step.
+        y position of the steps.
     pos_z
-        z position of the step.
+        z position of the steps.
     dist
         distance to the detector surface. Can be `None` in which case all steps are treated as being in the "bulk".
     surf_cut
         Size of the surface region (in mm), if `None` no selection is applied (default).
-    threshold
+    threshold_in_mm
         Distance threshold in mm to combine steps in the bulk.
-    threshold_surf
+    threshold_surf_in_mm
         Distance threshold in mm to combine steps in the surface.
 
     Returns
@@ -80,37 +80,22 @@ def cluster_by_step_length(
     Array of the run lengths of each cluster within a hit.
     """
     # type conversions
-    if isinstance(pos_x, VectorOfVectors):
-        pos_x = pos_x.view_as("ak")
-
-    if isinstance(pos_y, VectorOfVectors):
-        pos_y = pos_y.view_as("ak")
-
-    if isinstance(pos_z, VectorOfVectors):
-        pos_z = pos_z.view_as("ak")
-
-    if isinstance(trackid, VectorOfVectors):
-        trackid = trackid.view_as("ak")
-
-    if isinstance(dist, VectorOfVectors):
-        dist = dist.view_as("ak")
 
     pos = np.vstack(
         [
-            ak.flatten(pos_x).to_numpy().astype(np.float64),
-            ak.flatten(pos_y).to_numpy().astype(np.float64),
-            ak.flatten(pos_z).to_numpy().astype(np.float64),
+            ak.flatten(units.units_conv_ak(p, "mm")).to_numpy().astype(np.float64)
+            for p in [pos_x, pos_y, pos_z]
         ]
     ).T
 
-    indices_flat = cluster_by_distance_numba(
+    indices_flat = _cluster_by_distance_numba(
         ak.flatten(ak.local_index(trackid)).to_numpy(),
         ak.flatten(trackid).to_numpy(),
         pos,
         dist_to_surf=ak.flatten(dist).to_numpy() if dist is not None else dist,
         surf_cut=surf_cut,
-        threshold=threshold,
-        threshold_surf=threshold_surf,
+        threshold=threshold_in_mm,
+        threshold_surf=threshold_surf_in_mm,
     )
 
     # reshape into being event oriented
@@ -119,11 +104,11 @@ def cluster_by_step_length(
     # number of steps per cluster
     counts = ak.run_lengths(indices)
 
-    return VectorOfVectors(counts)
+    return ak.Array(counts)
 
 
 @numba.njit
-def cluster_by_distance_numba(
+def _cluster_by_distance_numba(
     local_index: np.ndarray,
     trackid: np.ndarray,
     pos: np.ndarray,
@@ -210,10 +195,10 @@ def cluster_by_distance_numba(
 
 
 def step_lengths(
-    x_cluster: ak.Array | VectorOfVectors,
-    y_cluster: ak.Array | VectorOfVectors,
-    z_cluster: ak.Array | VectorOfVectors,
-) -> VectorOfVectors:
+    x_cluster: ak.Array,
+    y_cluster: ak.Array,
+    z_cluster: ak.Array,
+) -> ak.Array:
     """Compute the distance between consecutive steps.
 
     This is based on calculating the distance between consecutive steps in the same track,
@@ -242,12 +227,13 @@ def step_lengths(
     data = [x_cluster, y_cluster, z_cluster]
 
     for idx, var in enumerate(data):
-        if isinstance(var, VectorOfVectors):
-            data[idx] = var.view_as("ak")
         # check shape
-        if data[idx].ndim != 3:
+        if var.ndim != 3:
             msg = f"The input array for step lengths must be 3 dimensional not {data[idx.dim]}"
             raise ValueError(msg)
+
+        # type convert
+        data[idx] = units.units_conv_ak(data[idx], "mm")
 
     counts = ak.num(data[0], axis=-1)
     data = np.vstack([ak.flatten(ak.flatten(var)).to_numpy() for var in data])
@@ -257,4 +243,4 @@ def step_lengths(
     clusters = ak.unflatten(ak.Array(dist), ak.flatten(counts))
 
     out = ak.unflatten(clusters, n_cluster)
-    return VectorOfVectors(out[:, :, :-1])
+    return ak.Array(out[:, :, :-1], attrs={"units": "mm"})

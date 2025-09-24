@@ -6,26 +6,26 @@ import awkward as ak
 import legendhpges
 import numba
 import numpy as np
-from lgdo import VectorOfVectors
 from lgdo.types import LGDO
-from numpy.typing import ArrayLike
+from numpy.typing import NDArray
 from scipy import stats
+
+from .. import units
 
 log = logging.getLogger(__name__)
 
 
 def distance_to_surface(
-    positions_x: VectorOfVectors,
-    positions_y: VectorOfVectors,
-    positions_z: VectorOfVectors,
+    positions_x: ak.Array,
+    positions_y: ak.Array,
+    positions_z: ak.Array,
     hpge: legendhpges.base.HPGe,
-    det_pos: ArrayLike,
+    det_pos: ak.Array,
     *,
     surface_type: str | None = None,
-    unit: str = "mm",
-    distances_precompute: VectorOfVectors | None = None,
+    distances_precompute: ak.Array | None = None,
     precompute_cutoff: float | None = None,
-) -> VectorOfVectors:
+) -> ak.Array:
     """Computes the distance from each step to the detector surface.
 
     The calculation can be performed for any surface type `nplus`, `pplus`,
@@ -50,26 +50,24 @@ def distance_to_surface(
     unit
         unit for the hit tier positions table.
     distances_precompute
-        VectorOfVectors of distance to any surface computed by remage.
+        Distance to any surface computed by remage.
     precompute_cutoff
         cutoff on distances_precompute to not compute the distance for (in mm)
 
     Returns
     -------
-    VectorOfVectors with the same shape as `positions_x/y/z` of the distance to the surface.
+    Distance to the surface for each hit with the same shape as `positions_x/y/z`.
 
     Note
     ----
     `positions_x/positions_y/positions_z` must all have the same shape.
     """
-    factor = np.array([1, 100, 1000])[unit == np.array(["mm", "cm", "m"])][0]
-
     # compute local positions
     pos = []
     sizes = []
 
     for idx, pos_tmp in enumerate([positions_x, positions_y, positions_z]):
-        local_pos_tmp = ak.Array(pos_tmp) * factor - det_pos[idx]
+        local_pos_tmp = units.units_conv_ak(pos_tmp, "mm") - det_pos[idx]
         local_pos_flat_tmp = ak.flatten(local_pos_tmp).to_numpy()
         pos.append(local_pos_flat_tmp)
         sizes.append(ak.num(local_pos_tmp, axis=1))
@@ -106,7 +104,7 @@ def distance_to_surface(
             local_positions[indices], surface_indices=surface_indices
         )
 
-    return VectorOfVectors(ak.unflatten(distances, size), dtype=np.float32)
+    return ak.Array(ak.unflatten(distances, size), dtype=np.float32, attrs={"units": "mm"})
 
 
 @numba.njit(cache=True)
@@ -222,7 +220,7 @@ def get_surface_response(
     factor: float = 0.29,
     nsteps: int = 10000,
     delta_x: float = 10,
-):
+) -> NDArray:
     """Extract the surface response current pulse based on diffusion.
 
     This extracts the amount of charge arrived (cumulative) at the p-n
@@ -248,6 +246,10 @@ def get_surface_response(
         the number of time steps.
     delta_x
         the width of each position bin.
+
+    Returns
+    -------
+    2D array of the amount of charge arriving at the p-n junction as a function of time for each depth.
     """
     # number of position steps
     nx = int(fccd / delta_x)

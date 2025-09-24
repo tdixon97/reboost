@@ -5,14 +5,13 @@ import logging
 import awkward as ak
 import numpy as np
 from lgdo import Array, VectorOfVectors
-from lgdo.types import LGDO
+
+from .. import units
 
 log = logging.getLogger(__name__)
 
 
-def piecewise_linear_activeness(
-    distances: VectorOfVectors | ak.Array, fccd: float, dlf: float
-) -> VectorOfVectors | Array:
+def piecewise_linear_activeness(distances: ak.Array, fccd_in_mm: float, dlf: float) -> ak.Array:
     r"""Piecewise linear HPGe activeness model.
 
     Based on:
@@ -38,11 +37,10 @@ def piecewise_linear_activeness(
     Parameters
     ----------
     distances
-        the distance from each step to the detector surface. Can be either a
-        `numpy` or `awkward` array, or a LGDO `VectorOfVectors` or `Array`. The computation
+        the distance from each step to the detector surface. The computation
         is performed for each element and the shape preserved in the output.
 
-    fccd
+    fccd_in_mm
         the value of the FCCD
     dlf
         the fraction of the FCCD which is fully inactive.
@@ -52,14 +50,9 @@ def piecewise_linear_activeness(
     a :class:`VectorOfVectors` or :class:`Array` of the activeness
     """
     # convert to ak
-    if isinstance(distances, LGDO):
-        distances_ak = distances.view_as("ak")
-    elif not isinstance(distances, ak.Array):
-        distances_ak = ak.Array(distances)
-    else:
-        distances_ak = distances
+    distances_ak = units.units_conv_ak(distances, "mm")
 
-    dl = fccd * dlf
+    dl = fccd_in_mm * dlf
     distances_flat = (
         ak.flatten(distances_ak).to_numpy() if distances_ak.ndim > 1 else distances_ak.to_numpy()
     )
@@ -68,24 +61,24 @@ def piecewise_linear_activeness(
     results = np.full_like(distances_flat, np.nan, dtype=np.float64)
     lengths = ak.num(distances_ak) if distances_ak.ndim > 1 else len(distances_ak)
 
-    mask1 = (distances_flat > fccd) | np.isnan(distances_flat)
+    mask1 = (distances_flat > fccd_in_mm) | np.isnan(distances_flat)
     mask2 = (distances_flat <= dl) & (~mask1)
     mask3 = ~(mask1 | mask2)
 
     # assign the values
     results[mask1] = 1
     results[mask2] = 0
-    results[mask3] = (distances_flat[mask3] - dl) / (fccd - dl)
+    results[mask3] = (distances_flat[mask3] - dl) / (fccd_in_mm - dl)
 
     # reshape
     results = ak.unflatten(ak.Array(results), lengths) if distances_ak.ndim > 1 else results
 
-    return VectorOfVectors(results) if results.ndim > 1 else Array(results)
+    return ak.Array(results, attrs={"units": "mm"})
 
 
 def vectorised_active_energy(
-    distances: VectorOfVectors | ak.Array,
-    edep: VectorOfVectors | ak.Array,
+    distances: ak.Array,
+    edep: ak.Array,
     fccd: float | list,
     dlf: float | list,
 ) -> VectorOfVectors | Array:
@@ -115,7 +108,7 @@ def vectorised_active_energy(
 
     Returns
     -------
-    a :class:`VectorOfVectors` or :class:`Array` of the activeness
+    Activeness for each set of parameters
     """
     # add checks on fccd, dlf
     fccd = np.array(fccd)
@@ -133,20 +126,14 @@ def vectorised_active_energy(
 
     dl = fccd * dlf
 
-    def _convert(field):
+    def _convert(field, unit):
         # convert to ak
-        if isinstance(field, VectorOfVectors):
-            field_ak = field.view_as("ak")
-        elif not isinstance(field, ak.Array):
-            field_ak = ak.Array(field)
-        else:
-            msg = f"{field} must be an awkward array or VectorOfVectors"
-            raise TypeError(msg)
+        field_ak = units.units_conv_ak(field, unit)
 
         return field_ak, ak.flatten(field_ak).to_numpy()[:, np.newaxis]
 
-    distances_ak, distances_flat = _convert(distances)
-    _, edep_flat = _convert(edep)
+    distances_ak, distances_flat = _convert(distances, "mm")
+    _, edep_flat = _convert(edep, "keV")
     runs = ak.num(distances_ak, axis=-1)
 
     # vectorise fccd or tl
@@ -172,4 +159,4 @@ def vectorised_active_energy(
 
     energy = ak.sum(ak.unflatten(results * edep_flat, runs), axis=-2)
 
-    return VectorOfVectors(energy) if energy.ndim > 1 else Array(energy.to_numpy())
+    return ak.Array(energy, attrs={"units": "keV"})

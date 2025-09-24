@@ -6,7 +6,6 @@ from collections.abc import Callable
 import awkward as ak
 import numpy as np
 from lgdo import Array
-from numpy.typing import ArrayLike
 
 log = logging.getLogger(__name__)
 
@@ -72,7 +71,7 @@ def apply_energy_resolution(
     return ak.unflatten(energies_flat_smear, num)
 
 
-def gaussian_sample(mu: ArrayLike, sigma: ArrayLike | float, *, seed: int | None = None) -> Array:
+def gaussian_sample(mu: ak.Array, sigma: ak.Array | float, *, seed: int | None = None) -> ak.Array:
     r"""Generate samples from a gaussian.
 
     Based on:
@@ -99,9 +98,7 @@ def gaussian_sample(mu: ArrayLike, sigma: ArrayLike | float, *, seed: int | None
     """
     # convert inputs
 
-    if isinstance(mu, Array):
-        mu = mu.view_as("np")
-    elif isinstance(mu, ak.Array):
+    if isinstance(mu, ak.Array):
         mu = mu.to_numpy()
     elif not isinstance(mu, np.ndarray):
         mu = np.array(mu)
@@ -116,4 +113,4 @@ def gaussian_sample(mu: ArrayLike, sigma: ArrayLike | float, *, seed: int | None
 
     rng = np.random.default_rng(seed=seed)  # Create a random number generator
 
-    return Array(rng.normal(loc=mu, scale=sigma))
+    return ak.Array(rng.normal(loc=mu, scale=sigma))

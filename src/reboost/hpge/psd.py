@@ -8,7 +8,7 @@ import numba
 import numpy as np
 import pint
 import pyg4ometry
-from lgdo import Array, VectorOfVectors
+from lgdo import Array
 from numpy.typing import ArrayLike, NDArray
 
 from .. import units
@@ -18,7 +18,7 @@ from .utils import HPGeScalarRZField
 log = logging.getLogger(__name__)
 
 
-def r90(edep: ak.Array, xloc: ak.Array, yloc: ak.Array, zloc: ak.Array) -> Array:
+def r90(edep: ak.Array, xloc: ak.Array, yloc: ak.Array, zloc: ak.Array) -> ak.Array:
     """R90 HPGe pulse shape heuristic.
 
     Parameters
@@ -31,18 +31,20 @@ def r90(edep: ak.Array, xloc: ak.Array, yloc: ak.Array, zloc: ak.Array) -> Array
         array of y coordinate position.
     zloc
         array of z coordinate position.
+
+    Returns
+    -------
+    calculated r90 for each hit
     """
+    pos = [units.units_conv_ak(pos, "mm") for pos in [xloc, yloc, zloc]]
+
     tot_energy = ak.sum(edep, axis=-1, keepdims=True)
 
     def eweight_mean(field, energy):
         return ak.sum(energy * field, axis=-1, keepdims=True) / tot_energy
 
     # Compute distance of each edep to the weighted mean
-    dist = np.sqrt(
-        (xloc - eweight_mean(edep, xloc)) ** 2
-        + (yloc - eweight_mean(edep, yloc)) ** 2
-        + (zloc - eweight_mean(edep, zloc)) ** 2
-    )
+    dist = np.sqrt(sum((p - eweight_mean(edep, p)) ** 2 for p in pos))
 
     # Sort distances and corresponding edep within each event
     sorted_indices = ak.argsort(dist, axis=-1)
@@ -76,16 +78,16 @@ def r90(edep: ak.Array, xloc: ak.Array, yloc: ak.Array, zloc: ak.Array) -> Array
     r90_indices = ak.argmax(cumsum_edep_corrected >= threshold, axis=-1, keepdims=True)
     r90 = sorted_dist[r90_indices]
 
-    return Array(ak.flatten(r90).to_numpy())
+    return ak.Array(ak.flatten(r90), attrs={"units": "mm"})
 
 
 def drift_time(
-    xloc: ArrayLike,
-    yloc: ArrayLike,
-    zloc: ArrayLike,
+    xloc: ak.Array,
+    yloc: ak.Array,
+    zloc: ak.Array,
     dt_map: HPGeScalarRZField,
     coord_offset: pint.Quantity | pyg4ometry.gdml.Position = (0, 0, 0) * u.m,
-) -> VectorOfVectors:
+) -> ak.Array:
     """Calculates drift times for each step (cluster) in an HPGe detector.
 
     Parameters
@@ -106,7 +108,7 @@ def drift_time(
     # sanitize coord_offset
     coord_offset = units.pg4_to_pint(coord_offset)
 
-    # unit handling (for matching with drift time map units)
+    # unit handling (.r_units) for data in (xloc, yloc)]
     xu, yu = [units.units_convfact(data, dt_map.r_units) for data in (xloc, yloc)]
     zu = units.units_convfact(zloc, dt_map.z_units)
 
@@ -122,7 +124,6 @@ def drift_time(
 
         return None
 
-    # transform coordinates
     xloc = xu * xloc - coord_offset[0].to(dt_map.r_units).m
     yloc = yu * yloc - coord_offset[1].to(dt_map.r_units).m
     zloc = zu * zloc - coord_offset[2].to(dt_map.z_units).m
@@ -133,7 +134,7 @@ def drift_time(
         np.sqrt(xloc**2 + yloc**2),
         zloc,
     )
-    return VectorOfVectors(
+    return ak.Array(
         dt_values,
         attrs={"units": units.unit_to_lh5_attr(dt_map.φ_units)},
     )
@@ -142,7 +143,7 @@ def drift_time(
 def drift_time_heuristic(
     drift_time: ArrayLike,
     edep: ArrayLike,
-) -> Array:
+) -> ak.Array:
     """HPGe drift-time-based pulse-shape heuristic.
 
     See :func:`_drift_time_heuristic_impl` for a description of the algorithm.
@@ -164,7 +165,7 @@ def drift_time_heuristic(
     if t_units is not None and e_units is not None:
         attrs["units"] = units.unit_to_lh5_attr(t_units / e_units)
 
-    return Array(_drift_time_heuristic_impl(drift_time, edep), attrs=attrs)
+    return ak.Array(_drift_time_heuristic_impl(drift_time, edep), attrs=attrs)
 
 
 @numba.njit(cache=True)
@@ -734,9 +735,9 @@ def _estimate_current_impl(
 
 
 def maximum_current(
-    edep: ArrayLike,
-    drift_time: ArrayLike,
-    dist_to_nplus: ArrayLike | None = None,
+    edep: ak.Array,
+    drift_time: ak.Array,
+    dist_to_nplus: ak.Array | None = None,
     *,
     template: np.array,
     times: np.array,
@@ -745,22 +746,22 @@ def maximum_current(
     activeness_surface: ArrayLike | None = None,
     surface_step_in_um: float = 10,
     return_mode: str = "current",
-) -> Array:
+) -> ak.Array:
     """Estimate the maximum current in the HPGe detector based on :func:`_estimate_current_impl`.
 
     Parameters
     ----------
     edep
-        Array of energies for each step.
+       Energies for each step.
     drift_time
-        Array of drift times for each step.
+        Drift times for each step.
     dist_to_nplus
         Distance to n-plus electrode, only needed if surface heuristics are enabled.
     template
-        array of the bulk pulse template
+        Array of the bulk pulse template
     times
         time-stamps for the bulk pulse template
-    fccd
+    fccd_in_um
         Value of the full-charge-collection depth, if `None` no surface corrections are performed.
     surface_library
         2D array (distance, time) of the rate of charge arriving at the p-n junction. Each row
@@ -777,9 +778,9 @@ def maximum_current(
     """
     # extract LGDO data and units
 
-    drift_time, _ = units.unwrap_lgdo(drift_time)
-    edep, _ = units.unwrap_lgdo(edep)
-    dist_to_nplus, _ = units.unwrap_lgdo(dist_to_nplus)
+    drift_time = units.units_conv_ak(drift_time, "ns")
+    edep = units.units_conv_ak(edep, "keV")
+    dist_to_nplus = units.units_conv_ak(dist_to_nplus, "um")
 
     include_surface_effects = False
 
@@ -817,11 +818,12 @@ def maximum_current(
 
     # return
     if return_mode == "max_time":
-        return Array(time)
+        return ak.Array(time, attrs={"units": "ns"})
     if return_mode == "current":
-        return Array(curr)
+        # current has no unit (depends on the template)
+        return ak.Array(curr)
     if return_mode == "energy":
-        return Array(energy)
+        return ak.Array(energy, attrs={"units": "kev"})
 
     msg = f"Return mode {return_mode} is not implemented."
     raise ValueError(msg)
