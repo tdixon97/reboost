@@ -36,7 +36,7 @@ processing_groups:
 
       activeness:
         reboost.math.functions.piecewise_linear_activeness(HITS.distance_to_nplus,
-        fccd=DETECTOR_OBJECTS.det_pars.fccd_in_mm,
+        fccd_in_mm=DETECTOR_OBJECTS.det_pars.fccd_in_mm,
         dlf=DETECTOR_OBJECTS.det_pars.dlf)
 
       active_energy: ak.sum(HITS.edep*HITS.activeness, axis=-1)

@@ -6,7 +6,6 @@ import pyg4ometry
 import pytest
 from legendhpges import make_hpge
 from legendtestdata import LegendTestData
-from lgdo import types
 
 from reboost.hpge.surface import distance_to_surface, get_surface_response
 
@@ -46,7 +45,7 @@ def test_distance_to_surface(test_data_configs):
     dist_full = distance_to_surface(
         pos.xloc, pos.yloc, pos.zloc, gedet, det_pos=dist, surface_type=None
     )
-    assert isinstance(dist_full, types.LGDO)
+    assert isinstance(dist_full, ak.Array)
 
     # check skipping the calculation for points > 5 mm
     dist = distance_to_surface(

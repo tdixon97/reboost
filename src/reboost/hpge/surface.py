@@ -104,7 +104,7 @@ def distance_to_surface(
             local_positions[indices], surface_indices=surface_indices
         )
 
-    return ak.Array(ak.unflatten(distances, size), dtype=np.float32, attrs={"units": "mm"})
+    return ak.Array(ak.unflatten(distances, size), attrs={"units": "mm"})
 
 
 @numba.njit(cache=True)

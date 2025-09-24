@@ -116,8 +116,8 @@ def test_r90():
     elect_r90 = 0.0001816
     gamma_r90 = 0.0157370
 
-    assert round(r90_output.nda[0], 7) == elect_r90
-    assert round(r90_output.nda[1], 7) == gamma_r90
+    assert round(r90_output[0], 7) == elect_r90
+    assert round(r90_output[1], 7) == gamma_r90
 
     edep = [gamma_edep]
     xloc = [gamma_xloc]

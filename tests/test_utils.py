@@ -78,11 +78,9 @@ def test_get_function_string():
     distances = awkward.Array([[0.2], [2], [0.6]])
 
     # just check it runs
-    assert eval(func_string, {"distances": distances}, globals_dict).view_as("ak")[0][0] == 0
-    assert eval(func_string, {"distances": distances}, globals_dict).view_as("ak")[1][0] == 1
-    assert eval(func_string, {"distances": distances}, globals_dict).view_as("ak")[2][
-        0
-    ] == pytest.approx(0.2)
+    assert eval(func_string, {"distances": distances}, globals_dict)[0][0] == 0
+    assert eval(func_string, {"distances": distances}, globals_dict)[1][0] == 1
+    assert eval(func_string, {"distances": distances}, globals_dict)[2][0] == pytest.approx(0.2)
 
     # try a more compliated expression
     expression = (

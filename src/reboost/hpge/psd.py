@@ -141,8 +141,8 @@ def drift_time(
 
 
 def drift_time_heuristic(
-    drift_time: ArrayLike,
-    edep: ArrayLike,
+    drift_time: ak.Array,
+    edep: ak.Array,
 ) -> ak.Array:
     """HPGe drift-time-based pulse-shape heuristic.
 
@@ -165,7 +165,9 @@ def drift_time_heuristic(
     if t_units is not None and e_units is not None:
         attrs["units"] = units.unit_to_lh5_attr(t_units / e_units)
 
-    return ak.Array(_drift_time_heuristic_impl(drift_time, edep), attrs=attrs)
+    return units.units_conv_ak(
+        ak.Array(_drift_time_heuristic_impl(drift_time, edep)), attrs["units"]
+    )
 
 
 @numba.njit(cache=True)

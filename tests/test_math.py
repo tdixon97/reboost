@@ -12,9 +12,7 @@ def test_hpge_activeness():
     # test with VectorOfVectors and ak.Array input
     distances = ak.Array([[0.2], [0.6], [2]])
 
-    activeness = functions.piecewise_linear_activeness(
-        VectorOfVectors(distances), fccd_in_mm=1, dlf=0.4
-    )
+    activeness = functions.piecewise_linear_activeness(ak.Array(distances), fccd_in_mm=1, dlf=0.4)
 
     # first point should be 0
     assert activeness[0][0] == 0
@@ -24,7 +22,7 @@ def test_hpge_activeness():
 
     # test with ak.Array input
     distances = ak.Array([[0.2], [0.6], [2]])
-    activeness = functions.piecewise_linear_activeness(distances, fccd=1, dlf=0.4)
+    activeness = functions.piecewise_linear_activeness(distances, fccd_in_mm=1, dlf=0.4)
 
     # first point should be 0
     assert activeness[0][0] == 0
@@ -33,19 +31,9 @@ def test_hpge_activeness():
     assert activeness[2][0] == 1
 
     # test with Array
-    activeness = functions.piecewise_linear_activeness([[0.2, 0.6, 2]], fccd=1, dlf=0.4)
+    activeness = functions.piecewise_linear_activeness([[0.2, 0.6, 2]], fccd_in_mm=1, dlf=0.4)
 
-    assert np.allclose(activeness.view_as("np"), [0, 1 / 3.0, 1])
-
-    # test with array
-    distances = [0.2, 0.6, 2]
-    activeness = functions.piecewise_linear_activeness(Array(distances), fccd=1, dlf=0.4)
-
-    # first point should be 0
-    assert activeness[0] == 0
-    # second should be 0.1/0.5 = 0.2
-    assert activeness[1] == pytest.approx(1 / 3.0)
-    assert activeness[2] == 1
+    assert np.allclose(activeness, [0, 1 / 3.0, 1])
 
 
 def test_vectorised_activeness():
@@ -54,18 +42,14 @@ def test_vectorised_activeness():
     edep = ak.Array([[100, 200], [100], [100], [100]])
 
     # simple case
-    energy = functions.vectorised_active_energy(
-        VectorOfVectors(distances), VectorOfVectors(edep), fccd=1, dlf=0.4
-    )
+    energy = functions.vectorised_active_energy(distances, edep, fccd=1, dlf=0.4)
 
     assert energy[0] == 200
     assert energy[1] == pytest.approx(100 / 3.0)
     assert energy[2] == 100
 
     # now vectorised over fccd
-    energy_fccd = functions.vectorised_active_energy(
-        VectorOfVectors(distances), VectorOfVectors(edep), fccd=[0, 0.5, 1, 2, 3], dlf=1
-    )
+    energy_fccd = functions.vectorised_active_energy(distances, edep, fccd=[0, 0.5, 1, 2, 3], dlf=1)
 
     # with distance of 0.2 only fccd of 0 gives energy
     assert np.allclose(energy_fccd[0], [300, 200, 200, 200, 200])

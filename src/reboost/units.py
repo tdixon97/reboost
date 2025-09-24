@@ -45,6 +45,19 @@ def units_convfact(data: Any | LGDO | ak.Array, target_units: pint.Unit | str) -
     return 1
 
 
+def attach_units(data: ak.Array, unit: str) -> ak.Array:
+    """Convenience function to attach units to `ak.Array`.
+
+    Parameters
+    ----------
+    data
+        the array to add units to
+    unit
+        the unit
+    """
+    return ak.with_parameter(data, parameter="units", value=unit)
+
+
 def units_conv_ak(data: Any | LGDO | ak.Array, target_units: pint.Unit | str) -> ak.Array:
     """Calculate numeric conversion factor to reach `target_units`, and apply to data converted to ak.
 
