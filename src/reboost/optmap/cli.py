@@ -92,13 +92,38 @@ def optical_cli() -> None:
     map_parser.add_argument("output", help="output map LH5 file", metavar="OUTPUT_MAP")
 
     # STEP 2b: view maps
-    mapview_parser = subparsers.add_parser("viewmap", help="view optical map")
+    mapview_parser = subparsers.add_parser(
+        "viewmap",
+        help="view optical map (arrows: navigate slices/axes, 'c': channel selector)",
+        formatter_class=argparse.RawTextHelpFormatter,
+        description=(
+            "Interactively view optical maps stored in LH5 files.\n\n"
+            "Keyboard controls:\n"
+            "  left/right  - previous/next slice along the current axis\n"
+            "  up/down     - switch slicing axis (x, y, z)\n"
+            "  c           - open channel selector overlay to switch detector map\n\n"
+            "Display notes:\n"
+            "  - Cells where no primary photons were simulated are shown in white.\n"
+            "  - Cells where no photons were detected are shown in grey.\n"
+            "  - Cells with values above the colormap maximum are shown in red.\n"
+            "  - Use --hist to choose which histogram to display. 'p_det_err_rel' shows the\n"
+            "    relative uncertainty p_det_err / p_det where defined.\n"
+            "  - Use --divide to show the ratio of two map files (this/other)."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  reboost-optical viewmap mymap.lh5\n"
+            "  reboost-optical viewmap mymap.lh5 --channel _1067205\n"
+            "  reboost-optical viewmap mymap.lh5 --hist p_det_err_rel --min 0 --max 1\n"
+            "  reboost-optical viewmap mymap.lh5 --divide other.lh5 --title 'Comparison'"
+        ),
+    )
     mapview_parser.add_argument("input", help="input map LH5 file", metavar="INPUT_MAP")
     mapview_parser.add_argument(
         "--channel",
         action="store",
         default="all",
-        help="default: %(default)s",
+        help="channel to display ('all' or '_<detid>'). Press 'c' in the viewer to switch. default: %(default)s",
     )
     mapview_parser.add_argument(
         "--hist",
@@ -110,19 +135,19 @@ def optical_cli() -> None:
     mapview_parser.add_argument(
         "--divide",
         action="store",
-        help="default: none",
+        help="divide by another map file before display (ratio). default: none",
     )
     mapview_parser.add_argument(
         "--min",
         default=1e-4,
         type=(lambda s: s if s == "auto" else float(s)),
-        help="colormap min value. default: %(default)e",
+        help="colormap min value; use 'auto' for automatic scaling. default: %(default)e",
     )
     mapview_parser.add_argument(
         "--max",
         default=1e-2,
         type=(lambda s: s if s == "auto" else float(s)),
-        help="colormap max value. default: %(default)e",
+        help="colormap max value; use 'auto' for automatic scaling. default: %(default)e",
     )
     mapview_parser.add_argument("--title", help="title of figure. default: stem of filename")
 
