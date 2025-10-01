@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 import awkward as ak
+import numpy as np
 from lgdo import VectorOfVectors
 
 from ..optmap import convolve
@@ -19,6 +20,80 @@ def load_optmap_all(map_file: str) -> convolve.OptmapForConvolve:
 def load_optmap(map_file: str, spm_det_uid: int) -> convolve.OptmapForConvolve:
     """Load an optical map file for later use with :py:func:`detected_photoelectrons`."""
     return convolve.open_optmap_single(map_file, spm_det_uid)
+
+
+def _nested_unflatten(data: ak.Array, lengths: ak.Array):
+    return ak.unflatten(ak.unflatten(ak.flatten(data), ak.flatten(lengths)), ak.num(lengths))
+
+
+def corrected_photoelectrons(
+    simulated_pe: ak.Array,
+    simulated_uids: ak.Array,
+    data_pe: ak.Array,
+    data_uids: ak.Array,
+    *,
+    seed: int | None = None,
+) -> tuple[ak.Array, ak.Array]:
+    r"""Add a correction to the observed number of photoelectrons (p.e.) using forced trigger data.
+
+    For every simulated event a corresponding forced trigger event in data is chosen
+    and the resulting number of p.e. for each channel (i) is:
+
+     .. math::
+
+        n_i = n_{\text{sim},i} + n_{\text{data},i}
+
+    .. warning::
+       The number of supplied forced trigger events in data should ideally be
+       more than that in the simulations. If this is not the case and "allow_data_reuse"
+       is True then some data events will be used multiple times. This introduces
+       a small amount of correlation between the simulated events, but is probably acceptable
+       in most circumstances.
+
+    Parameters
+    ----------
+    simulated_pe
+        The number of number of detected pe per sipm channel.
+    simulated_uids
+        The unique identifier (uid) for each sipm hit.
+    data_pe
+        The collection of forced trigger pe.
+    data_uids
+        The uids for each forced trigger event.
+    seed
+        Seed for random number generator
+
+    Returns
+    -------
+    a tuple of the corrected pe and sipm uids.
+    """
+    rand = np.random.default_rng(seed=seed)
+    rand_ints = rand.integers(0, len(data_pe), size=len(simulated_pe))
+
+    selected_data_pe = data_pe[rand_ints]
+    selected_data_uids = data_uids[rand_ints]
+
+    # combine sims with data
+    pe_tot = ak.concatenate([simulated_pe, selected_data_pe], axis=1)
+    uid_tot = ak.concatenate([simulated_uids, selected_data_uids], axis=1)
+
+    # sort by uid
+    order = ak.argsort(uid_tot)
+    pe_tot = pe_tot[order]
+    uid_tot = uid_tot[order]
+
+    # add an extra axis
+    n = ak.run_lengths(uid_tot)
+
+    # add another dimension
+    pe_tot = _nested_unflatten(pe_tot, n)
+    uid_tot = _nested_unflatten(uid_tot, n)
+
+    # sum pe and take the first uid (should all be the same)
+    corrected_pe = ak.sum(pe_tot, axis=-1)
+    uid_tot = ak.fill_none(ak.firsts(uid_tot, axis=-1), np.nan)
+
+    return corrected_pe, uid_tot
 
 
 def detected_photoelectrons(
