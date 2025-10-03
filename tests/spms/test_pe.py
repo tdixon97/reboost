@@ -24,11 +24,15 @@ def test_forced_trigger_correction():
     assert ak.all(uid == [[0], [0], [0, 1]])
 
     # check sorting
+    orig_pe = ak.Array([[], [1], [2, 3]])
     pe, uid = corrected_photoelectrons(
-        ak.Array([[], [1], [2, 3]]),
+        orig_pe,
         ak.Array([[], [0], [0, 1]]),
         ak.Array([[1, 3]]),
         ak.Array([[1, 0]]),
     )
     assert ak.all(pe == [[3, 1], [4, 1], [5, 4]])
     assert ak.all(uid == [[0, 1], [0, 1], [0, 1]])
+
+    # check original pe are not change
+    assert ak.all(orig_pe == [[], [1], [2, 3]])
