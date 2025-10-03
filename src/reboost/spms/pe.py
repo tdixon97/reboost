@@ -33,6 +33,7 @@ def corrected_photoelectrons(
     data_uids: ak.Array,
     *,
     seed: int | None = None,
+    allow_data_reuse: bool = True,
 ) -> tuple[ak.Array, ak.Array]:
     r"""Add a correction to the observed number of photoelectrons (p.e.) using forced trigger data.
 
@@ -62,16 +63,28 @@ def corrected_photoelectrons(
         The uids for each forced trigger event.
     seed
         Seed for random number generator
+    allow_data_reuse
+        Whether to allow an event to be used multiple times.
+
 
     Returns
     -------
     a tuple of the corrected pe and sipm uids.
     """
-    rand = np.random.default_rng(seed=seed)
-    rand_ints = rand.integers(0, len(data_pe), size=len(simulated_pe))
+    if allow_data_reuse:
+        rand = np.random.default_rng(seed=seed)
+        rand_ints = rand.integers(0, len(data_pe), size=len(simulated_pe))
 
-    selected_data_pe = data_pe[rand_ints]
-    selected_data_uids = data_uids[rand_ints]
+        selected_data_pe = data_pe[rand_ints]
+        selected_data_uids = data_uids[rand_ints]
+
+    elif len(simulated_pe) <= len(data_pe):
+        selected_data_pe = data_pe[: len(simulated_pe)]
+        selected_data_uids = data_uids[: len(simulated_pe)]
+
+    else:
+        msg = "The provided library of forced triggers is smaller than the simulation and 'allow_data_reuse' is false"
+        raise ValueError(msg)
 
     # combine sims with data
     pe_tot = ak.concatenate([simulated_pe, selected_data_pe], axis=1)

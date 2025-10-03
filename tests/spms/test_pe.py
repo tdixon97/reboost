@@ -36,3 +36,25 @@ def test_forced_trigger_correction():
 
     # check original pe are not change
     assert ak.all(orig_pe == [[], [1], [2, 3]])
+
+    # check summed pe - make each event 6 pe
+    pe, uid = corrected_photoelectrons(
+        ak.Array([[], [1], [2, 3]]),
+        ak.Array([[], [0], [0, 1]]),
+        ak.Array([[1, 2, 3], [6], [3, 3], [5, 1]]),
+        ak.Array([[1, 0, 2], [1], [2, 1], [0, 2]]),
+    )
+
+    sum_pe = ak.sum(pe, axis=-1)
+    assert ak.all(sum_pe == [6, 7, 11], axis=-1)
+
+    # test without sorting
+    pe, uid = corrected_photoelectrons(
+        ak.Array([[], [1], [2, 3]]),
+        ak.Array([[], [0], [0, 1]]),
+        ak.Array([[1, 2, 2], [4], [3, 3], [5, 1], []]),
+        ak.Array([[1, 0, 2], [1], [2, 1], [0, 2], []]),
+        allow_data_reuse=False,
+    )
+
+    assert ak.all(pe == [[2, 1, 2], [1, 4], [2, 6, 3]])
