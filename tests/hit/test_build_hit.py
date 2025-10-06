@@ -292,7 +292,7 @@ def test_full_chain(test_gen_lh5, tmptestdir):
         }
     )
 
-    _, time_dict = reboost.build_hit(
+    reboost.build_hit(
         f"{Path(__file__).parent}/configs/hit_config.yaml",
         args=args,
         stp_files=test_gen_lh5,

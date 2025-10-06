@@ -118,7 +118,7 @@ def _prepare_data(
     optmap_edges, optmap_weights = _read_data(optmap_fn, detid, histogram_choice)
 
     if divide_fn is not None:
-        divide_edges, divide_map = _read_data(divide_fn, detid, histogram_choice)
+        _, divide_map = _read_data(divide_fn, detid, histogram_choice)
         divmask = divide_map > 0
         optmap_weights[divmask] = optmap_weights[divmask] / divide_map[divmask]
         optmap_weights[~divmask] = -1

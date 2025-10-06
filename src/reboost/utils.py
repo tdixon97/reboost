@@ -284,7 +284,7 @@ def get_function_string(expr: str, aliases: dict | None = None) -> tuple[str, di
         if "." not in func_call:
             continue
 
-        subpackage, func = func_call.rsplit(".", 1)
+        subpackage, _func = func_call.rsplit(".", 1)
         package = subpackage.split(".")[0]
 
         # import the subpackage

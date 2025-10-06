@@ -87,7 +87,7 @@ def _fit_multi_ph_detection(hits_per_primary) -> float:
         return np.inf
 
     x = np.arange(0, len(hits_per_primary))
-    popt, pcov = scipy.optimize.curve_fit(
+    popt, _pcov = scipy.optimize.curve_fit(
         lambda x, p0, k: p0 * np.exp(-k * x), x[1:], hits_per_primary[1:]
     )
     best_fit_exponent = popt[1]

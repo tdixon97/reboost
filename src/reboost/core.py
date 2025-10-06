@@ -325,8 +325,6 @@ def get_one_detector_mapping(
         out_list = list(output_detector_expression)
 
     for expression_tmp in out_list:
-        func, globs = utils.get_function_string(expression_tmp)
-
         # if no package was imported its just a name
         try:
             objs = evaluate_object(expression_tmp, local_dict={"ARGS": args, "OBJECTS": objects})
