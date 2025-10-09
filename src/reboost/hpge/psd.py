@@ -845,7 +845,7 @@ def maximum_current(
     raise ValueError(msg)
 
 
-# @numba.njit(cache=True)
+@numba.njit(cache=True)
 def _late_charge_impl(
     edep: ak.Array, dt: ak.Array, time_amax: np.array, template: np.array, times: np.array
 ) -> NDArray:
