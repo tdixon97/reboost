@@ -310,24 +310,6 @@ def _current_pulse_model(
     return term1 + term2 + term3
 
 
-@numba.njit(cache=True)
-def _interpolate_pulse_model(
-    template: Array, time: float, start: float, end: float, dt: float, mu: float
-) -> NDArray:
-    """Interpolate to extract the pulse model given a particular mu."""
-    local_time = time - mu - start
-
-    if (local_time < start) or (int(local_time) > end):
-        return 0
-
-    sample = int(local_time / dt)
-    A_before = template[sample]
-    A_after = template[sample + 1]
-
-    frac = (local_time - int(local_time)) / dt
-    return A_before + frac * (A_after - A_before)
-
-
 def make_convolved_surface_library(bulk_template: np.array, surface_library: np.array) -> NDArray:
     """Make the convolved surface library out of the template.
 
@@ -555,6 +537,24 @@ def _get_waveform_value(
         out += E * _interpolate_pulse_model(template, time, start, start + dt * n, dt, mu)
 
     return out
+
+
+@numba.njit(cache=True)
+def _interpolate_pulse_model(
+    template: Array, time: float, start: float, end: float, dt: float, mu: float
+) -> NDArray:
+    """Interpolate to extract the pulse model given a particular mu."""
+    local_time = time - mu - start
+
+    if (local_time < start) or (int(local_time) > end):
+        return 0
+
+    sample = int(local_time / dt)
+    A_before = template[sample]
+    A_after = template[sample + 1]
+
+    frac = (local_time - int(local_time)) / dt
+    return A_before + frac * (A_after - A_before)
 
 
 def get_current_template(
@@ -843,3 +843,60 @@ def maximum_current(
 
     msg = f"Return mode {return_mode} is not implemented."
     raise ValueError(msg)
+
+
+# @numba.njit(cache=True)
+def _late_charge_impl(
+    edep: ak.Array, dt: ak.Array, time_amax: np.array, template: np.array, times: np.array
+) -> NDArray:
+    """Estimate the late charge that would be measured in the HPGe detector.
+
+    This is based on computing the "late_charge" filtered waveform at the fixed
+    pickoff (`time_amax` + 3000 ns). The waveform is computed summing templates
+    and shifting by their drift times similar to :func:`maximum_current`.
+    """
+    lq = np.zeros(len(dt))
+    start = times[0]
+
+    for i in range(len(dt)):
+        t = np.asarray(dt[i])
+        e = np.asarray(edep[i])
+        ta = time_amax[i]
+
+        # fixed pick off
+        j = int(ta + 3000 - start)
+        lq[i] = _get_waveform_value(j, e, t, template, start=start, dt=1.0)
+
+    return lq
+
+
+def late_charge(
+    edep: ArrayLike,
+    drift_time: ArrayLike,
+    t_amax: ArrayLike,
+    *,
+    template: np.array,
+    times: np.array,
+):
+    """Estimate the 'late-charge' parameter which represents the integral of the waveform after a certain time.
+
+    Based on :func:`_late_charge_impl`.
+
+    Parameters
+    ----------
+    edep
+        the energy deposits used to weight the steps.
+    drift_time
+        the drift time for every step
+    template
+        the template for the lq filtered waveform.
+    times
+        time-stamps for the template.
+    t_amax
+        time of maximum A/E per event.
+    """
+    drift_time, _ = units.unwrap_lgdo(drift_time)
+    edep, _ = units.unwrap_lgdo(edep)
+    t_amax, _ = units.unwrap_lgdo(t_amax)
+
+    return Array(_late_charge_impl(edep, drift_time, t_amax, template, times))
