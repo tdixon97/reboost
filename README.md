@@ -1,5 +1,7 @@
 # reboost
 
+[![PyPI](https://img.shields.io/pypi/v/reboost?logo=pypi)](https://pypi.org/project/reboost/)
+[![conda-forge](https://img.shields.io/conda/vn/conda-forge/reboost.svg)](https://anaconda.org/conda-forge/reboost)
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/legend-exp/reboost?logo=git)
 [![GitHub Workflow Status](https://img.shields.io/github/checks-status/legend-exp/reboost/main?label=main%20branch&logo=github)](https://github.com/legend-exp/reboost/actions)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
