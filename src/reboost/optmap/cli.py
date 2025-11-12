@@ -35,21 +35,7 @@ def optical_cli() -> None:
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    # STEP 1: build evt file from stp tier
-    evt_parser = subparsers.add_parser("evt", help="build optmap-evt file from remage stp file")
-    evt_parser_det_group = evt_parser.add_mutually_exclusive_group(required=True)
-    evt_parser_det_group.add_argument(
-        "--geom",
-        help="GDML geometry file",
-    )
-    evt_parser_det_group.add_argument(
-        "--detectors",
-        help="file with detector ids of all optical channels.",
-    )
-    evt_parser.add_argument("input", help="input stp LH5 file", metavar="INPUT_STP")
-    evt_parser.add_argument("output", help="output evt LH5 file", metavar="OUTPUT_EVT")
-
-    # STEP 2a: build map file from evt tier
+    # STEP 1a: build map file from evt tier
     map_parser = subparsers.add_parser("createmap", help="build optical map from evt file(s)")
     map_parser.add_argument(
         "--settings",
@@ -91,7 +77,7 @@ def optical_cli() -> None:
     )
     map_parser.add_argument("output", help="output map LH5 file", metavar="OUTPUT_MAP")
 
-    # STEP 2b: view maps
+    # STEP 1b: view maps
     mapview_parser = subparsers.add_parser(
         "viewmap",
         help="view optical map (arrows: navigate slices/axes, 'c': channel selector)",
@@ -151,7 +137,7 @@ def optical_cli() -> None:
     )
     mapview_parser.add_argument("--title", help="title of figure. default: stem of filename")
 
-    # STEP 2c: merge maps
+    # STEP 1c: merge maps
     mapmerge_parser = subparsers.add_parser("mergemap", help="merge optical maps")
     mapmerge_parser.add_argument(
         "input", help="input map LH5 files", metavar="INPUT_MAP", nargs="+"
@@ -176,7 +162,7 @@ def optical_cli() -> None:
         help="""Check map statistics after creation. default: %(default)s""",
     )
 
-    # STEP 2d: check map
+    # STEP 1d: check map
     checkmap_parser = subparsers.add_parser("checkmap", help="check optical maps")
     checkmap_parser.add_argument("input", help="input map LH5 file", metavar="INPUT_MAP")
 
@@ -191,24 +177,7 @@ def optical_cli() -> None:
     log_level = (None, logging.INFO, logging.DEBUG)[min(args.verbose, 2)]
     setup_log(log_level)
 
-    # STEP 1: build evt file from hit tier
-    if args.command == "evt":
-        from .evt import build_optmap_evt, get_optical_detectors_from_geom
-
-        _check_input_file(parser, args.input)
-        _check_output_file(parser, args.output)
-
-        # load detector ids from the geometry.
-        if args.geom is not None:
-            _check_input_file(parser, args.geom, "geometry")
-            detectors = get_optical_detectors_from_geom(args.geom)
-        else:
-            _check_input_file(parser, args.detectors, "detectors")
-            detectors = dbetto.utils.load_dict(args.detectors)
-
-        build_optmap_evt(args.input, args.output, detectors, args.bufsize)
-
-    # STEP 2a: build map file from evt tier
+    # STEP 1a: build map file from evt tier
     if args.command == "createmap":
         from .create import create_optical_maps
 
@@ -236,7 +205,7 @@ def optical_cli() -> None:
             geom_fn=args.geom,
         )
 
-    # STEP 2b: view maps
+    # STEP 1b: view maps
     if args.command == "viewmap":
         from .mapview import view_optmap
 
@@ -253,7 +222,7 @@ def optical_cli() -> None:
             histogram_choice=args.hist,
         )
 
-    # STEP 2c: merge maps
+    # STEP 1c: merge maps
     if args.command == "mergemap":
         from .create import merge_optical_maps
 
@@ -267,7 +236,7 @@ def optical_cli() -> None:
             args.input, args.output, settings, check_after_create=args.check, n_procs=args.n_procs
         )
 
-    # STEP 2d: check maps
+    # STEP 1d: check maps
     if args.command == "checkmap":
         from .create import check_optical_map
 

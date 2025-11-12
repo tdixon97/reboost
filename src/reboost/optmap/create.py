@@ -86,13 +86,12 @@ def _create_optical_maps_process_init(optmaps, log_level) -> None:
 
 
 def _create_optical_maps_process(
-    optmap_events_fn, buffer_len, is_stp_file, all_det_ids, ch_idx_to_map_idx
+    optmap_events_fn, buffer_len, all_det_ids, ch_idx_to_map_idx
 ) -> bool:
     log.info("started worker task for %s", optmap_events_fn)
     x = _create_optical_maps_chunk(
         optmap_events_fn,
         buffer_len,
-        is_stp_file,
         all_det_ids,
         _shared_optmaps,
         ch_idx_to_map_idx,
@@ -102,12 +101,9 @@ def _create_optical_maps_process(
 
 
 def _create_optical_maps_chunk(
-    optmap_events_fn, buffer_len, is_stp_file, all_det_ids, optmaps, ch_idx_to_map_idx
+    optmap_events_fn, buffer_len, all_det_ids, optmaps, ch_idx_to_map_idx
 ) -> bool:
-    if not is_stp_file:
-        optmap_events_it = read_optmap_evt(optmap_events_fn, buffer_len)
-    else:
-        optmap_events_it = generate_optmap_evt(optmap_events_fn, all_det_ids, buffer_len)
+    optmap_events_it = generate_optmap_evt(optmap_events_fn, all_det_ids, buffer_len)
 
     for it_count, events_lgdo in enumerate(optmap_events_it):
         optmap_events = events_lgdo.view_as("pd")
@@ -132,7 +128,6 @@ def create_optical_maps(
     optmap_events_fn: list[str],
     settings,
     buffer_len: int = int(5e6),
-    is_stp_file: bool = True,
     chfilter: tuple[str | int] | Literal["*"] = (),
     output_lh5_fn: str | None = None,
     after_save: Callable[[int, str, OpticalMap]] | None = None,
@@ -148,8 +143,6 @@ def create_optical_maps(
         list of filenames to lh5 files, that can either be stp files from remage or "optmap-evt"
         files with a table ``/optmap_evt`` with columns ``{x,y,z}loc`` and one column (with numeric
         header) for each SiPM channel.
-    is_stp_file
-        if true, do convert a remage output file (stp file) on-the-fly to an optmap-evt file.
     chfilter
         tuple of detector ids that will be included in the resulting optmap. Those have to match
         the column names in ``optmap_events_fn``.
@@ -162,12 +155,7 @@ def create_optical_maps(
 
     use_shmem = n_procs is None or n_procs > 1
 
-    if not is_stp_file:
-        optmap_evt_columns = list(
-            lh5.read(EVT_TABLE_NAME, optmap_events_fn[0], start_row=0, n_rows=1).keys()
-        )  # peek into the (first) file to find column names.
-    else:
-        optmap_evt_columns = [str(i) for i in get_optical_detectors_from_geom(geom_fn)]
+    optmap_evt_columns = [str(i) for i in get_optical_detectors_from_geom(geom_fn)]
 
     all_det_ids, optmaps, optmap_det_ids = _optmaps_for_channels(
         optmap_evt_columns, settings, chfilter=chfilter, use_shmem=use_shmem
@@ -188,7 +176,7 @@ def create_optical_maps(
         for fn in optmap_events_fn:
             q.append(
                 _create_optical_maps_chunk(
-                    fn, buffer_len, is_stp_file, all_det_ids, optmaps, ch_idx_to_map_idx
+                    fn, buffer_len, all_det_ids, optmaps, ch_idx_to_map_idx
                 )
             )
     else:
@@ -209,7 +197,7 @@ def create_optical_maps(
         for fn in optmap_events_fn:
             r = pool.apply_async(
                 _create_optical_maps_process,
-                args=(fn, buffer_len, is_stp_file, all_det_ids, ch_idx_to_map_idx),
+                args=(fn, buffer_len, all_det_ids, ch_idx_to_map_idx),
             )
             pool_results.append((r, fn))
 
