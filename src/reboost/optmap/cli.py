@@ -106,15 +106,15 @@ def optical_cli() -> None:
             "  - Cells where no primary photons were simulated are shown in white.\n"
             "  - Cells where no photons were detected are shown in grey.\n"
             "  - Cells with values above the colormap maximum are shown in red.\n"
-            "  - Use --hist to choose which histogram to display. 'p_det_err_rel' shows the\n"
-            "    relative uncertainty p_det_err / p_det where defined.\n"
+            "  - Use --hist to choose which histogram to display. 'prob_unc_rel' shows the\n"
+            "    relative uncertainty prob_unc / prob where defined.\n"
             "  - Use --divide to show the ratio of two map files (this/other)."
         ),
         epilog=(
             "Examples:\n"
             "  reboost-optical viewmap mymap.lh5\n"
             "  reboost-optical viewmap mymap.lh5 --channel _1067205\n"
-            "  reboost-optical viewmap mymap.lh5 --hist p_det_err_rel --min 0 --max 1\n"
+            "  reboost-optical viewmap mymap.lh5 --hist prob_unc_rel --min 0 --max 1\n"
             "  reboost-optical viewmap mymap.lh5 --divide other.lh5 --title 'Comparison'"
         ),
     )
@@ -127,9 +127,9 @@ def optical_cli() -> None:
     )
     mapview_parser.add_argument(
         "--hist",
-        choices=("nr_gen", "nr_det", "p_det", "p_det_err", "p_det_err_rel"),
+        choices=("_nr_gen", "_nr_det", "prob", "prob_unc", "prob_unc_rel"),
         action="store",
-        default="p_det",
+        default="prob",
         help="select optical map histogram to show. default: %(default)s",
     )
     mapview_parser.add_argument(

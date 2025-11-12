@@ -39,7 +39,7 @@ def open_optmap(optmap_fn: str) -> OptmapForConvolve:
     detids = np.array([int(m.lstrip("_")) for m in det_ntuples])
     detidx = np.arange(0, detids.shape[0])
 
-    optmap_all = lh5.read("/all/p_det", optmap_fn)
+    optmap_all = lh5.read("/all/prob", optmap_fn)
     assert isinstance(optmap_all, Histogram)
     optmap_edges = tuple([b.edges for b in optmap_all.binning])
 
@@ -47,7 +47,7 @@ def open_optmap(optmap_fn: str) -> OptmapForConvolve:
     # 0, ..., len(detidx)-1 AND OPTMAP_ANY_CH might be negative.
     ow[OPTMAP_ANY_CH] = optmap_all.weights.nda
     for i, nt in zip(detidx, det_ntuples, strict=True):
-        optmap = lh5.read(f"/{nt}/p_det", optmap_fn)
+        optmap = lh5.read(f"/{nt}/prob", optmap_fn)
         assert isinstance(optmap, Histogram)
         ow[i] = optmap.weights.nda
 
@@ -95,7 +95,7 @@ def open_optmap_single(optmap_fn: str, spm_det_uid: int) -> OptmapForConvolve:
     except lh5.exceptions.LH5DecodeError:  # the _hitcounts_exp might not be always present.
         pass
 
-    optmap = lh5.read(f"/_{spm_det_uid}/p_det", optmap_fn)
+    optmap = lh5.read(f"/_{spm_det_uid}/prob", optmap_fn)
     assert isinstance(optmap, Histogram)
     ow = np.empty((1, *optmap.weights.nda.shape), dtype=np.float64)
     ow[0] = optmap.weights.nda

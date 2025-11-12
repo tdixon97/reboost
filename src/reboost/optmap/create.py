@@ -313,9 +313,9 @@ def _merge_optical_maps_process(
 
     all_edges = None
     for optmap_fn in map_l5_files:
-        nr_det = lh5.read(f"/{d}/nr_det", optmap_fn)
+        nr_det = lh5.read(f"/{d}/_nr_det", optmap_fn)
         assert isinstance(nr_det, Histogram)
-        nr_gen = lh5.read(f"/{d}/nr_gen", optmap_fn)
+        nr_gen = lh5.read(f"/{d}/_nr_gen", optmap_fn)
         assert isinstance(nr_gen, Histogram)
 
         assert OpticalMap._edges_eq(nr_det.binning, nr_gen.binning)
@@ -410,7 +410,7 @@ def merge_optical_maps(
         # transfer to actual output file.
         for d, part_fn in q:
             assert isinstance(part_fn, str)
-            for h_name in ("nr_det", "nr_gen", "p_det", "p_det_err"):
+            for h_name in ("_nr_det", "_nr_gen", "prob", "prob_unc"):
                 obj = f"/{d}/{h_name}"
                 log.info("transfer %s from %s", obj, part_fn)
                 h = lh5.read(obj, part_fn)

@@ -92,14 +92,14 @@ def _channel_selector(fig) -> None:
 def _read_data(
     optmap_fn: str,
     detid: str = "all",
-    histogram_choice: str = "p_det",
+    histogram_choice: str = "prob",
 ) -> tuple[tuple[NDArray], NDArray]:
-    histogram = histogram_choice if histogram_choice != "p_det_err_rel" else "p_det"
+    histogram = histogram_choice if histogram_choice != "prob_unc_rel" else "prob"
     optmap_all = lh5.read(f"/{detid}/{histogram}", optmap_fn)
     optmap_edges = tuple([b.edges for b in optmap_all.binning])
     optmap_weights = optmap_all.weights.nda.copy()
-    if histogram_choice == "p_det_err_rel":
-        optmap_err = lh5.read(f"/{detid}/p_det_err", optmap_fn)
+    if histogram_choice == "prob_unc_rel":
+        optmap_err = lh5.read(f"/{detid}/prob_unc", optmap_fn)
         divmask = optmap_weights > 0
         optmap_weights[divmask] = optmap_err.weights.nda[divmask] / optmap_weights[divmask]
         optmap_weights[~divmask] = -1
@@ -112,7 +112,7 @@ def _prepare_data(
     divide_fn: str | None = None,
     cmap_min: float | Literal["auto"] = 1e-4,
     cmap_max: float | Literal["auto"] = 1e-2,
-    histogram_choice: str = "p_det",
+    histogram_choice: str = "prob",
     detid: str = "all",
 ) -> tuple[tuple[NDArray], NDArray]:
     optmap_edges, optmap_weights = _read_data(optmap_fn, detid, histogram_choice)
@@ -158,7 +158,7 @@ def view_optmap(
     start_axis: int = 2,
     cmap_min: float | Literal["auto"] = 1e-4,
     cmap_max: float | Literal["auto"] = 1e-2,
-    histogram_choice: str = "p_det",
+    histogram_choice: str = "prob",
     title: str | None = None,
 ) -> None:
     available_dets = list_optical_maps(optmap_fn)
