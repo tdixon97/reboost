@@ -15,10 +15,8 @@ from numpy.typing import NDArray
 
 from ..log_utils import setup_log
 from .evt import (
-    EVT_TABLE_NAME,
     generate_optmap_evt,
     get_optical_detectors_from_geom,
-    read_optmap_evt,
 )
 from .optmap import OpticalMap
 
@@ -26,23 +24,21 @@ log = logging.getLogger(__name__)
 
 
 def _optmaps_for_channels(
-    optmap_evt_columns: list[str],
+    all_det_ids: dict[int, str],
     settings,
     chfilter: tuple[str | int] | Literal["*"] = (),
     use_shmem: bool = False,
 ):
-    all_det_ids = [ch_id for ch_id in optmap_evt_columns if ch_id.isnumeric()]
-
     if chfilter != "*":
         chfilter = [str(ch) for ch in chfilter]  # normalize types
-        optmap_det_ids = [det for det in all_det_ids if str(det) in chfilter]
+        optmap_det_ids = {det: name for det, name in all_det_ids.items() if str(det) in chfilter}
     else:
         optmap_det_ids = all_det_ids
 
     log.info("creating empty optmaps")
     optmap_count = len(optmap_det_ids) + 1
     optmaps = [
-        OpticalMap("all" if i == 0 else optmap_det_ids[i - 1], settings, use_shmem)
+        OpticalMap("all" if i == 0 else list(optmap_det_ids.values())[i - 1], settings, use_shmem)
         for i in range(optmap_count)
     ]
 
@@ -103,11 +99,12 @@ def _create_optical_maps_process(
 def _create_optical_maps_chunk(
     optmap_events_fn, buffer_len, all_det_ids, optmaps, ch_idx_to_map_idx
 ) -> bool:
-    optmap_events_it = generate_optmap_evt(optmap_events_fn, all_det_ids, buffer_len)
+    cols = [str(c) for c in all_det_ids]
+    optmap_events_it = generate_optmap_evt(optmap_events_fn, cols, buffer_len)
 
     for it_count, events_lgdo in enumerate(optmap_events_it):
         optmap_events = events_lgdo.view_as("pd")
-        hitcounts = optmap_events[all_det_ids].to_numpy()
+        hitcounts = optmap_events[cols].to_numpy()
         loc = optmap_events[["xloc", "yloc", "zloc"]].to_numpy()
 
         log.debug("filling vertex histogram (%d)", it_count)
@@ -155,7 +152,7 @@ def create_optical_maps(
 
     use_shmem = n_procs is None or n_procs > 1
 
-    optmap_evt_columns = [str(i) for i in get_optical_detectors_from_geom(geom_fn)]
+    optmap_evt_columns = get_optical_detectors_from_geom(geom_fn)
 
     all_det_ids, optmaps, optmap_det_ids = _optmaps_for_channels(
         optmap_evt_columns, settings, chfilter=chfilter, use_shmem=use_shmem
@@ -163,11 +160,17 @@ def create_optical_maps(
 
     # indices for later use in _compute_hit_maps.
     ch_idx_to_map_idx = np.array(
-        [optmap_det_ids.index(d) + 1 if d in optmap_det_ids else -1 for d in all_det_ids]
+        [
+            list(optmap_det_ids.keys()).index(d) + 1 if d in optmap_det_ids else -1
+            for d in all_det_ids
+        ]
     )
     assert np.sum(ch_idx_to_map_idx > 0) == len(optmaps) - 1
 
-    log.info("creating optical map groups: %s", ", ".join(["all", *optmap_det_ids]))
+    log.info(
+        "creating optical map groups: %s",
+        ", ".join(["all", *[str(t) for t in optmap_det_ids.items()]]),
+    )
 
     q = []
 
@@ -175,9 +178,7 @@ def create_optical_maps(
     if not use_shmem:
         for fn in optmap_events_fn:
             q.append(
-                _create_optical_maps_chunk(
-                    fn, buffer_len, all_det_ids, optmaps, ch_idx_to_map_idx
-                )
+                _create_optical_maps_chunk(fn, buffer_len, all_det_ids, optmaps, ch_idx_to_map_idx)
             )
     else:
         ctx = mp.get_context("forkserver")
@@ -224,7 +225,7 @@ def create_optical_maps(
         optmaps[i].create_probability()
         if check_after_create:
             optmaps[i].check_histograms()
-        group = "all" if i == 0 else "channels/" + optmap_det_ids[i - 1]
+        group = "all" if i == 0 else "channels/" + list(optmap_det_ids.values())[i - 1]
         if output_lh5_fn is not None:
             optmaps[i].write_lh5(lh5_file=output_lh5_fn, group=group)
 
