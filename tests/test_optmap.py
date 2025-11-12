@@ -76,9 +76,9 @@ def tbl_evt_fns(tmptestdir) -> tuple[str]:
             "xloc": Array(loc[:, 0]),
             "yloc": Array(loc[:, 1]),
             "zloc": Array(loc[:, 2]),
-            "001": Array((hits == 1).astype(int)),
-            "002": Array((hits == 2).astype(int)),
-            "003": Array((hits == 3).astype(int)),
+            "1": Array((hits == 1).astype(int)),
+            "2": Array((hits == 2).astype(int)),
+            "3": Array((hits == 3).astype(int)),
         }
     )
 
@@ -89,7 +89,7 @@ def tbl_evt_fns(tmptestdir) -> tuple[str]:
 
 @pytest.mark.filterwarnings("ignore::scipy.optimize._optimize.OptimizeWarning")
 @pytest.mark.parametrize("input_fixture", ["tbl_evt_fns", "tbl_hits"])
-def test_optmap_create(input_fixture, request):
+def test_optmap_create(input_fixture, request, tmptestdir):
     settings = {
         "range_in_m": [[0, 1], [0, 1], [0, 1]],
         "bins": [10, 10, 10],
@@ -101,44 +101,53 @@ def test_optmap_create(input_fixture, request):
             f"{Path(__file__).parent}/test_optmap_dets.gdml" if input_fixture == "tbl_hits" else ""
         ),
     }
-    input_fixture = request.getfixturevalue(input_fixture)
+    input_data = request.getfixturevalue(input_fixture)
 
     # test creation only with the summary map.
+    map_fn = str(tmptestdir / f"create-map-{input_fixture}-1.lh5")
     create_optical_maps(
-        input_fixture,
+        input_data,
         settings,
         chfilter=(),
-        output_lh5_fn=None,
+        output_lh5_fn=map_fn,
         **extra_params,
     )
+    assert list_optical_maps(map_fn) == ["all"]
 
     # test creation with all detectors.
+    map_fn = str(tmptestdir / f"create-map-{input_fixture}-2.lh5")
+    print(map_fn)
     create_optical_maps(
-        input_fixture,
+        input_data,
         settings,
-        chfilter=("001", "002", "003"),
-        output_lh5_fn=None,
+        chfilter=("1", "2", "3"),
+        output_lh5_fn=map_fn,
         **extra_params,
     )
+    assert list_optical_maps(map_fn) == ["channels/1", "channels/2", "channels/3", "all"]
 
     # test creation with some detectors.
+    map_fn = str(tmptestdir / f"create-map-{input_fixture}-3.lh5")
     create_optical_maps(
-        input_fixture,
+        input_data,
         settings,
-        chfilter=("001"),
-        output_lh5_fn=None,
+        chfilter=("1"),
+        output_lh5_fn=map_fn,
         **extra_params,
     )
+    assert list_optical_maps(map_fn) == ["channels/1", "all"]
 
     # test creation on multiple cores.
+    map_fn = str(tmptestdir / f"create-map-{input_fixture}-4.lh5")
     create_optical_maps(
-        input_fixture,
+        input_data,
         settings,
-        chfilter=("001", "002", "003"),
-        output_lh5_fn=None,
+        chfilter=("1", "2", "3"),
+        output_lh5_fn=map_fn,
         n_procs=2,
         **extra_params,
     )
+    assert list_optical_maps(map_fn) == ["channels/1", "channels/2", "channels/3", "all"]
 
 
 @pytest.mark.filterwarnings("ignore::scipy.optimize._optimize.OptimizeWarning")
@@ -148,19 +157,19 @@ def test_optmap_merge(tbl_evt_fns, tmptestdir):
         "bins": [10, 10, 10],
     }
 
-    map1_fn = str(tmptestdir / "map1.lh5")
+    map1_fn = str(tmptestdir / "merge-map1.lh5")
     create_optical_maps(
         tbl_evt_fns,
         settings,
-        chfilter=("001", "002", "003"),
+        chfilter=("1", "2", "3"),
         output_lh5_fn=map1_fn,
         is_stp_file=False,
     )
-    map2_fn = str(tmptestdir / "map2.lh5")
+    map2_fn = str(tmptestdir / "merge-map2.lh5")
     create_optical_maps(
         tbl_evt_fns,
         settings,
-        chfilter=("001", "002", "003"),
+        chfilter=("1", "2", "3"),
         output_lh5_fn=map2_fn,
         is_stp_file=False,
     )
@@ -168,22 +177,12 @@ def test_optmap_merge(tbl_evt_fns, tmptestdir):
     # test in sequential mode.
     map_merged_fn = str(tmptestdir / "map-merged.lh5")
     merge_optical_maps([map1_fn, map2_fn], map_merged_fn, settings)
-    assert list_optical_maps(map_merged_fn) == [
-        "channels/001",
-        "channels/002",
-        "channels/003",
-        "all",
-    ]
+    assert list_optical_maps(map_merged_fn) == ["channels/1", "channels/2", "channels/3", "all"]
 
     # also test on multiple cores.
     map_merged_fn = str(tmptestdir / "map-merged-mp.lh5")
     merge_optical_maps([map1_fn, map2_fn], map_merged_fn, settings, n_procs=2)
-    assert list_optical_maps(map_merged_fn) == [
-        "channels/001",
-        "channels/002",
-        "channels/003",
-        "all",
-    ]
+    assert list_optical_maps(map_merged_fn) == ["channels/1", "channels/2", "channels/3", "all"]
 
 
 @pytest.mark.filterwarnings("ignore::scipy.optimize._optimize.OptimizeWarning")
@@ -197,7 +196,7 @@ def test_optmap_rebin(tbl_evt_fns, tmptestdir):
     create_optical_maps(
         tbl_evt_fns,
         settings,
-        chfilter=("001", "002", "003"),
+        chfilter=("1", "2", "3"),
         output_lh5_fn=map1_fn,
         is_stp_file=False,
     )
@@ -248,12 +247,12 @@ def test_optmap_save_and_load(tmptestdir, tbl_evt_fns):
     create_optical_maps(
         tbl_evt_fns,
         settings,
-        chfilter=("001", "002", "003"),
+        chfilter=("1", "2", "3"),
         output_lh5_fn=map_fn,
         is_stp_file=False,
     )
 
-    assert list_optical_maps(map_fn) == ["channels/001", "channels/002", "channels/003", "all"]
+    assert list_optical_maps(map_fn) == ["channels/1", "channels/2", "channels/3", "all"]
     om = OpticalMap.load_from_file(map_fn, "all")
     assert isinstance(om, OpticalMap)
     om = OpticalMap.load_from_file(map_fn, "all")
