@@ -236,7 +236,7 @@ def create_optical_maps(
         optmaps[i].create_probability()
         if check_after_create:
             optmaps[i].check_histograms()
-        group = "all" if i == 0 else "_" + optmap_det_ids[i - 1]
+        group = "all" if i == 0 else "channels/" + optmap_det_ids[i - 1]
         if output_lh5_fn is not None:
             optmaps[i].write_lh5(lh5_file=output_lh5_fn, group=group)
 
@@ -247,8 +247,10 @@ def create_optical_maps(
 
 
 def list_optical_maps(lh5_file: str) -> list[str]:
-    maps = lh5.ls(lh5_file)
-    return [m for m in maps if m not in ("_hitcounts", "_hitcounts_exp")]
+    maps = list(lh5.ls(lh5_file, "/channels/"))
+    if "all" in lh5.ls(lh5_file):
+        maps.append("all")
+    return maps
 
 
 def _merge_optical_maps_process(
@@ -286,7 +288,8 @@ def _merge_optical_maps_process(
         merged_map.check_histograms(include_prefix=True)
 
     if write_part_file:
-        output_lh5_fn = f"{output_lh5_fn}_{d}.mappart.lh5"
+        d_for_tmp = d.replace("/", "_")
+        output_lh5_fn = f"{output_lh5_fn}_{d_for_tmp}.mappart.lh5"
     wo_mode = "overwrite_file" if write_part_file else "write_safe"
     merged_map.write_lh5(lh5_file=output_lh5_fn, group=d, wo_mode=wo_mode)
 

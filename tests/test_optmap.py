@@ -168,10 +168,22 @@ def test_optmap_merge(tbl_evt_fns, tmptestdir):
     # test in sequential mode.
     map_merged_fn = str(tmptestdir / "map-merged.lh5")
     merge_optical_maps([map1_fn, map2_fn], map_merged_fn, settings)
+    assert list_optical_maps(map_merged_fn) == [
+        "channels/001",
+        "channels/002",
+        "channels/003",
+        "all",
+    ]
 
     # also test on multiple cores.
     map_merged_fn = str(tmptestdir / "map-merged-mp.lh5")
     merge_optical_maps([map1_fn, map2_fn], map_merged_fn, settings, n_procs=2)
+    assert list_optical_maps(map_merged_fn) == [
+        "channels/001",
+        "channels/002",
+        "channels/003",
+        "all",
+    ]
 
 
 @pytest.mark.filterwarnings("ignore::scipy.optimize._optimize.OptimizeWarning")
@@ -241,7 +253,7 @@ def test_optmap_save_and_load(tmptestdir, tbl_evt_fns):
         is_stp_file=False,
     )
 
-    assert list_optical_maps(map_fn) == ["_001", "_002", "_003", "all"]
+    assert list_optical_maps(map_fn) == ["channels/001", "channels/002", "channels/003", "all"]
     om = OpticalMap.load_from_file(map_fn, "all")
     assert isinstance(om, OpticalMap)
     om = OpticalMap.load_from_file(map_fn, "all")

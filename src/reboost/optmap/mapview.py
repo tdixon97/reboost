@@ -95,6 +95,8 @@ def _read_data(
     histogram_choice: str = "prob",
 ) -> tuple[tuple[NDArray], NDArray]:
     histogram = histogram_choice if histogram_choice != "prob_unc_rel" else "prob"
+    detid = f"channels/{detid}" if detid != all and not detid.startswith("channels/") else detid
+
     optmap_all = lh5.read(f"/{detid}/{histogram}", optmap_fn)
     optmap_edges = tuple([b.edges for b in optmap_all.binning])
     optmap_weights = optmap_all.weights.nda.copy()
