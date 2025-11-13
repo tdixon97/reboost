@@ -13,7 +13,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from .. import units
 from ..units import ureg as u
-from .utils import HPGeScalarRZField
+from .utils import HPGeRZField
 
 log = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ def drift_time(
     xloc: ArrayLike,
     yloc: ArrayLike,
     zloc: ArrayLike,
-    dt_map: HPGeScalarRZField,
+    dt_map: HPGeRZField,
     coord_offset: pint.Quantity | pyg4ometry.gdml.Position = (0, 0, 0) * u.m,
 ) -> VectorOfVectors:
     """Calculates drift times for each step (cluster) in an HPGe detector.
