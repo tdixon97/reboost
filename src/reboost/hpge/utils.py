@@ -11,23 +11,25 @@ from lgdo import lh5
 from scipy.interpolate import RegularGridInterpolator
 
 
-class HPGeScalarRZField(NamedTuple):
-    """A scalar field defined in the cylindrical-like (r, z) HPGe plane."""
+class HPGeRZField(NamedTuple):
+    """A field defined in the cylindrical-like (r, z) HPGe plane."""
 
     φ: Callable
-    "Scalar field, function of the coordinates (r, z)."
+    "Field, function of the coordinates (r, z)."
     r_units: pint.Unit
     "Physical units of the coordinate `r`."
     z_units: pint.Unit
     "Physical units of the coordinate `z`."
     φ_units: pint.Unit
     "Physical units of the field."
+    ndim: int
+    "Number of dimensions for the field"
 
 
-def get_hpge_scalar_rz_field(
+def get_hpge_rz_field(
     filename: str, obj: str, field: str, out_of_bounds_val: int | float = np.nan, **kwargs
-) -> HPGeScalarRZField:
-    """Create an interpolator for a gridded scalar HPGe field defined on `(r, z)`.
+) -> HPGeRZField:
+    """Create an interpolator for a gridded HPGe field defined on `(r, z)`.
 
     Reads from disk the following data structure: ::
 
@@ -35,7 +37,7 @@ def get_hpge_scalar_rz_field(
         └── OBJ · struct{r,z,FIELD}
             ├── r · array<1>{real} ── {'units': 'UNITS'}
             ├── z · array<1>{real} ── {'units': 'UNITS'}
-            └── FIELD · array<2>{real} ── {'units': 'UNITS'}
+            └── FIELD · array<N+2>{real} ── {'units': 'UNITS'}
 
     where ``FILENAME``, ``OBJ`` and ``FIELD`` are provided as
     arguments to this function. `obj` is a :class:`~lgdo.types.struct.Struct`,
@@ -43,9 +45,11 @@ def get_hpge_scalar_rz_field(
     coordinates of the rectangular grid — not the coordinates of each single
     grid point. In this coordinate system, the center of the p+ contact surface
     is at `(0, 0)`, with the p+ contact facing downwards. `field` is instead a
-    two-dimensional array specifying the field value at each grid point. The
-    first and second dimensions are `r` and `z`, respectively. NaN values are
-    interpreted as points outside the detector profile in the `(r, z)` plane.
+    ndim plus two-dimensional array specifying the field value at each grid point. The
+    first and second dimensions are `r` and `z`, respectively, with the latter dimensions
+    representing the dimensions of the output field.
+
+    NaN values are interpreted as points outside the detector profile in the `(r, z)` plane.
 
     Before returning a :class:`HPGeScalarRZField`, the gridded field is fed to
     :class:`scipy.interpolate.RegularGridInterpolator`.
@@ -73,7 +77,7 @@ def get_hpge_scalar_rz_field(
             for k in ("r", "z", field)
         }
     )
-
+    ndim = data[field].m.ndim - 2
     interpolator = RegularGridInterpolator((data.r.m, data.z.m), data[field].m, **kwargs)
 
-    return HPGeScalarRZField(interpolator, data.r.u, data.z.u, data[field].u)
+    return HPGeRZField(interpolator, data.r.u, data.z.u, data[field].u, ndim)
