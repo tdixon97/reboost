@@ -519,7 +519,9 @@ def _get_waveform_value(
     idx: int,
     edep: ak.Array,
     drift_time: ak.Array,
-    template: ArrayLike,
+    r: ak.Array,
+    z: ak.Array,
+    template: ArrayLike | tuple,
     start: float,
     dt: float,
 ) -> float:
@@ -544,15 +546,19 @@ def _get_waveform_value(
     -------
     Value of the current waveform
     """
-    n = len(template)
     out = 0
     time = start + dt * idx
 
     for i in range(len(edep)):
+        template_tmp = (
+            _get_template(r[i], z[i], *template) if isinstance(template, tuple) else template
+        )
+        n = len(template_tmp)
+
         E = edep[i]
         mu = drift_time[i]
 
-        out += E * _interpolate_pulse_model(template, time, start, start + dt * n, dt, mu)
+        out += E * _interpolate_pulse_model(template_tmp, time, start, start + dt * n, dt, mu)
 
     return out
 
@@ -596,7 +602,9 @@ def _get_waveform_maximum_impl(
     t: ArrayLike,
     e: ArrayLike,
     dist: ArrayLike,
-    template: ArrayLike,
+    r: ArrayLike,
+    z: ArrayLike,
+    template: ArrayLike | tuple,
     templates_surface: ArrayLike,
     activeness_surface: ArrayLike,
     tmin: float,
@@ -633,7 +641,7 @@ def _get_waveform_maximum_impl(
             continue
 
         if not has_surface_hit:
-            val_tmp = _get_waveform_value(j, e, t, template, start=start, dt=1.0)
+            val_tmp = _get_waveform_value(j, e, t, r, z, template, start=start, dt=1.0)
         else:
             val_tmp, energy = _get_waveform_value_surface(
                 j,
@@ -657,11 +665,26 @@ def _get_waveform_maximum_impl(
 
 
 @numba.njit(cache=True)
+def _get_template(
+    r: float,
+    z: float,
+    waveforms: np.array,
+    r_grid: np.array,
+    z_grid: np.array,
+    default: np.array | None = None,
+) -> np.array:
+    """Extract the closest template to a given (r,z) point."""
+    raise NotImplementedError
+
+
+@numba.njit(cache=True)
 def _estimate_current_impl(
     edep: ak.Array,
     dt: ak.Array,
     dist_to_nplus: ak.Array,
-    template: np.array,
+    r: ak.Array,
+    z: ak.Array,
+    template: np.array | tuple[np.array, np.array, np.array],
     times: np.array,
     include_surface_effects: bool,
     fccd: float,
@@ -682,7 +705,8 @@ def _estimate_current_impl(
     dist_to_nplus
         Array of distance to nplus contact for each step (can be `None`, in which case no surface effects are included.)
     template
-        array of the bulk pulse template
+        array of the bulk pulse template, in the case of a full pulse shape library, 3 arrays can be passed corresponding to the
+        "r" and "z" coordinates of the library and the waveforms for each point.
     times
         time-stamps for the bulk pulse template
     """
@@ -735,9 +759,11 @@ def _estimate_current_impl(
                 t,
                 e,
                 dist,
-                template,
-                templates_surface,
-                activeness_surface,
+                r=r,
+                z=z,
+                template=template,
+                templates_surface=templates_surface,
+                activeness_surface=activeness_surface,
                 tmin=tmin,
                 tmax=tmax,
                 start=start,
@@ -751,10 +777,60 @@ def _estimate_current_impl(
     return A, maximum_t, energy
 
 
+def prepare_surface_inputs(
+    dist_to_nplus: ak.Array,
+    edep: ak.Array,
+    templates_surface: ArrayLike,
+    activeness_surface,
+    template: ArrayLike,
+) -> tuple:
+    """Prepare the inputs needed for surface sims."""
+    include_surface_effects = False
+
+    # prepare surface templates
+    if templates_surface is not None:
+        if dist_to_nplus is None:
+            msg = "Surface effects requested but distance not provided"
+            raise ValueError(msg)
+
+        include_surface_effects = True
+    else:
+        # convert types to keep numba happy
+        templates_surface = np.zeros((1, len(template)))
+        dist_to_nplus = ak.full_like(edep, np.nan)
+
+    # convert types for numba
+    if activeness_surface is None:
+        activeness_surface = np.zeros(len(template))
+
+    return include_surface_effects, dist_to_nplus, templates_surface, activeness_surface
+
+
+def prepare_pulse_shape_library(
+    template: ArrayLike | HPGePulseShapeLibrary,
+    times: ArrayLike,
+    edep: ak.Array,
+    r: ak.Array,
+    z: ak.Array,
+):
+    """Prepare the inputs for the full pulse shape library."""
+    if isinstance(template, HPGePulseShapeLibrary):
+        # convert to a form we can use
+        template = (template.r, template.z, template.waveforms)
+        times = template.times
+    else:
+        r = ak.full_like(edep, np.nan)
+        z = ak.full_like(edep, np.nan)
+
+    return template, times, r, z
+
+
 def maximum_current(
     edep: ArrayLike,
     drift_time: ArrayLike,
     dist_to_nplus: ArrayLike | None = None,
+    r: ArrayLike | None = None,
+    z: ArrayLike | None = None,
     *,
     template: np.array | HPGePulseShapeLibrary,
     times: np.array,
@@ -774,8 +850,12 @@ def maximum_current(
         Array of drift times for each step.
     dist_to_nplus
         Distance to n-plus electrode, only needed if surface heuristics are enabled.
+    r
+        Radial coordinate (only needed if a full PSS library is used)
+    z
+        z coordinate (only needed if a full PSS library is used).
     template
-        array of the bulk pulse template
+        array of the bulk pulse template, can also be a :class:`HPGePulseShapeLibrary`.
     times
         time-stamps for the bulk pulse template
     fccd
@@ -798,32 +878,24 @@ def maximum_current(
     drift_time, _ = units.unwrap_lgdo(drift_time)
     edep, _ = units.unwrap_lgdo(edep)
     dist_to_nplus, _ = units.unwrap_lgdo(dist_to_nplus)
+    r, _ = units.unwrap_lgdo(r)
+    z, _ = units.unwrap_lgdo(z)
 
-    include_surface_effects = False
+    # prepare inputs for surface sims
+    include_surface_effects, dist_to_nplus, templates_surface, activeness_surface = (
+        prepare_surface_inputs(dist_to_nplus, edep, templates_surface, activeness_surface, template)
+    )
 
-    if templates_surface is not None:
-        if dist_to_nplus is None:
-            msg = "Surface effects requested but distance not provided"
-            raise ValueError(msg)
+    # and for the full PS library
+    template, times, r, z = prepare_pulse_shape_library(template, times, edep, r, z)
 
-        include_surface_effects = True
-    else:
-        # convert types to keep numba happy
-        templates_surface = np.zeros((1, len(template)))
-        dist_to_nplus = ak.full_like(edep, np.nan)
-
-    # convert types for numba
-    if activeness_surface is None:
-        activeness_surface = np.zeros(len(template))
-
-    if not ak.all(ak.num(edep, axis=-1) == ak.num(drift_time, axis=-1)):
-        msg = "edep and drift time must have the same shape"
-        raise ValueError(msg)
-
+    # and now compute the current
     curr, time, energy = _estimate_current_impl(
         ak.values_astype(ak.Array(edep), np.float64),
         ak.values_astype(ak.Array(drift_time), np.float64),
         ak.values_astype(ak.Array(dist_to_nplus), np.float64),
+        r=ak.values_astype(ak.Array(r), np.float64),
+        z=ak.values_astype(ak.Array(z), np.float64),
         template=template,
         times=times,
         fccd=fccd_in_um,
