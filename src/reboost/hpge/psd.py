@@ -13,7 +13,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from .. import units
 from ..units import ureg as u
-from .utils import HPGeRZField
+from .utils import HPGePulseShapeLibrary, HPGeRZField
 
 log = logging.getLogger(__name__)
 
@@ -756,7 +756,7 @@ def maximum_current(
     drift_time: ArrayLike,
     dist_to_nplus: ArrayLike | None = None,
     *,
-    template: np.array,
+    template: np.array | HPGePulseShapeLibrary,
     times: np.array,
     fccd_in_um: float = 0,
     templates_surface: ArrayLike | None = None,

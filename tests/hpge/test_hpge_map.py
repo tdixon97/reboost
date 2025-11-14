@@ -2,11 +2,16 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
-from lgdo import Array, Struct, lh5
+from lgdo import Array, Scalar, Struct, lh5
 from scipy.interpolate import RegularGridInterpolator
 
 from reboost.hpge import psd
-from reboost.hpge.utils import HPGeRZField, get_hpge_rz_field
+from reboost.hpge.utils import (
+    HPGePulseShapeLibrary,
+    HPGeRZField,
+    get_hpge_pulse_shape_library,
+    get_hpge_rz_field,
+)
 from reboost.units import ureg as u
 
 
@@ -56,11 +61,16 @@ def test_pulse_shape_library(tmptestdir):
         for j in range(200):
             waveforms[i, j] = model
 
+    t0 = -1000
+    dt = 1
+
     res = Struct(
         {
             "r": Array(r, attrs={"units": "mm"}),
             "z": Array(z, attrs={"units": "mm"}),
             "waveforms": Array(waveforms, attrs={"units": ""}),
+            "dt": Scalar(dt, attrs={"units": "ns"}),
+            "t0": Scalar(t0, attrs={"units": "ns"}),
         }
     )
     lh5.write(res, "V01", f"{tmptestdir}/pulse_shape_lib.lh5")
@@ -70,7 +80,7 @@ def test_pulse_shape_library(tmptestdir):
 
 def test_read_pulse_shape_library(test_pulse_shape_library):
     # check th reading works
-    lib = get_hpge_rz_field(test_pulse_shape_library, "V01", "waveforms")
-    assert isinstance(lib, HPGeRZField)
+    lib = get_hpge_pulse_shape_library(test_pulse_shape_library, "V01", "waveforms")
+    assert isinstance(lib, HPGePulseShapeLibrary)
 
-    assert len(lib.φ((10, 10))) == 4001
+    assert np.shape(lib.waveforms) == (200, 200, 4001)
