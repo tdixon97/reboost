@@ -114,7 +114,7 @@ def dt_map_dummy(legendtestdata):
         drift_time,
     )
 
-    return utils.HPGeScalarRZField(
+    return utils.HPGeRZField(
         interpolator,
         data.r.u,
         data.z.u,
