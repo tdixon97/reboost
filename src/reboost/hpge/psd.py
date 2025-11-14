@@ -674,7 +674,16 @@ def _get_template(
     default: np.array | None = None,
 ) -> np.array:
     """Extract the closest template to a given (r,z) point."""
-    raise NotImplementedError
+    if (r < r_grid[0]) or (r > r_grid[-1]) or (z > z_grid[-1]) or (z < z_grid[0]):
+        return default
+
+    dz = z_grid[1] - z_grid[0]
+    dr = r_grid[1] - r_grid[0]
+
+    ri = int((r - r_grid[0]) / dr)
+    zi = int((z - z_grid[0]) / dz)
+
+    return waveforms[ri][zi]
 
 
 @numba.njit(cache=True)
@@ -874,7 +883,6 @@ def maximum_current(
     An Array of the maximum current/ time / energy for each hit.
     """
     # extract LGDO data and units
-
     drift_time, _ = units.unwrap_lgdo(drift_time)
     edep, _ = units.unwrap_lgdo(edep)
     dist_to_nplus, _ = units.unwrap_lgdo(dist_to_nplus)
