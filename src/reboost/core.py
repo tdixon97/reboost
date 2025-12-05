@@ -182,7 +182,7 @@ def evaluate_object(
     -------
     the evaluated object.
     """
-    msg = f"Evaluating object with expression {expression} and {local_dict}"
+    msg = f"Evaluating object with expression {expression}"
     log.debug(msg)
 
     func_call, globals_dict = utils.get_function_string(expression)
@@ -216,7 +216,7 @@ def get_global_objects(
     if time_dict is not None:
         time_start = time.time()
 
-    msg = f"Getting global objects with {expressions.keys()} and {local_dict}"
+    msg = f"Getting global objects with {expressions.keys()} "
     log.debug(msg)
     res = {}
 

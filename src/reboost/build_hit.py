@@ -365,7 +365,9 @@ def build_hit(
                             "DETECTOR": out_detector,
                         }
                         # add fields
-                        for field, info in proc_group.get("operations", {}).items():
+                        ops = proc_group.get("operations", {})
+                        log.info(f" processing {ops.keys()}")
+                        for field, info in ops.items():
                             _evaluate_operation(
                                 hit_table, field, info, local_dict, time_dict[proc_name]
                             )
