@@ -93,3 +93,10 @@ repos:
       - id: check-dependabot
       - id: check-github-workflows
       - id: check-readthedocs
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: "v1.19.1"
+    hooks:
+      - id: mypy
+        files: src
+        args: []

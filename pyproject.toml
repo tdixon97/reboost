@@ -62,6 +62,15 @@ Changelog = "https://github.com/legend-exp/reboost/releases"
 [tool.setuptools_scm]
 write_to = "src/reboost/_version.py"
 
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
+exclude = [
+    "^build/",
+]
+
 [project.optional-dependencies]
 all = [
     "reboost[docs,test]",
